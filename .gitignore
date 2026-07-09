@@ -20,6 +20,12 @@ dist-ssr
 # Supabase local secrets — never commit
 supabase/.env.local
 
+# Supabase CLI local state — ephemeral, must not be version-controlled
+# (churns on every CLI command; lives under supabase/** so it would otherwise
+# spuriously trigger the staging-backend deploy workflow)
+supabase/.temp/
+supabase/.branches/
+
 # Stray Next.js prototype — not part of the KEPLER OS Vite app, excluded from deploy
 kepler-os-dashboard/
 
