@@ -1,8 +1,8 @@
-/* Type system: H1 Faculty Glyphic, H2 Stack Sans Text, H3/body Charis SIL.
+/* Type system: H1 Ramaraja, H2 Domine, H3/body Libre Baskerville (all serif).
    Separate @import lines so a single family/weight issue can't break the others. */
-@import url('https://fonts.googleapis.com/css2?family=Faculty+Glyphic&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Stack+Sans+Text&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Charis+SIL:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Ramaraja&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
   /* === KEPLER OS DESIGN SYSTEM v2 === */
@@ -51,10 +51,10 @@
   --kepler-accent-deep: #2d1c7f;
 
   /* Typography - font stacks */
-  --font-sans: 'Charis SIL', Georgia, serif;
-  --font-heading: 'Stack Sans Text', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Faculty Glyphic', Georgia, serif;
-  --font-section: 'Stack Sans Text', ui-sans-serif, sans-serif;
+  --font-sans: 'Libre Baskerville', Georgia, serif;      /* H3 + body */
+  --font-heading: 'Domine', Georgia, serif;              /* H2 / section headings */
+  --font-display: 'Ramaraja', Georgia, serif;            /* H1 hero (single weight, large only) */
+  --font-section: 'Domine', Georgia, serif;              /* H2 / section headings */
   --font-mono: ui-monospace, 'SF Mono', monospace;
 
   /* Spacing */
@@ -167,6 +167,7 @@ h6 {
 
 .font-display {
   font-family: var(--font-display);
+  font-weight: 400; /* Ramaraja ships a single weight; pin to avoid faux-bold */
   text-transform: capitalize;
 }
 
