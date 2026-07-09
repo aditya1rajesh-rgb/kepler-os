@@ -27,3 +27,10 @@ The application is built with a modular approach:
 ## Getting Started
 1. `npm install`
 2. `npm run dev`
+
+## Staging
+- **Live URL:** https://kepler-os-two.vercel.app
+- **Access:** sign up in-app with your email + a password — instant, no email confirmation on staging.
+- **Deploys:** push to the `staging` branch → Vercel rebuilds the frontend, and Supabase migrations + edge functions deploy via GitHub Actions.
+
+See [`docs/STAGING-DEPLOYMENT.md`](docs/STAGING-DEPLOYMENT.md) for the full runbook.
