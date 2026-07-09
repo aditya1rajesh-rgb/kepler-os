@@ -1,0 +1,113 @@
+.suggestion-card {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.suggestion-card__header h4 {
+    margin: 4px 0 0;
+    font-size: 15px;
+    color: var(--kepler-text);
+}
+
+.suggestion-card__badge {
+    font-size: 10px;
+    letter-spacing: 0.035em;
+    text-transform: none;
+    color: #ffb86b;
+}
+
+.suggestion-card__meta {
+    font-size: 12px;
+    color: var(--kepler-muted);
+}
+
+.suggestion-card__rationale {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--kepler-text);
+    margin: 0;
+}
+
+.suggestion-card__rationale--muted {
+    color: var(--kepler-muted);
+    font-size: 12px;
+}
+
+.suggestion-card__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.suggestion-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.suggestion-list__heading {
+    font-size: 12px;
+    letter-spacing: 0.035em;
+    text-transform: none;
+    color: #ffb86b;
+    margin: 0 0 12px;
+}
+
+.suggestion-card__meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.suggestion-card__confidence {
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-transform: none;
+    color: var(--kepler-muted);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 1px 6px;
+}
+
+.suggestion-card__placeholder {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--kepler-muted);
+    opacity: 0.7;
+    margin: 0;
+}
+
+.suggestion-card__edit-notes {
+    min-height: 64px;
+}
+
+.competitor-panel__section {
+    margin-bottom: 8px;
+}
+
+.icp-suggestion__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.icp-suggestion__field-label {
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-transform: none;
+    color: var(--kepler-muted);
+}
+
+.icp-suggestion__field-value {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--kepler-text);
+    margin: 0;
+}
+
+.icp-suggestion__edit {
+    min-height: 56px;
+}

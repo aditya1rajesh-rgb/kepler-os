@@ -1,0 +1,87 @@
+.tabs-bar {
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid var(--color-border);
+    gap: 32px;
+    padding: 0 48px;
+}
+
+.tab-item {
+    padding: 16px 0;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-muted);
+    border-bottom: 2px solid transparent;
+    transition: var(--transition-base);
+    white-space: nowrap;
+}
+
+.tab-item:hover {
+    color: var(--color-text);
+}
+
+.tab-item.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-accent);
+    font-weight: 500;
+}
+
+/* Kepler variant - pill tabs matching Workspace shell */
+.tabs-bar--kepler {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0;
+    border-bottom: none;
+}
+
+.tabs-bar--kepler .tab-item {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--kepler-muted);
+    border-bottom: none;
+    border-radius: 12px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tabs-bar--kepler .tab-item:hover {
+    color: var(--kepler-text);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tabs-bar--kepler .tab-item.active {
+    color: var(--kepler-text);
+    font-weight: 500;
+    border-bottom-color: transparent;
+    background: linear-gradient(
+        100deg,
+        rgba(117, 70, 232, 0.22),
+        rgba(117, 70, 232, 0.08)
+    );
+    box-shadow:
+        inset 0 1px 0 0 rgba(185, 184, 255, 0.18),
+        inset 0 0 24px 0 rgba(117, 70, 232, 0.12);
+}
+
+/* Lock / next-step cues */
+.tab-item__lock {
+    margin-left: 6px;
+    vertical-align: middle;
+    opacity: 0.7;
+}
+
+.tab-item--locked {
+    opacity: 0.78;
+}
+
+.tab-item--next::after {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    margin-left: 6px;
+    border-radius: 50%;
+    vertical-align: middle;
+    background: var(--kepler-accent, #7546e8);
+    box-shadow: 0 0 6px 0 rgba(117, 70, 232, 0.7);
+}

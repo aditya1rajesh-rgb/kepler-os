@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5175,
+      "autoPort": true
+    },
+    {
+      "name": "techflu-deck",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8931", "--directory", "/private/tmp/claude-501/-Users-apple-ai-marketing-platform/32aa56f1-abf8-4a87-92d9-33e33d49bdc7/scratchpad/techflu-deck"],
+      "port": 8931
+    }
+  ]
+}

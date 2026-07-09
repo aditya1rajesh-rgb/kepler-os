@@ -1,0 +1,119 @@
+/**
+ * Shared Kepler styling for workspace module interiors.
+ */
+
+.module-kepler {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.module-kepler .module-panel + .module-panel {
+    margin-top: 0;
+}
+
+/* Form controls inside modules */
+.module-kepler .intel-input,
+.module-kepler .intel-textarea,
+.module-kepler select.intel-input {
+    background-color: var(--kepler-panel);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    color: var(--kepler-text);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.module-kepler .intel-input:focus,
+.module-kepler .intel-textarea:focus,
+.module-kepler select.intel-input:focus {
+    border-color: rgba(117, 70, 232, 0.5);
+    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+}
+
+.module-kepler .data-label,
+.module-kepler .label-text {
+    color: #8e90a3;
+}
+
+/* Dashed add / drop zones */
+.module-kepler .module-add-zone,
+.module-kepler .add-card-btn,
+.module-kepler .add-step-card,
+.module-kepler .add-variant-placeholder,
+.module-kepler .file-drop-zone-full,
+.module-kepler .logo-drop-zone {
+    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(18, 19, 31, 0.4);
+    color: var(--kepler-muted);
+    border-radius: 12px;
+    transition: border-color var(--t-fast), background-color var(--t-fast), color var(--t-fast);
+}
+
+.module-kepler .add-card-btn:hover,
+.module-kepler .add-step-card:hover,
+.module-kepler .add-variant-placeholder:hover,
+.module-kepler .file-drop-zone-full:hover,
+.module-kepler .logo-drop-zone:hover {
+    border-color: rgba(117, 70, 232, 0.45);
+    color: var(--kepler-text);
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.module-kepler .module-search-input {
+    width: 100%;
+    max-width: 280px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: var(--kepler-panel);
+    font-size: 13px;
+    color: var(--kepler-text);
+    outline: none;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.module-kepler .module-search-input::placeholder {
+    color: var(--kepler-muted);
+}
+
+.module-kepler .module-search-input:focus {
+    border-color: rgba(117, 70, 232, 0.5);
+    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+}
+
+.module-kepler .module-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.module-kepler .kepler-chip,
+.module-kepler .intel-chip {
+    font-size: 11px;
+    background-color: var(--kepler-panel);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--kepler-text);
+}
+
+.module-kepler .intel-chip.small {
+    font-size: 9px;
+}
+
+.module-kepler .kepler-inset-panel {
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.module-empty-state,
+.home__empty {
+    color: var(--kepler-muted, #7f819a);
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+    padding: 16px 0;
+}

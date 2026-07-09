@@ -1,0 +1,80 @@
+.config-error {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background-color: var(--kepler-base, #0c0c16);
+    color: var(--kepler-text, #f0f0f6);
+}
+
+.config-error__panel {
+    max-width: 520px;
+    width: 100%;
+    padding: 28px;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(18, 19, 31, 0.85);
+}
+
+.config-error__eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: #8e90a3;
+}
+
+.config-error__title {
+    margin-top: 8px;
+    font-size: 22px;
+}
+
+.config-error__body {
+    margin-top: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #b6b7c6;
+}
+
+.config-error__section {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.config-error__section--danger {
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
+.config-error__label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.035em;
+    color: #8e90a3;
+}
+
+.config-error__section ul {
+    margin-top: 8px;
+    padding-left: 18px;
+    font-size: 13px;
+}
+
+.config-error__hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #9698ac;
+}
+
+.config-error__code {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-x: auto;
+}

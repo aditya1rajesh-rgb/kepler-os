@@ -1,0 +1,15 @@
+export const createLiveBrandBaseline = (workspace) => ({
+    name: workspace?.name ?? '',
+    url: workspace?.url ?? '',
+    tagline: workspace?.tagline ?? '',
+    overview: '',
+    colors: workspace?.brandColors ?? [],
+    fonts: [],
+    values: [],
+    aesthetic: [],
+    tone: [],
+    colorIdentity: {},
+    businessDetails: {},
+    fieldProvenance: {},
+    populationMeta: {},
+});

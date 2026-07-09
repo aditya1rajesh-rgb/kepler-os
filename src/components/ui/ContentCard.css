@@ -1,0 +1,128 @@
+.content-card {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    transition: var(--transition-base);
+}
+
+.content-card:hover {
+    background-color: var(--color-card-hover);
+}
+
+.card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.type-tag {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.03em;
+    padding: 2px 6px;
+    border-radius: 2px;
+    background-color: var(--color-surface);
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
+}
+
+.card-title {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--color-text);
+}
+
+.card-subtitle {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin-top: 2px;
+}
+
+.card-actions {
+    display: flex;
+    gap: var(--space-2);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-4);
+    margin-top: var(--space-2);
+}
+
+.action-btn {
+    flex: 1;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+}
+
+.action-btn:hover {
+    background-color: var(--color-card-hover);
+}
+
+.action-btn.primary {
+    color: var(--color-accent);
+}
+
+/* Kepler variant - inset tile material for module interiors */
+.content-card--kepler {
+    padding: 16px;
+    border-radius: 12px;
+    background:
+        linear-gradient(
+            160deg,
+            rgba(12, 13, 24, 0.5) 0%,
+            rgba(20, 21, 38, 0.55) 100%
+        );
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+        inset 0 -8px 18px -12px rgba(0, 0, 0, 0.5);
+    transition: background-color var(--t-fast), border-color var(--t-fast);
+}
+
+.content-card--kepler:hover {
+    background:
+        linear-gradient(
+            160deg,
+            rgba(14, 15, 26, 0.55) 0%,
+            rgba(22, 23, 42, 0.6) 100%
+        );
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.content-card--kepler .card-title {
+    color: var(--kepler-text);
+}
+
+.content-card--kepler .card-subtitle {
+    color: var(--kepler-muted);
+}
+
+.content-card--kepler .type-tag {
+    background-color: var(--kepler-panel);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--kepler-muted);
+}
+
+.content-card--kepler .card-actions {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.content-card--kepler .action-btn {
+    background-color: var(--kepler-panel);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--kepler-text);
+}
+
+.content-card--kepler .action-btn:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    background-color: rgba(255, 255, 255, 0.05);
+}

@@ -1,0 +1,102 @@
+/* Visible learning loop - shows which past notes are shaping the next generation. */
+.feedback-insight {
+    margin-bottom: 12px;
+    border: 1px solid rgba(117, 70, 232, 0.25);
+    background: rgba(117, 70, 232, 0.07);
+    border-radius: 10px;
+    padding: 2px;
+}
+
+.feedback-insight--muted {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.feedback-insight__head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.feedback-insight__head:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.feedback-insight__head:focus-visible {
+    outline: 2px solid rgba(117, 70, 232, 0.8);
+    outline-offset: 1px;
+}
+
+.feedback-insight__icon {
+    flex: none;
+    color: #b7a6f3;
+}
+
+.feedback-insight__text {
+    flex: 1;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--kepler-text, #f0f0f6);
+}
+
+.feedback-insight--muted .feedback-insight__text {
+    color: var(--kepler-muted, #b6b7c6);
+}
+
+.feedback-insight__chevron {
+    flex: none;
+    color: var(--kepler-muted, #b6b7c6);
+    transition: transform 0.15s ease;
+}
+
+.feedback-insight__chevron.is-open {
+    transform: rotate(180deg);
+}
+
+.feedback-insight__list {
+    list-style: none;
+    margin: 0;
+    padding: 2px 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feedback-insight__note {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.feedback-insight__note-rating {
+    flex: none;
+    color: #f5b301;
+    font-variant-numeric: tabular-nums;
+}
+
+.feedback-insight__note-text {
+    color: var(--kepler-muted, #b6b7c6);
+}
+
+.feedback-insight__note-label {
+    color: #7f819a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feedback-insight__chevron {
+        transition: none;
+    }
+}

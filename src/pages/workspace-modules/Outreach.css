@@ -1,0 +1,77 @@
+.outreach-module {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.builder-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.horizontal-timeline-container {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.touchpoint-wrapper {
+    flex: 0 0 320px;
+}
+
+.day-marker {
+    margin-bottom: 12px;
+}
+
+.day-marker .label-text {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--kepler-accent-2);
+    padding: 2px 8px;
+    background-color: rgba(117, 70, 232, 0.12);
+    border: 1px solid rgba(117, 70, 232, 0.35);
+    border-radius: 4px;
+    text-transform: none;
+}
+
+.message-box {
+    background-color: rgba(18, 19, 31, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--kepler-text);
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.add-step-card {
+    flex: 0 0 200px;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+}
+
+.tone-note {
+    display: flex;
+    gap: 8px;
+}
+
+@media (max-width: 1000px) {
+    .builder-grid {
+        grid-template-columns: 1fr;
+    }
+}

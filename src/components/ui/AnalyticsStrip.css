@@ -1,0 +1,105 @@
+.analytics-strip-kepler {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    padding: 0 48px;
+}
+
+.stat-item-kepler {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 32px;
+    border-right: 1px solid var(--color-border);
+    min-width: 160px;
+}
+
+.stat-item-kepler:first-child {
+    padding-left: 0;
+}
+
+.stat-item-kepler:last-child {
+    border-right: none;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--color-text);
+    line-height: 1.2;
+}
+
+.stat-label-kepler {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.035em;
+    text-transform: none;
+    color: var(--color-muted);
+    margin-top: 4px;
+}
+
+/* Kepler variant - tile grid for use inside panels */
+.analytics-strip-kepler--tiles {
+    background: transparent;
+    border-bottom: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.analytics-strip-kepler--tiles .stat-item-kepler {
+    border-right: none;
+    min-width: 0;
+    padding: 16px;
+    border-radius: 12px;
+    background:
+        linear-gradient(
+            160deg,
+            rgba(12, 13, 24, 0.5) 0%,
+            rgba(20, 21, 38, 0.55) 100%
+        );
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+        inset 0 -8px 18px -12px rgba(0, 0, 0, 0.5);
+}
+
+.analytics-strip-kepler--tiles .stat-item-kepler:first-child {
+    padding-left: 16px;
+}
+
+.analytics-strip-kepler--tiles .stat-value {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #f4f4f9;
+}
+
+.analytics-strip-kepler--tiles .stat-label-kepler {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: #8e90a3;
+}
+
+@media (min-width: 768px) {
+    .analytics-strip-kepler--tiles {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .analytics-strip-kepler--tiles {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.analytics-strip-kepler--tiles.analytics-strip-kepler--cols-3 {
+    grid-template-columns: repeat(1, 1fr);
+}
+
+@media (min-width: 768px) {
+    .analytics-strip-kepler--tiles.analytics-strip-kepler--cols-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

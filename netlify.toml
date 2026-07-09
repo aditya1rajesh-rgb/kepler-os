@@ -1,0 +1,10 @@
+# Netlify config (only read by Netlify; harmless on other hosts).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback — client-side routing needs every path to serve index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

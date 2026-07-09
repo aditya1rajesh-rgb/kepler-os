@@ -1,0 +1,19 @@
+.error-boundary {
+    padding: 32px;
+    margin: 16px 0;
+    text-align: center;
+    border-radius: 12px;
+    background:
+        linear-gradient(
+            160deg,
+            rgba(12, 13, 24, 0.5) 0%,
+            rgba(20, 21, 38, 0.55) 100%
+        );
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.error-boundary__message {
+    color: var(--kepler-muted);
+    font-size: 14px;
+    margin-bottom: 16px;
+}

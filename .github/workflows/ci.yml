@@ -1,0 +1,23 @@
+name: ci
+
+# Build gate for every push/PR. NOTE: intentionally runs `npm run build` (the
+# real gate), NOT `npm run lint` — the repo carries accepted lint debt
+# (react-refresh/only-export-components on context files, load-on-mount
+# set-state-in-effect) that would fail eslint's non-zero exit without being real
+# problems. Build must always be green.
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build

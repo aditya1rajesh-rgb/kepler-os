@@ -1,0 +1,53 @@
+/* Card component - max radius 8px, no glass, no shadow */
+.ai-card {
+    border-radius: var(--radius-md);
+    /* 8px max */
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    overflow: hidden;
+    transition: var(--transition-base);
+}
+
+.ai-card:hover {
+    background-color: var(--color-card-hover);
+}
+
+.ai-card-header {
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.ai-card-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.ai-card-subtitle {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin: 4px 0 0 0;
+}
+
+.ai-card-content {
+    padding: 0 24px 24px 24px;
+}
+
+.ai-card-content.no-padding {
+    padding: 0;
+}
+
+/* Opt into Kepler acrylic material - resets flat card chrome so .kepler-panel wins */
+.ai-card.ai-card--kepler {
+    background: transparent;
+    border: none;
+    border-radius: 1rem;
+    overflow: visible;
+    transition: none;
+}
+
+.ai-card.ai-card--kepler:hover {
+    background: transparent;
+}

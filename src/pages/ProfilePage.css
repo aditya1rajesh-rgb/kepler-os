@@ -1,0 +1,221 @@
+.profile {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile__inner {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.profile__hero {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.profile__title {
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin: 0;
+}
+
+.profile__subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.profile__panel {
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.profile__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 420px;
+}
+
+.profile__label {
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+}
+
+.profile__input {
+    width: 100%;
+    font-size: 14px;
+}
+
+.profile__actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.profile__notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--mint);
+}
+
+.profile__error {
+    font-size: 13px;
+    color: var(--error);
+}
+
+.profile__error--block {
+    margin: 0;
+}
+
+.profile__spin {
+    color: var(--accent-text);
+    animation: profile-spin 0.8s linear infinite;
+}
+
+/* ── Connector grid ── */
+.connector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.connector-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.connector-card--planned {
+    opacity: 0.72;
+}
+
+.connector-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.connector-card__icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--accent-text);
+}
+
+.connector-card__cat {
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: var(--text-dim);
+}
+
+.connector-card__name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+}
+
+.connector-card__desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.connector-card__enhances {
+    font-size: 11.5px;
+    color: var(--text-dim);
+}
+
+.connector-card__foot {
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+}
+
+.connector-card__soon {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.connector-card__btn {
+    padding: 6px 14px;
+    font-size: 12.5px;
+}
+
+.connector-card__connected {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.connector-card__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12.5px;
+    color: var(--mint);
+}
+
+.connector-modal__help {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--text-dim);
+}
+
+.connector-modal__link {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12.5px;
+    color: var(--accent-text);
+}
+
+.connector-modal__link:hover {
+    color: var(--text);
+}
+
+.connector-modal__note {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+@keyframes profile-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile__spin { animation: none; }
+}

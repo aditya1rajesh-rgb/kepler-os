@@ -1,0 +1,30 @@
+.business-details-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-6);
+}
+
+.business-details-panel--loading {
+    opacity: 0.85;
+    pointer-events: none;
+}
+
+.business-details-panel__legacy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    padding-top: var(--sp-4);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.intel-readonly-value--block {
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.proof-point-chip__flag {
+    font-size: 10px;
+    opacity: 0.65;
+    text-transform: none;
+    letter-spacing: 0.04em;
+}

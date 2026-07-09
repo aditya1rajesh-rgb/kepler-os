@@ -1,0 +1,12 @@
+[functions.ai-proxy]
+verify_jwt = true
+
+[functions.search-console]
+verify_jwt = true
+
+[functions.connector-proxy]
+verify_jwt = true
+
+[functions.oauth-proxy]
+verify_jwt = true
+

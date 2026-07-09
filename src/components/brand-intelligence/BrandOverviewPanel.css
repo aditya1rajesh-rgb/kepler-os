@@ -1,0 +1,49 @@
+.brand-overview-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.brand-overview-panel--loading {
+    opacity: 0.85;
+}
+
+.brand-section-action {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.brand-section-action__btn {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.brand-section-action__status {
+    font-size: 12px;
+    color: var(--kepler-text-muted, rgba(255, 255, 255, 0.6));
+}
+
+.brand-section-action__status--done {
+    color: var(--success, #7ee0a8);
+}
+
+.brand-section-action__status--error {
+    color: var(--error, #f87171);
+}
+
+.chip-adder {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.chip-adder__input {
+    flex: 1;
+}
+
+.chip-adder__btn {
+    flex-shrink: 0;
+}
