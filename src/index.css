@@ -1,8 +1,6 @@
-/* Type system: H1 Faculty Glyphic, H2 Stack Sans Text, H3/body Charis SIL.
-   Separate @import lines so a single family/weight issue can't break the others. */
-@import url('https://fonts.googleapis.com/css2?family=Faculty+Glyphic&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Stack+Sans+Text&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Charis+SIL:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+/* Type system: Manrope everywhere — single family, hierarchy by weight
+   (H1/.font-display 800, H2/.font-heading/.font-section 700, body 400). */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap');
 
 :root {
   /* === KEPLER OS DESIGN SYSTEM v2 === */
@@ -51,10 +49,10 @@
   --kepler-accent-deep: #2d1c7f;
 
   /* Typography - font stacks */
-  --font-sans: 'Charis SIL', Georgia, serif;
-  --font-heading: 'Stack Sans Text', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Faculty Glyphic', Georgia, serif;
-  --font-section: 'Stack Sans Text', ui-sans-serif, sans-serif;
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;      /* body + H3 (400) */
+  --font-heading: 'Manrope', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
+  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;   /* H1 hero (800) */
+  --font-section: 'Manrope', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
   --font-mono: ui-monospace, 'SF Mono', monospace;
 
   /* Spacing */
@@ -162,16 +160,19 @@ h6 {
    CloudVerse stay intact) so no source strings need rewriting. */
 .font-heading {
   font-family: var(--font-heading);
+  font-weight: 700;
   text-transform: capitalize;
 }
 
 .font-display {
   font-family: var(--font-display);
+  font-weight: 800;
   text-transform: capitalize;
 }
 
 .font-section {
   font-family: var(--font-section);
+  font-weight: 700;
   text-transform: capitalize;
 }
 
