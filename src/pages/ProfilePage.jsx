@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-    Search, Megaphone, BarChart3, Users, Contact, Plug, Check, LoaderCircle,
-} from '../lib/icons';
+import { Plug, Check, LoaderCircle } from '../lib/icons';
 import Panel, { PanelHeader } from '../components/ui/Panel';
 import Tabs from '../components/ui/Tabs';
 import Modal from '../components/ui/Modal';
@@ -11,17 +9,25 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { workspaceService } from '../services/workspaceService';
 import { integrationService } from '../services/integrationService';
 import { CONNECTORS } from '../lib/connectors';
+import gscLogo from '../assets/connectors/gsc.png';
+import hubspotLogo from '../assets/connectors/hubspot.png';
+import metaLogo from '../assets/connectors/meta.png';
+import ga4Logo from '../assets/connectors/ga4.webp';
+import googleAdsLogo from '../assets/connectors/google-ads.png';
+import zohoLogo from '../assets/connectors/zoho.png';
+import apolloLogo from '../assets/connectors/apollo.png';
 import './ProfilePage.css';
 
-const CONNECTOR_ICONS = {
-    gsc: Search,
-    'meta-ad-library': Megaphone,
-    ga4: BarChart3,
-    'google-ads': Megaphone,
-    'meta-ads': Megaphone,
-    hubspot: Users,
-    zoho: Users,
-    apollo: Contact,
+// Brand logos per connector. Both Meta connectors share the Meta mark.
+const CONNECTOR_LOGOS = {
+    gsc: gscLogo,
+    'meta-ad-library': metaLogo,
+    ga4: ga4Logo,
+    'google-ads': googleAdsLogo,
+    'meta-ads': metaLogo,
+    hubspot: hubspotLogo,
+    zoho: zohoLogo,
+    apollo: apolloLogo,
 };
 
 // ── Account (name) - keyed on the loaded profile so the input seeds correctly ──
@@ -192,11 +198,15 @@ const ConnectorsSection = ({ workspaces }) => {
             {error && <p className="profile__error profile__error--block">{error}</p>}
             <div className="connector-grid">
                 {CONNECTORS.map((c) => {
-                    const Icon = CONNECTOR_ICONS[c.id] ?? Plug;
+                    const logo = CONNECTOR_LOGOS[c.id];
                     return (
                         <article key={c.id} className={`connector-card ${c.status === 'planned' ? 'connector-card--planned' : ''}`}>
                             <div className="connector-card__head">
-                                <span className="connector-card__icon"><Icon size={18} strokeWidth={1.7} /></span>
+                                <span className="connector-card__icon">
+                                    {logo
+                                        ? <img className="connector-card__logo" src={logo} alt={`${c.label} logo`} loading="lazy" />
+                                        : <Plug size={18} strokeWidth={1.7} />}
+                                </span>
                                 <span className="connector-card__cat">{c.category}</span>
                             </div>
                             <h3 className="connector-card__name">{c.label}</h3>
