@@ -185,6 +185,11 @@ const ConnectorsSection = ({ workspaces }) => {
         if (c.authType === 'apiKey') {
             return <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => openApiKeyModal(c)}>Connect</button>;
         }
+        // OAuth connector whose client env isn't provisioned yet: show a calm
+        // "Setup required" chip rather than throwing a developer-facing error.
+        if (!integrationService.isOAuthConfigured(c.id)) {
+            return <span className="connector-card__soon">Setup required</span>;
+        }
         return <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => connectOauth(c.id)}>Connect</button>;
     };
 

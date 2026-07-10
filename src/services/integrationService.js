@@ -88,6 +88,18 @@ export const integrationService = {
         return `${family.authUrl}?${params.toString()}`;
     },
 
+    /**
+     * Whether an OAuth connector's client env (client id + redirect URI) is
+     * present in this build. Lets the UI show a calm "Setup required" state
+     * instead of surfacing a developer-facing "not configured" error.
+     */
+    isOAuthConfigured: (connectorId) => {
+        const connector = CONNECTORS.find((c) => c.id === connectorId);
+        if (!connector?.oauth || !connector.family) return false;
+        const env = FAMILY_ENV[connector.family];
+        return Boolean(env?.clientId && env?.redirectUri);
+    },
+
     /** Validate the state returned by the provider against the stored CSRF nonce. */
     verifyState: (state) => {
         try {
