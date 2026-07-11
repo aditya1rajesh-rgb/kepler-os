@@ -1,0 +1,189 @@
+/* Public legal pages — on-brand with the app shell (dark), tuned for long-read
+   legibility: comfortable measure, clear hierarchy, high contrast. */
+.legal {
+    min-height: 100vh;
+    background: var(--kepler-base, #0d0b14);
+    color: var(--kepler-text, #ece9f5);
+    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    display: flex;
+    flex-direction: column;
+}
+
+.legal__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem clamp(1.2rem, 5vw, 3rem);
+    border-bottom: 1px solid var(--kepler-border, rgba(255, 255, 255, 0.08));
+    position: sticky;
+    top: 0;
+    background: color-mix(in srgb, var(--kepler-base, #0d0b14) 88%, transparent);
+    backdrop-filter: blur(8px);
+    z-index: 5;
+}
+
+.legal__wordmark {
+    font-family: var(--font-heading, inherit);
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+    color: var(--kepler-text, #ece9f5);
+    text-decoration: none;
+}
+
+.legal__nav {
+    display: flex;
+    gap: 1.3rem;
+    font-size: 0.88rem;
+}
+
+.legal__nav a {
+    color: var(--kepler-muted, rgba(255, 255, 255, 0.6));
+    text-decoration: none;
+}
+
+.legal__nav a:hover {
+    color: var(--kepler-text, #ece9f5);
+}
+
+.legal__main {
+    flex: 1;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: clamp(2rem, 6vw, 4rem) clamp(1.2rem, 5vw, 2rem) 4rem;
+}
+
+.legal__eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--kepler-accent, #8a7cf0);
+    margin: 0 0 0.7rem;
+}
+
+.legal__title {
+    font-family: var(--font-heading, inherit);
+    font-size: clamp(1.9rem, 5vw, 2.7rem);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.08;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+}
+
+.legal__updated {
+    font-size: 0.85rem;
+    color: var(--kepler-muted, rgba(255, 255, 255, 0.55));
+    margin: 0 0 2.4rem;
+}
+
+.legal__body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: color-mix(in srgb, var(--kepler-text, #ece9f5) 90%, transparent);
+}
+
+.legal__body h2 {
+    font-family: var(--font-heading, inherit);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 2.6rem 0 0.5rem;
+    color: var(--kepler-text, #ece9f5);
+}
+
+.legal__body h3 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 1.6rem 0 0.4rem;
+    color: var(--kepler-text, #ece9f5);
+}
+
+.legal__body p,
+.legal__body li {
+    max-width: 68ch;
+}
+
+.legal__body ul {
+    padding-left: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.legal__body a {
+    color: var(--kepler-accent, #8a7cf0);
+}
+
+.legal__body strong {
+    color: var(--kepler-text, #ece9f5);
+}
+
+/* Placeholder callouts — the specifics TurboStart legal must confirm before
+   this policy is submitted for OAuth review. Visually obvious on purpose. */
+.legal__todo {
+    display: inline;
+    background: rgba(255, 196, 84, 0.16);
+    border-bottom: 1px dashed rgba(255, 196, 84, 0.6);
+    color: #ffd89b;
+    padding: 0 0.2em;
+    border-radius: 3px;
+    font-style: normal;
+}
+
+.legal__note {
+    margin: 2.6rem 0 0;
+    padding: 1rem 1.2rem;
+    border: 1px solid rgba(255, 196, 84, 0.35);
+    background: rgba(255, 196, 84, 0.07);
+    border-radius: 12px;
+    font-size: 0.88rem;
+    color: #ffd89b;
+}
+
+.legal__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.6rem clamp(1.2rem, 5vw, 3rem);
+    border-top: 1px solid var(--kepler-border, rgba(255, 255, 255, 0.08));
+    font-size: 0.82rem;
+    color: var(--kepler-muted, rgba(255, 255, 255, 0.55));
+}
+
+.legal__foot a {
+    color: var(--kepler-muted, rgba(255, 255, 255, 0.7));
+}
+
+/* Data-deletion status lookup */
+.legal__status-form {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin: 1.2rem 0;
+}
+
+.legal__status-form input {
+    flex: 1;
+    min-width: 12rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid var(--kepler-border-strong, rgba(255, 255, 255, 0.15));
+    background: var(--kepler-surface, rgba(255, 255, 255, 0.04));
+    color: var(--kepler-text, #ece9f5);
+    font-size: 0.95rem;
+}
+
+.legal__status-result {
+    margin-top: 0.8rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 10px;
+    background: var(--kepler-surface, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--kepler-border, rgba(255, 255, 255, 0.08));
+    font-size: 0.9rem;
+}

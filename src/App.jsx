@@ -14,6 +14,9 @@ import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import GoogleOAuthCallback from './pages/GoogleOAuthCallback';
 import ProfilePage from './pages/ProfilePage';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import TermsOfService from './pages/legal/TermsOfService';
+import DataDeletion from './pages/legal/DataDeletion';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
 const needsOnboarding = (profile, workspaces) => {
@@ -71,6 +74,12 @@ function App() {
       <Router>
         <WorkspaceProvider>
           <Routes>
+            {/* Public, unauthenticated legal pages — OAuth reviewers open these
+                directly, so they sit outside every auth guard. */}
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/data-deletion" element={<DataDeletion />} />
+
             <Route element={<GuestRoute />}>
               <Route path="/login" element={<LoginPage />} />
             </Route>
