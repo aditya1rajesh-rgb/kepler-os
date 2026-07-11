@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { workspacePath } from '../../constants/routes';
 import { useActivation } from '../../context/ActivationContext';
@@ -18,12 +18,17 @@ import {
     normalizeHexColor,
 } from '../../lib/brandContracts';
 import { markFieldManual } from '../../lib/provenance';
+import { computeBrandHealth } from '../../lib/brandHealth';
+import { brandFreshnessService } from '../../services/brandFreshnessService';
+import { brandLearningService } from '../../services/brandLearningService';
 import { useBrandPopulation } from '../../hooks/useBrandPopulation';
 import BrandOverviewPanel from '../../components/brand-intelligence/BrandOverviewPanel';
 import BusinessDetailsPanel from '../../components/brand-intelligence/BusinessDetailsPanel';
 import BrandPopulationBanner from '../../components/brand-intelligence/BrandPopulationBanner';
 import ProvenanceLabel from '../../components/brand-intelligence/ProvenanceLabel';
 import CompetitorIntelligencePanel from '../../components/brand-intelligence/CompetitorIntelligencePanel';
+import BrandHealthStrip from '../../components/brand-intelligence/BrandHealthStrip';
+import LearnedUpdatesCard from '../../components/brand-intelligence/LearnedUpdatesCard';
 import IcpSuggestionCard from '../../components/brand-intelligence/IcpSuggestionCard';
 import { EMPTY_ICP_DRAFT, icpDraftToPayload, icpPayloadToPersona } from '../../lib/icpContracts';
 import '../../styles/module-kepler.css';
@@ -141,6 +146,13 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
     const [fileActionId, setFileActionId] = useState(null);
     const fileInputRef = useRef(null);
 
+    // Living brand model: source freshness + feedback-learned updates.
+    const [freshness, setFreshness] = useState(null);
+    const freshnessCheckRef = useRef(false);
+    const [learnScanning, setLearnScanning] = useState(false);
+    const [learnBusyId, setLearnBusyId] = useState(null);
+    const [learnNotice, setLearnNotice] = useState('');
+
     const {
         popStatus,
         popStage,
@@ -221,6 +233,21 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
 
     const competitorSuggestions = suggestions.filter((s) => s.type === 'competitor');
     const icpSuggestions = suggestions.filter((s) => s.type === 'icp');
+    const fieldSuggestions = suggestions.filter((s) => s.type === 'field');
+
+    const brandHealth = useMemo(() => computeBrandHealth(brandData), [brandData]);
+
+    // One freshness check per page visit, once a website snapshot exists to
+    // compare against (service caches per-workspace for 6h).
+    useEffect(() => {
+        if (!workspaceId || freshnessCheckRef.current) return;
+        if (!brandData?.populationMeta?.websiteSource?.bodyText) return;
+        freshnessCheckRef.current = true;
+        brandFreshnessService
+            .checkSourceFreshness(workspaceId, { brand: brandData, workspace })
+            .then(setFreshness)
+            .catch(() => setFreshness(null));
+    }, [workspaceId, workspace, brandData]);
 
     const handleStartEdit = () => {
         setDraft(brandData);
@@ -397,6 +424,61 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
         if (result?.brand) {
             setBrandData(result.brand);
             setDraft((d) => (editing ? mergeManualFromDraft(result.brand, d) : result.brand));
+            // The refresh just re-scraped the site, so the stored snapshot is
+            // current again by construction — no extra fetch needed.
+            brandFreshnessService.invalidate(workspaceId);
+            setFreshness((f) => (f?.hasBaseline
+                ? { ...f, changed: false, deltaRatio: 0, checkedAt: new Date().toISOString() }
+                : f));
+        }
+    };
+
+    const handleScanLearnings = async () => {
+        setLearnScanning(true);
+        setLearnNotice('');
+        try {
+            const r = await brandLearningService.generateLearnedSuggestions(workspaceId);
+            if (r.generated > 0) {
+                setSuggestions(await brandPopulationService.getSuggestions(workspaceId));
+                setLearnNotice(`${r.generated} learned update${r.generated === 1 ? '' : 's'} proposed from ${r.patterns.length} winning pattern${r.patterns.length === 1 ? '' : 's'}.`);
+            } else if (r.reason === 'no-winning-patterns') {
+                setLearnNotice('No consistent winners yet — rate more outputs across modules (3+ high ratings on a pattern).');
+            } else {
+                setLearnNotice('Nothing new to propose — current winners are already reflected in the brand model.');
+            }
+        } catch (error) {
+            setLearnNotice(toUserMessage(error, 'Could not scan feedback for learnings.'));
+        } finally {
+            setLearnScanning(false);
+        }
+    };
+
+    const handleAcceptLearned = async (suggestion) => {
+        setLearnBusyId(suggestion.id);
+        setLearnNotice('');
+        try {
+            const updated = await brandLearningService.applyFieldSuggestion(workspaceId, suggestion);
+            if (updated) {
+                setBrandData(updated);
+                setDraft((d) => (editing ? mergeManualFromDraft(updated, d) : updated));
+            }
+            setSuggestions((list) => list.filter((s) => s.id !== suggestion.id));
+        } catch (error) {
+            setLearnNotice(toUserMessage(error, 'Could not apply the learned update.'));
+        } finally {
+            setLearnBusyId(null);
+        }
+    };
+
+    const handleDismissLearned = async (id) => {
+        setLearnBusyId(id);
+        try {
+            await brandService.dismissSuggestion(workspaceId, id);
+            setSuggestions((list) => list.filter((s) => s.id !== id));
+        } catch (error) {
+            setLearnNotice(toUserMessage(error, 'Could not dismiss the suggestion.'));
+        } finally {
+            setLearnBusyId(null);
         }
     };
 
@@ -544,6 +626,23 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                 fieldsUpdated={fieldsUpdated}
                 onRefresh={handleRefreshPopulation}
                 refreshing={refreshing}
+            />
+
+            <BrandHealthStrip
+                health={brandHealth}
+                freshness={freshness}
+                onRefresh={handleRefreshPopulation}
+                refreshing={refreshing}
+            />
+
+            <LearnedUpdatesCard
+                items={fieldSuggestions}
+                onAccept={handleAcceptLearned}
+                onDismiss={handleDismissLearned}
+                onScan={handleScanLearnings}
+                scanning={learnScanning}
+                busyId={learnBusyId}
+                notice={learnNotice}
             />
 
             <div className="intel-section-header">

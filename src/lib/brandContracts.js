@@ -6,6 +6,9 @@ export const FIELD_ORIGINS = {
     FILE: 'file',
     COMBINED: 'combined',
     AI: 'ai',
+    // Promoted from consistently high-rated generation feedback, via an
+    // explicit user accept in the Learned Updates flow (never silent).
+    LEARNED: 'learned',
 };
 
 export const ORIGIN_LABELS = {
@@ -15,6 +18,7 @@ export const ORIGIN_LABELS = {
     file: 'Suggested from files',
     combined: 'Combined suggestion',
     ai: 'Suggested',
+    learned: 'Learned from results',
 };
 
 export const EMPTY_COLOR_IDENTITY = {
