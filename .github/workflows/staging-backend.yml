@@ -11,6 +11,9 @@ on:
     branches: [staging]
     paths:
       - 'supabase/**'
+  # Manual redeploy — e.g. after adding a new function to the deploy list or
+  # setting new secrets, without needing a supabase/ code change to trigger.
+  workflow_dispatch:
 
 jobs:
   deploy:
