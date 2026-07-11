@@ -28,6 +28,7 @@ import SetupRequired from '../../components/workspace/SetupRequired';
 import CampaignIntake from '../../components/campaign-intake/CampaignIntake';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { campaignService } from '../../services/campaignService';
+import { stepExecutorService } from '../../services/stepExecutorService';
 import { strategyService } from '../../services/strategyService';
 import { CAMPAIGN_TYPES, CAMPAIGN_TEMPLATES } from '../../lib/campaignPlan';
 import { WEEKDAY_LABELS, monthCells, toIso, todayIso, addDays } from '../../lib/calendarGrid';
@@ -82,6 +83,8 @@ const Campaigns = ({ workspaceId }) => {
     const [detail, setDetail] = useState(null);
     const [detailState, setDetailState] = useState('loading'); // loading | ready | missing
     const [assets, setAssets] = useState([]);
+    const [execBusyId, setExecBusyId] = useState(null); // stepId currently auto-executing
+    const [execErrors, setExecErrors] = useState({}); // stepId → error message
     const [detailView, setDetailView] = useState('plan'); // plan | calendar
     const [calMonth, setCalMonth] = useState(() => new Date());
 
@@ -262,6 +265,28 @@ const Campaigns = ({ workspaceId }) => {
         setDetail(updated);
     };
 
+    // Auto-execute a step in place: generate the asset headlessly, attach it,
+    // leave the step pending for review. One at a time — the ai-proxy rate
+    // limit (and the user's sanity) don't want four pipelines in parallel.
+    const runStep = async (step) => {
+        if (!detail || execBusyId) return;
+        setExecBusyId(step.id);
+        setExecErrors((errs) => ({ ...errs, [step.id]: '' }));
+        try {
+            const res = await stepExecutorService.executeStep(workspaceId, detail, step);
+            if (!res.ok) {
+                setExecErrors((errs) => ({ ...errs, [step.id]: res.error }));
+            } else {
+                if (res.campaign) setDetail(res.campaign);
+                setAssets(await campaignService.getCampaignAssets(workspaceId, detail.id));
+            }
+        } catch (error) {
+            setExecErrors((errs) => ({ ...errs, [step.id]: toUserMessage(error, 'Generation failed.') }));
+        } finally {
+            setExecBusyId(null);
+        }
+    };
+
     const setStepDate = async (stepId, iso) => {
         if (!detail) return;
         const updated = await campaignService.updateStep(workspaceId, detail.id, stepId, { scheduledDate: iso || null });
@@ -436,6 +461,9 @@ const Campaigns = ({ workspaceId }) => {
                                         </span>
                                         {step.brief && <span className="campaigns__step-brief">{step.brief}</span>}
                                         {step.rationale && <span className="campaigns__step-rationale">{step.rationale}</span>}
+                                        {execErrors[step.id] && (
+                                            <span className="campaigns__step-error" role="alert">{execErrors[step.id]}</span>
+                                        )}
                                         {step.status !== 'skipped' && (
                                             <span className="campaigns__step-date">
                                                 <CalendarDays size={12} strokeWidth={1.8} />
@@ -467,14 +495,43 @@ const Campaigns = ({ workspaceId }) => {
                                             >
                                                 View asset <ArrowRight size={14} strokeWidth={1.8} />
                                             </button>
+                                        ) : step.status !== 'skipped' && step.contentItemId ? (
+                                            // Auto-generated, awaiting human review: approve here or open the draft.
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="campaigns__step-link"
+                                                    onClick={() => navigate(buildStepLink(detail, step))}
+                                                >
+                                                    Review draft <ArrowRight size={14} strokeWidth={1.8} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary campaigns__step-approve"
+                                                    onClick={() => changeStepStatus(step.id, 'done')}
+                                                >
+                                                    <Check size={14} strokeWidth={2} /> Mark done
+                                                </button>
+                                            </>
                                         ) : step.status !== 'skipped' ? (
                                             <>
                                                 <button
                                                     type="button"
                                                     className="btn btn-primary campaigns__step-gen"
+                                                    onClick={() => runStep(step)}
+                                                    disabled={Boolean(execBusyId)}
+                                                >
+                                                    {execBusyId === step.id
+                                                        ? <><LoaderCircle size={15} strokeWidth={1.8} className="campaigns__spin" /> Generating…</>
+                                                        : <><Sparkles size={15} strokeWidth={1.8} /> Generate now</>}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="campaigns__step-skip"
+                                                    title="Open in module instead"
                                                     onClick={() => navigate(buildStepLink(detail, step))}
                                                 >
-                                                    <Sparkles size={15} strokeWidth={1.8} /> Generate
+                                                    <ArrowRight size={14} strokeWidth={1.7} />
                                                 </button>
                                                 <button
                                                     type="button"

@@ -720,3 +720,18 @@
     .campaigns__spin { animation: none; }
     .campaigns__card.pcard:hover { transform: none; }
 }
+
+/* Auto-executing steps: inline error + review-approve action */
+.campaigns__step-error {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--error, #ff8f6b);
+}
+
+.campaigns__step-approve {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
