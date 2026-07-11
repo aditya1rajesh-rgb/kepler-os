@@ -10,3 +10,8 @@ verify_jwt = true
 [functions.oauth-proxy]
 verify_jwt = true
 
+# Meta calls these callbacks server-to-server with no Supabase token; the
+# function authenticates by verifying Meta's signed_request HMAC instead.
+[functions.meta-callbacks]
+verify_jwt = false
+
