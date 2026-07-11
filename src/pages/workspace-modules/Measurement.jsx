@@ -5,6 +5,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { campaignService } from '../../services/campaignService';
 import { measurementService } from '../../services/measurementService';
+import { visibilityService } from '../../services/visibilityService';
 import { integrationService } from '../../services/integrationService';
 import { buildTrackedUrl, campaignUtm, TRACKING_SOURCES } from '../../lib/tracking';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
@@ -13,6 +14,7 @@ import './Measurement.css';
 
 const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
 const dash = (v) => (v === null || v === undefined ? '—' : fmt(v));
+const pct = (x) => `${Math.round((Number(x) || 0) * 100)}%`;
 
 const Measurement = ({ workspaceId }) => {
     const { brand } = useWorkspaceConfig(workspaceId);
@@ -22,6 +24,8 @@ const Measurement = ({ workspaceId }) => {
     const [zohoConnected, setZohoConnected] = useState(false);
     const [campaigns, setCampaigns] = useState([]);
     const [snapshots, setSnapshots] = useState({});
+    const [visibility, setVisibility] = useState(null);
+    const [scanning, setScanning] = useState(false);
     const [loading, setLoading] = useState(true);
     const [pulling, setPulling] = useState(false);
     const [error, setError] = useState('');
@@ -34,17 +38,21 @@ const Measurement = ({ workspaceId }) => {
         let cancelled = false;
         (async () => {
             try {
-                const [ga, zoho, camps, snaps] = await Promise.all([
+                const [ga, zoho, camps, snaps, vis] = await Promise.all([
                     integrationService.getStatus(workspaceId, 'ga4'),
                     integrationService.getStatus(workspaceId, 'zoho'),
                     campaignService.listCampaigns(workspaceId),
                     measurementService.getSnapshots(workspaceId),
+                    // Resilient: a not-yet-migrated visibility_scans table must not
+                    // take down the whole Measurement page — degrade to null.
+                    visibilityService.getLatestVisibility(workspaceId).catch(() => null),
                 ]);
                 if (cancelled) return;
                 setGaReady(ga?.status === 'connected' && Boolean(ga?.propertyUrl));
                 setZohoConnected(zoho?.status === 'connected');
                 setCampaigns(camps ?? []);
                 setSnapshots(snaps ?? {});
+                setVisibility(vis);
             } catch (e) {
                 if (!cancelled) { setError(e?.message || 'Could not load measurement data.'); setGaReady(false); }
             } finally {
@@ -74,6 +82,29 @@ const Measurement = ({ workspaceId }) => {
             setError(e?.message || 'Could not pull outcomes.');
         } finally {
             setPulling(false);
+        }
+    };
+
+    const runScan = async (mock = false) => {
+        setScanning(true);
+        setError('');
+        setNotice('');
+        try {
+            const r = await visibilityService.runScan(workspaceId, { mock });
+            setVisibility(await visibilityService.getLatestVisibility(workspaceId));
+            if (mock) {
+                setNotice(`Sample scan — ${r.promptCount} prompts × ${r.surfaces.length} surfaces (illustrative, not real measurement).`);
+            } else if (!r.promptCount) {
+                setNotice(r.message || 'No buyer prompts could be generated yet.');
+            } else if (!r.counts.ok) {
+                setNotice('No AI surfaces are connected yet — connect Perplexity/OpenAI/Anthropic to measure live, or run a sample.');
+            } else {
+                setNotice(`Scan complete — share of voice ${pct(r.shareOfVoice)} across ${r.surfaces.length} surfaces.`);
+            }
+        } catch (e) {
+            setError(e?.message || 'Could not run the visibility scan.');
+        } finally {
+            setScanning(false);
         }
     };
 
@@ -138,6 +169,10 @@ const Measurement = ({ workspaceId }) => {
                     <span className="cockpit__intel-label">CRM leads</span>
                 </div>
                 <div className="cockpit__intel-fact">
+                    <span className="cockpit__intel-value font-heading">{visibility ? pct(visibility.shareOfVoice) : '—'}</span>
+                    <span className="cockpit__intel-label">AI share of voice</span>
+                </div>
+                <div className="cockpit__intel-fact">
                     <span className="cockpit__intel-value font-heading">{campaigns.length}</span>
                     <span className="cockpit__intel-label">Campaigns</span>
                 </div>
@@ -146,6 +181,72 @@ const Measurement = ({ workspaceId }) => {
                     <span className="cockpit__intel-label">Last pulled</span>
                 </div>
             </div>
+
+            <Panel className="module-panel">
+                <PanelHeader
+                    title="AI visibility (AEO)"
+                    meta="Share of voice when buyers ask AI assistants — ChatGPT, Claude, Perplexity & Google AI Overviews"
+                    action={(
+                        <div className="measurement-scan-actions">
+                            <button type="button" className="btn btn-primary" onClick={() => runScan(false)} disabled={scanning}>
+                                <RefreshCw size={15} strokeWidth={1.8} /> {scanning ? 'Scanning…' : 'Run visibility scan'}
+                            </button>
+                            <button type="button" className="btn btn-ghost" onClick={() => runScan(true)} disabled={scanning}>
+                                Run sample
+                            </button>
+                        </div>
+                    )}
+                />
+                {!visibility ? (
+                    <EmptyState message="No visibility scans yet. Run a scan to see whether AI assistants mention your brand when buyers ask category questions — connect providers for live data, or run a sample to preview the loop." />
+                ) : (
+                    <>
+                        {!visibility.hasReal && (
+                            <p className="brand-intel-module__source-label">
+                                Sample data — providers not connected yet. Connect Perplexity / ChatGPT / Claude for live measurement.
+                            </p>
+                        )}
+                        <div className="cockpit__intel-facts">
+                            <div className="cockpit__intel-fact">
+                                <span className="cockpit__intel-value font-heading">{pct(visibility.shareOfVoice)}</span>
+                                <span className="cockpit__intel-label">Share of voice</span>
+                            </div>
+                            <div className="cockpit__intel-fact">
+                                <span className="cockpit__intel-value font-heading">{pct(visibility.brandPresenceRate)}</span>
+                                <span className="cockpit__intel-label">Answer presence</span>
+                            </div>
+                            <div className="cockpit__intel-fact">
+                                <span className="cockpit__intel-value font-heading">{fmt(visibility.promptCount)}</span>
+                                <span className="cockpit__intel-label">Prompts tracked</span>
+                            </div>
+                            <div className="cockpit__intel-fact">
+                                <span className="cockpit__intel-value font-heading">{visibility.surfaces.length}</span>
+                                <span className="cockpit__intel-label">Surfaces</span>
+                            </div>
+                            <div className="cockpit__intel-fact">
+                                <span className="cockpit__intel-value font-heading">{visibility.capturedAt ? formatRelativeTime(visibility.capturedAt) : '—'}</span>
+                                <span className="cockpit__intel-label">Last scan</span>
+                            </div>
+                        </div>
+                        {visibility.perCompetitor?.length > 0 && (
+                            <ul className="measurement-list measurement-sov">
+                                <li className="measurement-row measurement-sov__row">
+                                    <span className="measurement-row__title">{brand?.name || 'Your brand'}</span>
+                                    <span className="measurement-sov__bar"><span className="measurement-sov__fill" style={{ width: pct(visibility.shareOfVoice) }} /></span>
+                                    <span className="measurement-sov__val">{pct(visibility.shareOfVoice)}</span>
+                                </li>
+                                {visibility.perCompetitor.map((c) => (
+                                    <li key={c.name} className="measurement-row measurement-sov__row">
+                                        <span className="measurement-row__title">{c.name}</span>
+                                        <span className="measurement-sov__bar"><span className="measurement-sov__fill measurement-sov__fill--comp" style={{ width: pct(c.share) }} /></span>
+                                        <span className="measurement-sov__val">{pct(c.share)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </>
+                )}
+            </Panel>
 
             <Panel className="module-panel">
                 <PanelHeader title="Campaign performance" meta="Assets → sessions → conversions, matched by UTM" />

@@ -79,6 +79,24 @@ export const mapCampaignRow = (row) => ({
     updatedAt: row.updated_at ?? null,
 });
 
+export const mapVisibilityScanRow = (row) => ({
+    id: row.id,
+    workspaceId: row.workspace_id,
+    scanRunId: row.scan_run_id,
+    prompt: row.prompt ?? '',
+    promptHash: row.prompt_hash ?? '',
+    surface: row.surface ?? '',
+    answer: row.answer ?? null,
+    brandMentioned: row.brand_mentioned ?? false,
+    brandCited: row.brand_cited ?? false,
+    competitorMentions: row.competitor_mentions ?? [],
+    citations: row.citations ?? [],
+    sentiment: row.sentiment ?? null,
+    status: row.status ?? 'stub',
+    error: row.error ?? '',
+    capturedAt: row.captured_at ?? null,
+});
+
 export const mapWorkspaceIntegrationRow = (row) => ({
     id: row.id,
     workspaceId: row.workspace_id,

@@ -91,3 +91,44 @@
     align-items: center;
     gap: 0.35rem;
 }
+
+/* AEO / AI-visibility share-of-voice bars */
+.measurement-scan-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.measurement-sov__row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 12rem) 1fr 3rem;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.measurement-sov__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface-3, rgba(255, 255, 255, 0.06));
+    overflow: hidden;
+}
+
+.measurement-sov__fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--accent, #6666ff);
+    min-width: 2px;
+    transition: width 0.4s ease;
+}
+
+.measurement-sov__fill--comp {
+    background: var(--text-muted, rgba(255, 255, 255, 0.28));
+}
+
+.measurement-sov__val {
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    opacity: 0.85;
+}
