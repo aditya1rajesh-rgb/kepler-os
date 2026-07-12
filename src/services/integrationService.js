@@ -131,6 +131,10 @@ export const integrationService = {
     // (e.g. a post to LinkedIn). Payload shape is provider-specific.
     publish: (workspaceId, provider, payload) =>
         callEdgeFunction('oauth-proxy', { action: 'publish', workspaceId, provider, payload }, { timeoutMs: 30000 }),
+    // Consumption READ for OAuth publishers - the account's own historical posts
+    // + engagement (e.g. Meta Page/IG history).
+    fetchHistory: (workspaceId, provider, opts = {}) =>
+        callEdgeFunction('oauth-proxy', { action: 'fetchHistory', workspaceId, provider, ...opts }, { timeoutMs: 45000 }),
 
     // ── API-key connectors (generic proxy) - validate + store server-side ──
     connectApiKey: (workspaceId, provider, credentials) =>

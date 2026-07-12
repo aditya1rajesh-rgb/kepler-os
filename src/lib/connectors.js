@@ -141,6 +141,22 @@ export const CONNECTORS = [
         description: 'Prospect and enrich B2B contact data to build targeted outreach lists.',
     },
     {
+        id: 'meta-pages',
+        label: 'Facebook & Instagram',
+        category: 'Publishing',
+        enhances: 'Social Media',
+        status: 'available',
+        authType: 'oauth',
+        family: 'meta',
+        // Standard Access covers your OWN Page/IG with no review; posting to
+        // clients' accounts needs Meta App Review (Advanced Access) — see
+        // memory [[app-review-requirements]]. IG needs a Business/Creator
+        // account linked to the Page.
+        oauth: { scopes: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'instagram_basic', 'instagram_content_publish'] },
+        helpUrl: 'https://developers.facebook.com/docs/pages-api/posts/',
+        description: 'Publish to your Facebook Page and Instagram, and pull past posts with their engagement.',
+    },
+    {
         id: 'linkedin',
         label: 'LinkedIn',
         category: 'Publishing',

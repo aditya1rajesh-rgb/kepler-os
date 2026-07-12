@@ -14,6 +14,8 @@ import { contentService } from '../../services/contentService';
 import { campaignService } from '../../services/campaignService';
 import { feedbackService } from '../../services/feedbackService';
 import { integrationService } from '../../services/integrationService';
+import { channelHistoryService } from '../../services/channelHistoryService';
+import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import { SOCIAL_PLATFORM_SPECS } from '../../lib/socialSpecs';
 import { WEEKDAY_LABELS, todayIso, monthCells, toIso } from '../../lib/calendarGrid';
 import { toUserMessage } from '../../lib/errors';
@@ -48,8 +50,12 @@ const SocialMedia = ({ workspaceId }) => {
     const [copied, setCopied] = useState(false);
     const [feedbackVersion, setFeedbackVersion] = useState(0);
     const [linkedin, setLinkedin] = useState({ configured: false, connected: false });
+    const [metaPages, setMetaPages] = useState({ configured: false, connected: false, pageSelected: false });
     const [publishing, setPublishing] = useState(false);
     const [published, setPublished] = useState(null); // { url } after a successful publish
+    const [history, setHistory] = useState([]);
+    const [historyPulling, setHistoryPulling] = useState(false);
+    const [pagePick, setPagePick] = useState({ options: [], value: '', busy: false });
 
     useEffect(() => {
         if (!workspaceId) return undefined;
@@ -65,20 +71,42 @@ const SocialMedia = ({ workspaceId }) => {
         return () => { cancelled = true; };
     }, [workspaceId]);
 
-    // LinkedIn publish availability: configured (client env present) + connected.
+    // Publisher availability (LinkedIn, Meta Pages): configured client env + connected.
     useEffect(() => {
         if (!workspaceId) return undefined;
-        // Not configured → the initial { configured:false } state already holds.
-        if (!integrationService.isOAuthConfigured('linkedin')) return undefined;
         let cancelled = false;
         (async () => {
-            try {
-                const st = await integrationService.getStatus(workspaceId, 'linkedin');
-                if (!cancelled) setLinkedin({ configured: true, connected: st?.status === 'connected' });
-            } catch { if (!cancelled) setLinkedin({ configured: true, connected: false }); }
+            if (integrationService.isOAuthConfigured('linkedin')) {
+                try {
+                    const st = await integrationService.getStatus(workspaceId, 'linkedin');
+                    if (!cancelled) setLinkedin({ configured: true, connected: st?.status === 'connected' });
+                } catch { if (!cancelled) setLinkedin({ configured: true, connected: false }); }
+            }
+            if (integrationService.isOAuthConfigured('meta-pages')) {
+                try {
+                    const st = await integrationService.getStatus(workspaceId, 'meta-pages');
+                    if (!cancelled) {
+                        setMetaPages({
+                            configured: true,
+                            connected: st?.status === 'connected',
+                            pageSelected: Boolean(st?.propertyUrl),
+                        });
+                    }
+                } catch { if (!cancelled) setMetaPages({ configured: true, connected: false, pageSelected: false }); }
+            }
         })();
         return () => { cancelled = true; };
     }, [workspaceId]);
+
+    // Load stored account history when the tab opens.
+    useEffect(() => {
+        if (!workspaceId || view !== 'history') return undefined;
+        let cancelled = false;
+        channelHistoryService.list(workspaceId)
+            .then((rows) => { if (!cancelled) setHistory(rows); })
+            .catch(() => { /* surfaced on pull instead */ });
+        return () => { cancelled = true; };
+    }, [workspaceId, view]);
 
     const postsByDate = useMemo(() => {
         const map = {};
@@ -188,25 +216,120 @@ const SocialMedia = ({ workspaceId }) => {
         navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }, () => setError('Copy blocked by browser.'));
     };
 
-    const connectLinkedin = () => {
-        try { window.location.href = integrationService.buildAuthUrl(workspaceId, 'linkedin'); }
-        catch (err) { setError(toUserMessage(err, 'Could not start LinkedIn connect.')); }
+    const connectPublisher = (provider) => {
+        try { window.location.href = integrationService.buildAuthUrl(workspaceId, provider); }
+        catch (err) { setError(toUserMessage(err, 'Could not start the connect flow.')); }
     };
 
-    const publishToLinkedin = async () => {
+    // Publish the open post to its platform's connected account.
+    const publishPost = async (provider, payload, label) => {
         const text = postText();
         if (!text.trim()) { setError('Nothing to publish - the post is empty.'); return; }
         setPublishing(true); reset(); setPublished(null);
         try {
-            const res = await integrationService.publish(workspaceId, 'linkedin', { text });
+            const res = await integrationService.publish(workspaceId, provider, { ...payload, text });
             setPublished({ url: res?.postUrl || '' });
-            setNotice('Published to LinkedIn.');
+            setNotice(`Published to ${label}.`);
         } catch (err) {
-            setError(toUserMessage(err, 'Could not publish to LinkedIn.'));
+            setError(toUserMessage(err, `Could not publish to ${label}.`));
         } finally {
             setPublishing(false);
         }
     };
+
+    const pullHistory = async () => {
+        setHistoryPulling(true); reset();
+        try {
+            const r = await channelHistoryService.pull(workspaceId, 'meta-pages');
+            setHistory(await channelHistoryService.list(workspaceId));
+            setNotice(`Pulled ${r.pulled} post${r.pulled === 1 ? '' : 's'} from your connected accounts.`);
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not pull account history.'));
+        } finally {
+            setHistoryPulling(false);
+        }
+    };
+
+    const loadPageOptions = async () => {
+        setPagePick((p) => ({ ...p, busy: true }));
+        try {
+            const res = await integrationService.listProperties(workspaceId, 'meta-pages');
+            setPagePick({ options: res?.properties ?? [], value: '', busy: false });
+        } catch (err) {
+            setPagePick({ options: [], value: '', busy: false });
+            setError(toUserMessage(err, 'Could not list your Facebook Pages.'));
+        }
+    };
+
+    const choosePage = async (pageId) => {
+        if (!pageId) return;
+        setPagePick((p) => ({ ...p, value: pageId, busy: true }));
+        try {
+            await integrationService.setProperty(workspaceId, pageId, 'meta-pages');
+            setMetaPages((m) => ({ ...m, pageSelected: true }));
+            setNotice('Facebook Page selected.');
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not select that Page.'));
+        } finally {
+            setPagePick((p) => ({ ...p, busy: false }));
+        }
+    };
+
+    const renderHistory = () => (
+        <Panel className="module-panel">
+            <PanelHeader
+                title="Account history"
+                meta="Your real published posts and their engagement — the ground truth for what works"
+                action={metaPages.connected ? (
+                    <button type="button" className="btn btn-primary" onClick={pullHistory} disabled={historyPulling || !metaPages.pageSelected}>
+                        {historyPulling ? 'Pulling…' : 'Pull history'}
+                    </button>
+                ) : metaPages.configured ? (
+                    <button type="button" className="btn btn-primary" onClick={() => connectPublisher('meta-pages')}>Connect Facebook & Instagram</button>
+                ) : null}
+            />
+            {!metaPages.configured && (
+                <p className="cockpit__intel-hint">Facebook & Instagram isn't configured on this build yet (Meta app + env pending). LinkedIn history isn't available — LinkedIn restricts reading personal-profile posts; it arrives with the company-Pages tier.</p>
+            )}
+            {metaPages.connected && !metaPages.pageSelected && (
+                <div className="brief-section">
+                    <label className="label-text">Choose the Facebook Page to publish from and read history for:</label>
+                    {pagePick.options.length === 0 ? (
+                        <button type="button" className="btn btn-secondary" onClick={loadPageOptions} disabled={pagePick.busy}>{pagePick.busy ? 'Loading…' : 'List my Pages'}</button>
+                    ) : (
+                        <select className="intel-input" value={pagePick.value} onChange={(e) => choosePage(e.target.value)} disabled={pagePick.busy}>
+                            <option value="">Select a Page…</option>
+                            {pagePick.options.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                        </select>
+                    )}
+                </div>
+            )}
+            {history.length === 0 ? (
+                <EmptyState message={metaPages.connected ? 'No history pulled yet — hit "Pull history" to import your posts and their engagement.' : 'Connect Facebook & Instagram to import your past posts and see what actually performed.'} />
+            ) : (
+                <ul className="measurement-list">
+                    {history.map((p) => (
+                        <li key={p.id} className="measurement-row">
+                            <div className="measurement-row__head">
+                                <div className="measurement-row__main">
+                                    <span className="measurement-row__title">{(p.text || '(no text)').slice(0, 120)}{p.text?.length > 120 ? '…' : ''}</span>
+                                    <span className="measurement-row__sub">
+                                        {p.channel === 'instagram' ? 'Instagram' : 'Facebook'}{p.mediaType ? ` · ${p.mediaType}` : ''}{p.postedAt ? ` · ${formatRelativeTime(p.postedAt)}` : ''}
+                                    </span>
+                                </div>
+                                <div className="measurement-row__metrics">
+                                    <span><strong>{p.metrics?.likes ?? 0}</strong> likes</span>
+                                    <span><strong>{p.metrics?.comments ?? 0}</strong> comments</span>
+                                    {p.channel === 'facebook' && <span><strong>{p.metrics?.shares ?? 0}</strong> shares</span>}
+                                </div>
+                                {p.url && <a className="campaigns__step-link" href={p.url} target="_blank" rel="noreferrer">View ↗</a>}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </Panel>
+    );
 
     if (loading) return <div className="social-media-module module-kepler"><EmptyState loading message="Loading…" /></div>;
     if (!readiness.socialReady) {
@@ -345,15 +468,27 @@ const SocialMedia = ({ workspaceId }) => {
                         <div className="generator-actions">
                             <button type="button" className="btn btn-primary" onClick={handleSavePost} disabled={savingId === selected.id}>{savingId === selected.id ? 'Saving…' : 'Save'}</button>
                             <button type="button" className="btn btn-secondary" onClick={copyPost}>{copied ? 'Copied!' : 'Copy'}</button>
-                            {selected.payload.platform === 'linkedin' && linkedin.configured && (
-                                published?.url ? (
-                                    <a className="btn btn-secondary" href={published.url} target="_blank" rel="noreferrer">View on LinkedIn ↗</a>
-                                ) : linkedin.connected ? (
-                                    <button type="button" className="btn btn-secondary" onClick={publishToLinkedin} disabled={publishing}>{publishing ? 'Publishing…' : 'Publish to LinkedIn'}</button>
-                                ) : (
-                                    <button type="button" className="btn btn-secondary" onClick={connectLinkedin}>Connect LinkedIn</button>
-                                )
-                            )}
+                            {(() => {
+                                const platform = selected.payload.platform;
+                                if (published?.url) {
+                                    return <a className="btn btn-secondary" href={published.url} target="_blank" rel="noreferrer">View live post ↗</a>;
+                                }
+                                if (platform === 'linkedin' && linkedin.configured) {
+                                    return linkedin.connected
+                                        ? <button type="button" className="btn btn-secondary" onClick={() => publishPost('linkedin', {}, 'LinkedIn')} disabled={publishing}>{publishing ? 'Publishing…' : 'Publish to LinkedIn'}</button>
+                                        : <button type="button" className="btn btn-secondary" onClick={() => connectPublisher('linkedin')}>Connect LinkedIn</button>;
+                                }
+                                if (platform === 'facebook' && metaPages.configured) {
+                                    if (!metaPages.connected) return <button type="button" className="btn btn-secondary" onClick={() => connectPublisher('meta-pages')}>Connect Facebook</button>;
+                                    if (!metaPages.pageSelected) return <button type="button" className="btn btn-secondary" onClick={() => { setView('history'); loadPageOptions(); }}>Pick a Page first</button>;
+                                    return <button type="button" className="btn btn-secondary" onClick={() => publishPost('meta-pages', { channel: 'facebook' }, 'Facebook')} disabled={publishing}>{publishing ? 'Publishing…' : 'Publish to Facebook'}</button>;
+                                }
+                                if (platform === 'instagram' && metaPages.configured) {
+                                    // IG's API requires hosted media - honest state until media upload ships.
+                                    return <button type="button" className="btn btn-secondary" disabled title="Instagram needs a hosted image or video - publishing lands with media upload.">Instagram: needs media</button>;
+                                }
+                                return null;
+                            })()}
                             <button type="button" className="btn-destructive" onClick={() => handleDeletePost(selected)}>Delete</button>
                         </div>
                         <RatingControl
@@ -394,7 +529,11 @@ const SocialMedia = ({ workspaceId }) => {
             <Panel>
                 <PanelHeader title="Social Content Studio" meta="Plan a calendar, then design each post." />
                 <Tabs
-                    tabs={[{ id: 'planner', label: 'Content Planner' }, { id: 'generator', label: 'Design Generator' }]}
+                    tabs={[
+                        { id: 'planner', label: 'Content Planner' },
+                        { id: 'generator', label: 'Design Generator' },
+                        { id: 'history', label: 'Account History' },
+                    ]}
                     activeTab={view}
                     onTabChange={setView}
                     variant="kepler"
@@ -403,7 +542,7 @@ const SocialMedia = ({ workspaceId }) => {
                 {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
             </Panel>
             <div className="studio-viewport">
-                {view === 'planner' ? renderPlanner() : renderGenerator()}
+                {view === 'planner' ? renderPlanner() : view === 'history' ? renderHistory() : renderGenerator()}
             </div>
         </div>
     );

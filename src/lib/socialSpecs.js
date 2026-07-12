@@ -21,6 +21,11 @@ export const SOCIAL_PLATFORM_SPECS = {
         charLimit: 2200,
         guidance: 'Caption: strong first line (shows before "more"), scannable, 3-8 relevant hashtags at the end, one clear CTA.',
     },
+    facebook: {
+        label: 'Facebook',
+        charLimit: 600,             // engagement drops sharply past ~500-600 chars
+        guidance: 'Conversational and concrete; first 2 lines carry the idea (rest folds behind "See more"). One clear CTA or question. 0-2 hashtags, links fine.',
+    },
 };
 
 export const SOCIAL_PLATFORMS = Object.keys(SOCIAL_PLATFORM_SPECS);

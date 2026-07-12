@@ -339,6 +339,132 @@ const linkedinPublish = async (accessToken: string, row: Record<string, unknown>
   return { ok: true, postUrn, postUrl: postUrn ? `https://www.linkedin.com/feed/update/${postUrn}` : "" };
 };
 
+// ─── Meta Pages (FB Page + linked IG Business) publish + history ───────────────
+// Page-level calls need the PAGE access token, minted from the user token.
+const metaPageToken = async (userToken: string, pageId: string): Promise<string> => {
+  const res = await fetch(`${META_GRAPH}/${pageId}?fields=access_token&access_token=${encodeURIComponent(userToken)}`);
+  const data = await res.json();
+  if (!res.ok || !data?.access_token) throw new Error(data?.error?.message || "Could not access this Facebook Page - reconnect.");
+  return data.access_token as string;
+};
+const metaIgUserId = async (pageToken: string, pageId: string): Promise<string> => {
+  const res = await fetch(`${META_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${encodeURIComponent(pageToken)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || "Could not read the Page's Instagram link.");
+  return (data?.instagram_business_account?.id as string) ?? "";
+};
+
+const metaPagesList = async (accessToken: string) => {
+  const res = await fetch(`${META_GRAPH}/me/accounts?fields=id,name&limit=100&access_token=${encodeURIComponent(accessToken)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || "Could not list your Facebook Pages.");
+  return ((data.data ?? []) as Array<{ id: string; name: string }>).map((p) => ({ id: p.id, label: p.name }));
+};
+
+// Publish: payload { channel: 'facebook' | 'instagram', text, imageUrl? }.
+// FB Page posts are text-first; IG REQUIRES hosted media (no text-only posts),
+// so we fail honestly rather than silently downgrade.
+const metaPagesPublish = async (accessToken: string, row: Record<string, unknown>, payload: Record<string, unknown>) => {
+  const pageId = String(row.property_url ?? "");
+  if (!pageId) throw new Error("No Facebook Page selected - pick one in the Social module first.");
+  const channel = String(payload?.channel ?? "facebook");
+  const text = String(payload?.text ?? "").trim();
+  if (!text) throw new Error("Nothing to publish - the post is empty.");
+  const pageToken = await metaPageToken(accessToken, pageId);
+
+  if (channel === "facebook") {
+    const res = await fetch(`${META_GRAPH}/${pageId}/feed`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ message: text, access_token: pageToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || "Facebook publish failed.");
+    return { ok: true, postId: data.id ?? "", postUrl: data.id ? `https://www.facebook.com/${data.id}` : "" };
+  }
+
+  if (channel === "instagram") {
+    const igId = await metaIgUserId(pageToken, pageId);
+    if (!igId) throw new Error("No Instagram Business account is linked to this Page.");
+    const imageUrl = String(payload?.imageUrl ?? "").trim();
+    if (!imageUrl) throw new Error("Instagram requires an image or video - text-only posts aren't supported by the API.");
+    const createRes = await fetch(`${META_GRAPH}/${igId}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ image_url: imageUrl, caption: text, access_token: pageToken }),
+    });
+    const createData = await createRes.json();
+    if (!createRes.ok || !createData?.id) throw new Error(createData?.error?.message || "Instagram media creation failed.");
+    const pubRes = await fetch(`${META_GRAPH}/${igId}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ creation_id: createData.id, access_token: pageToken }),
+    });
+    const pubData = await pubRes.json();
+    if (!pubRes.ok || !pubData?.id) throw new Error(pubData?.error?.message || "Instagram publish failed.");
+    const permRes = await fetch(`${META_GRAPH}/${pubData.id}?fields=permalink&access_token=${encodeURIComponent(pageToken)}`);
+    const permData = await permRes.json().catch(() => ({}));
+    return { ok: true, postId: pubData.id, postUrl: permData?.permalink ?? "" };
+  }
+
+  throw new Error(`Unsupported channel: ${channel}`);
+};
+
+// History: past FB Page posts + IG media with engagement COUNTS (likes,
+// comments, shares). Reach/impressions need the read_insights /
+// instagram_manage_insights permissions - deliberately not requested yet to
+// keep the App-Review surface lean; counts carry the learning signal.
+const metaPagesHistory = async (accessToken: string, row: Record<string, unknown>) => {
+  const pageId = String(row.property_url ?? "");
+  if (!pageId) throw new Error("No Facebook Page selected - pick one in the Social module first.");
+  const pageToken = await metaPageToken(accessToken, pageId);
+  const posts: Array<Record<string, unknown>> = [];
+
+  const fbRes = await fetch(
+    `${META_GRAPH}/${pageId}/published_posts?fields=id,message,created_time,permalink_url,shares,likes.summary(true).limit(0),comments.summary(true).limit(0)&limit=50&access_token=${encodeURIComponent(pageToken)}`,
+  );
+  const fbData = await fbRes.json();
+  if (!fbRes.ok) throw new Error(fbData?.error?.message || "Could not read Page posts.");
+  for (const p of fbData.data ?? []) {
+    posts.push({
+      channel: "facebook",
+      externalId: String(p.id ?? ""),
+      postedAt: p.created_time ?? null,
+      text: String(p.message ?? ""),
+      url: String(p.permalink_url ?? ""),
+      mediaType: "",
+      metrics: {
+        likes: Number(p.likes?.summary?.total_count ?? 0),
+        comments: Number(p.comments?.summary?.total_count ?? 0),
+        shares: Number(p.shares?.count ?? 0),
+      },
+    });
+  }
+
+  const igId = await metaIgUserId(pageToken, pageId).catch(() => "");
+  if (igId) {
+    const igRes = await fetch(
+      `${META_GRAPH}/${igId}/media?fields=id,caption,media_type,permalink,timestamp,like_count,comments_count&limit=50&access_token=${encodeURIComponent(pageToken)}`,
+    );
+    const igData = await igRes.json();
+    if (igRes.ok) {
+      for (const m of igData.data ?? []) {
+        posts.push({
+          channel: "instagram",
+          externalId: String(m.id ?? ""),
+          postedAt: m.timestamp ?? null,
+          text: String(m.caption ?? ""),
+          url: String(m.permalink ?? ""),
+          mediaType: String(m.media_type ?? "").toLowerCase(),
+          metrics: { likes: Number(m.like_count ?? 0), comments: Number(m.comments_count ?? 0), shares: 0 },
+        });
+      }
+    }
+  }
+
+  return { posts };
+};
+
 interface Provider {
   family: string;
   // Optional: pull data for a consuming module. Absent = connectable but no
@@ -348,6 +474,8 @@ interface Provider {
   listProperties?: (accessToken: string) => Promise<Array<{ id: string; label: string }>>;
   // Optional: publish content to the provider (e.g. a post to LinkedIn).
   publish?: (accessToken: string, row: Record<string, unknown>, payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  // Optional: pull the account's own historical posts + engagement.
+  history?: (accessToken: string, row: Record<string, unknown>, params: Record<string, unknown>) => Promise<Record<string, unknown>>;
 }
 const PROVIDERS: Record<string, Provider> = {
   "gsc": { family: "google", query: gscQuery },
@@ -355,6 +483,7 @@ const PROVIDERS: Record<string, Provider> = {
   "google-ads": { family: "google" },
   "meta-ads": { family: "meta" },
   "meta-ad-library": { family: "meta", query: metaAdLibraryQuery },
+  "meta-pages": { family: "meta", listProperties: metaPagesList, publish: metaPagesPublish, history: metaPagesHistory },
   "linkedin": { family: "linkedin", publish: linkedinPublish },
 };
 
@@ -415,6 +544,13 @@ Deno.serve(async (req: Request) => {
         const at = await fam.accessToken(fam, token);
         sites = await listGscSites(at);
         propertyUrl = sites.length === 1 ? sites[0] : "";
+      }
+      // Meta Pages convenience: discover Pages + auto-select a lone one (mirrors GSC).
+      if (connectorId === "meta-pages") {
+        const at = await fam.accessToken(fam, token);
+        const pages = await metaPagesList(at);
+        sites = pages.map((p) => p.label);
+        propertyUrl = pages.length === 1 ? pages[0].id : "";
       }
       // LinkedIn: capture the member's Person URN now - posts need it as author.
       let authorUrn = "";
@@ -503,11 +639,37 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (action === "fetchHistory") {
+      const provider = PROVIDERS[connectorId];
+      if (!provider?.history) return fail(`History for ${connectorId} isn't available.`, 400, base);
+      const { data: row, error } = await svc.from("workspace_integrations")
+        .select("refresh_token, property_url, meta").eq("workspace_id", workspaceId).eq("provider", connectorId).maybeSingle();
+      if (error) throw error;
+      if (!row?.refresh_token) return fail("Not connected", 400, base);
+      const fam = FAMILIES[provider.family];
+      try {
+        const accessToken = await fam.accessToken(fam, row.refresh_token);
+        const result = await provider.history(accessToken, row as Record<string, unknown>, body);
+        await svc.from("workspace_integrations")
+          .update({ last_sync_at: new Date().toISOString(), status: "connected", last_error: "" })
+          .eq("workspace_id", workspaceId).eq("provider", connectorId);
+        return json(result, 200, base);
+      } catch (e) {
+        const err = e as Error & { expired?: boolean };
+        if (err.expired) {
+          await svc.from("workspace_integrations").update({ status: "expired", last_error: "Access expired - reconnect." })
+            .eq("workspace_id", workspaceId).eq("provider", connectorId);
+          return fail(`${connectorId} access expired - please reconnect.`, 401, base);
+        }
+        throw err;
+      }
+    }
+
     if (action === "publish") {
       const provider = PROVIDERS[connectorId];
       if (!provider?.publish) return fail(`Publishing to ${connectorId} isn't available.`, 400, base);
       const { data: row, error } = await svc.from("workspace_integrations")
-        .select("refresh_token, meta").eq("workspace_id", workspaceId).eq("provider", connectorId).maybeSingle();
+        .select("refresh_token, property_url, meta").eq("workspace_id", workspaceId).eq("provider", connectorId).maybeSingle();
       if (error) throw error;
       if (!row?.refresh_token) return fail("Not connected", 400, base);
       const fam = FAMILIES[provider.family];
