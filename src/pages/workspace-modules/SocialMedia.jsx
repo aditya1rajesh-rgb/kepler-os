@@ -13,6 +13,7 @@ import { socialService } from '../../services/socialService';
 import { contentService } from '../../services/contentService';
 import { campaignService } from '../../services/campaignService';
 import { feedbackService } from '../../services/feedbackService';
+import { integrationService } from '../../services/integrationService';
 import { SOCIAL_PLATFORM_SPECS } from '../../lib/socialSpecs';
 import { WEEKDAY_LABELS, todayIso, monthCells, toIso } from '../../lib/calendarGrid';
 import { toUserMessage } from '../../lib/errors';
@@ -46,6 +47,9 @@ const SocialMedia = ({ workspaceId }) => {
     const [busyCarousel, setBusyCarousel] = useState(false);
     const [copied, setCopied] = useState(false);
     const [feedbackVersion, setFeedbackVersion] = useState(0);
+    const [linkedin, setLinkedin] = useState({ configured: false, connected: false });
+    const [publishing, setPublishing] = useState(false);
+    const [published, setPublished] = useState(null); // { url } after a successful publish
 
     useEffect(() => {
         if (!workspaceId) return undefined;
@@ -57,6 +61,21 @@ const SocialMedia = ({ workspaceId }) => {
             } catch (err) {
                 if (!cancelled) setError(toUserMessage(err, 'Could not load the calendar.'));
             }
+        })();
+        return () => { cancelled = true; };
+    }, [workspaceId]);
+
+    // LinkedIn publish availability: configured (client env present) + connected.
+    useEffect(() => {
+        if (!workspaceId) return undefined;
+        // Not configured → the initial { configured:false } state already holds.
+        if (!integrationService.isOAuthConfigured('linkedin')) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const st = await integrationService.getStatus(workspaceId, 'linkedin');
+                if (!cancelled) setLinkedin({ configured: true, connected: st?.status === 'connected' });
+            } catch { if (!cancelled) setLinkedin({ configured: true, connected: false }); }
         })();
         return () => { cancelled = true; };
     }, [workspaceId]);
@@ -108,6 +127,7 @@ const SocialMedia = ({ workspaceId }) => {
         setEditBody(item.payload.post.body || '');
         setCarousel(item.payload.carousel || null);
         setCopied(false);
+        setPublished(null);
         setView('generator');
     };
 
@@ -155,11 +175,37 @@ const SocialMedia = ({ workspaceId }) => {
         }
     };
 
-    const copyPost = () => {
+    // The post as it would be published/copied: edited body + hashtags.
+    const postText = () => {
         const p = selected?.payload?.post;
-        if (!p) return;
-        const text = `${editBody}${p.hashtags?.length ? `\n\n${p.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}` : ''}`;
+        if (!p) return '';
+        return `${editBody}${p.hashtags?.length ? `\n\n${p.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}` : ''}`;
+    };
+
+    const copyPost = () => {
+        const text = postText();
+        if (!text) return;
         navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }, () => setError('Copy blocked by browser.'));
+    };
+
+    const connectLinkedin = () => {
+        try { window.location.href = integrationService.buildAuthUrl(workspaceId, 'linkedin'); }
+        catch (err) { setError(toUserMessage(err, 'Could not start LinkedIn connect.')); }
+    };
+
+    const publishToLinkedin = async () => {
+        const text = postText();
+        if (!text.trim()) { setError('Nothing to publish - the post is empty.'); return; }
+        setPublishing(true); reset(); setPublished(null);
+        try {
+            const res = await integrationService.publish(workspaceId, 'linkedin', { text });
+            setPublished({ url: res?.postUrl || '' });
+            setNotice('Published to LinkedIn.');
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not publish to LinkedIn.'));
+        } finally {
+            setPublishing(false);
+        }
     };
 
     if (loading) return <div className="social-media-module module-kepler"><EmptyState loading message="Loading…" /></div>;
@@ -299,6 +345,15 @@ const SocialMedia = ({ workspaceId }) => {
                         <div className="generator-actions">
                             <button type="button" className="btn btn-primary" onClick={handleSavePost} disabled={savingId === selected.id}>{savingId === selected.id ? 'Saving…' : 'Save'}</button>
                             <button type="button" className="btn btn-secondary" onClick={copyPost}>{copied ? 'Copied!' : 'Copy'}</button>
+                            {selected.payload.platform === 'linkedin' && linkedin.configured && (
+                                published?.url ? (
+                                    <a className="btn btn-secondary" href={published.url} target="_blank" rel="noreferrer">View on LinkedIn ↗</a>
+                                ) : linkedin.connected ? (
+                                    <button type="button" className="btn btn-secondary" onClick={publishToLinkedin} disabled={publishing}>{publishing ? 'Publishing…' : 'Publish to LinkedIn'}</button>
+                                ) : (
+                                    <button type="button" className="btn btn-secondary" onClick={connectLinkedin}>Connect LinkedIn</button>
+                                )
+                            )}
                             <button type="button" className="btn-destructive" onClick={() => handleDeletePost(selected)}>Delete</button>
                         </div>
                         <RatingControl

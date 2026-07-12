@@ -22,10 +22,15 @@ const FAMILY_ENV = {
         clientId: import.meta.env.VITE_META_OAUTH_CLIENT_ID?.trim(),
         redirectUri: import.meta.env.VITE_META_OAUTH_REDIRECT_URI?.trim(),
     },
+    linkedin: {
+        clientId: import.meta.env.VITE_LINKEDIN_OAUTH_CLIENT_ID?.trim(),
+        redirectUri: import.meta.env.VITE_LINKEDIN_OAUTH_REDIRECT_URI?.trim(),
+    },
 };
 const FAMILY_ENV_HINT = {
     google: 'VITE_GOOGLE_OAUTH_CLIENT_ID and VITE_GOOGLE_OAUTH_REDIRECT_URI',
     meta: 'VITE_META_OAUTH_CLIENT_ID and VITE_META_OAUTH_REDIRECT_URI',
+    linkedin: 'VITE_LINKEDIN_OAUTH_CLIENT_ID and VITE_LINKEDIN_OAUTH_REDIRECT_URI',
 };
 
 /**
@@ -122,6 +127,10 @@ export const integrationService = {
     // List selectable resources for an OAuth connector (e.g. GA4 properties).
     listProperties: (workspaceId, provider) =>
         callEdgeFunction('oauth-proxy', { action: 'listProperties', workspaceId, provider }, { timeoutMs: 30000 }),
+    // Consumption WRITE for OAuth publishers - publish content to the provider
+    // (e.g. a post to LinkedIn). Payload shape is provider-specific.
+    publish: (workspaceId, provider, payload) =>
+        callEdgeFunction('oauth-proxy', { action: 'publish', workspaceId, provider, payload }, { timeoutMs: 30000 }),
 
     // ── API-key connectors (generic proxy) - validate + store server-side ──
     connectApiKey: (workspaceId, provider, credentials) =>

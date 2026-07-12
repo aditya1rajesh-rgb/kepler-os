@@ -140,6 +140,21 @@ export const CONNECTORS = [
         helpUrl: 'https://docs.apollo.io/docs/create-api-key',
         description: 'Prospect and enrich B2B contact data to build targeted outreach lists.',
     },
+    {
+        id: 'linkedin',
+        label: 'LinkedIn',
+        category: 'Publishing',
+        enhances: 'Social Media',
+        status: 'available',
+        authType: 'oauth',
+        family: 'linkedin',
+        // openid + profile → the member's Person URN (post author); w_member_social
+        // → publish on their behalf. Personal-profile posting is self-serve (no
+        // LinkedIn app review); company-Page posting is a later, gated tier.
+        oauth: { scopes: ['openid', 'profile', 'w_member_social'] },
+        helpUrl: 'https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin',
+        description: 'Publish posts straight to your LinkedIn profile - no copy-paste, and each post carries campaign attribution.',
+    },
 ];
 
 export const AVAILABLE_CONNECTOR_IDS = CONNECTORS.filter((c) => c.status === 'available').map((c) => c.id);
@@ -155,6 +170,10 @@ export const OAUTH_FAMILIES = {
     },
     meta: {
         authUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
+        authParams: { response_type: 'code' },
+    },
+    linkedin: {
+        authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
         authParams: { response_type: 'code' },
     },
 };

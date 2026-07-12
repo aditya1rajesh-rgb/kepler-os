@@ -144,6 +144,28 @@ const FAMILIES: Record<string, Family> = {
     // The stored long-lived token IS the access token - use it directly.
     accessToken: async (_fam, stored) => stored,
   },
+  linkedin: {
+    clientId: () => Deno.env.get("LINKEDIN_OAUTH_CLIENT_ID"),
+    clientSecret: () => Deno.env.get("LINKEDIN_OAUTH_CLIENT_SECRET"),
+    redirectUri: () => Deno.env.get("LINKEDIN_OAUTH_REDIRECT_URI"),
+    exchange: async (fam, code) => {
+      const res = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code", code,
+          client_id: fam.clientId()!, client_secret: fam.clientSecret()!,
+          redirect_uri: fam.redirectUri()!,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error_description || data?.error || "LinkedIn code exchange failed");
+      // Member access tokens last ~60 days and aren't refreshable by default,
+      // so we store the access token directly (like Meta) with its expiry.
+      return { token: data.access_token as string, expiresIn: Number(data.expires_in) || undefined };
+    },
+    accessToken: async (_fam, stored) => stored,
+  },
 };
 
 // ─── Provider registry (family + optional consumption adapter) ────────────────
@@ -280,6 +302,43 @@ const metaAdLibraryQuery = async (accessToken: string, _row: Record<string, unkn
   return { ads };
 };
 
+// LinkedIn: publish a text post to the authenticated member's feed via the
+// modern Posts API. Reserved commentary chars are escaped so plain copy
+// (parentheses, brackets) doesn't 422; # and @ are left so tags/mentions render.
+const LINKEDIN_VERSION = "202606";
+const escapeLiCommentary = (text: string) =>
+  String(text ?? "").replace(/[\\(){}\[\]<>]/g, (c) => `\\${c}`);
+const linkedinPublish = async (accessToken: string, row: Record<string, unknown>, payload: Record<string, unknown>) => {
+  const authorUrn = (row.meta as Record<string, unknown> | undefined)?.authorUrn as string | undefined;
+  if (!authorUrn) throw new Error("LinkedIn author not found - reconnect the account.");
+  const text = String(payload?.text ?? "").trim();
+  if (!text) throw new Error("Nothing to publish - the post is empty.");
+  const res = await fetch("https://api.linkedin.com/rest/posts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "LinkedIn-Version": LINKEDIN_VERSION,
+      "X-Restli-Protocol-Version": "2.0.0",
+    },
+    body: JSON.stringify({
+      author: authorUrn,
+      commentary: escapeLiCommentary(text),
+      visibility: "PUBLIC",
+      distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+      lifecycleState: "PUBLISHED",
+      isReshareDisabledByAuthor: false,
+    }),
+  });
+  if (!res.ok) {
+    if (res.status === 401) throw Object.assign(new Error("LinkedIn access expired"), { expired: true });
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `LinkedIn publish failed (${res.status})`);
+  }
+  const postUrn = res.headers.get("x-restli-id") || res.headers.get("x-linkedin-id") || "";
+  return { ok: true, postUrn, postUrl: postUrn ? `https://www.linkedin.com/feed/update/${postUrn}` : "" };
+};
+
 interface Provider {
   family: string;
   // Optional: pull data for a consuming module. Absent = connectable but no
@@ -287,6 +346,8 @@ interface Provider {
   query?: (accessToken: string, row: Record<string, unknown>, params: Record<string, unknown>) => Promise<Record<string, unknown>>;
   // Optional: list selectable resources (e.g. GA4 properties) for a picker.
   listProperties?: (accessToken: string) => Promise<Array<{ id: string; label: string }>>;
+  // Optional: publish content to the provider (e.g. a post to LinkedIn).
+  publish?: (accessToken: string, row: Record<string, unknown>, payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
 }
 const PROVIDERS: Record<string, Provider> = {
   "gsc": { family: "google", query: gscQuery },
@@ -294,6 +355,7 @@ const PROVIDERS: Record<string, Provider> = {
   "google-ads": { family: "google" },
   "meta-ads": { family: "meta" },
   "meta-ad-library": { family: "meta", query: metaAdLibraryQuery },
+  "linkedin": { family: "linkedin", publish: linkedinPublish },
 };
 
 // List GSC properties so a single-property account auto-selects on connect.
@@ -354,8 +416,18 @@ Deno.serve(async (req: Request) => {
         sites = await listGscSites(at);
         propertyUrl = sites.length === 1 ? sites[0] : "";
       }
+      // LinkedIn: capture the member's Person URN now - posts need it as author.
+      let authorUrn = "";
+      if (provider.family === "linkedin") {
+        const at = await fam.accessToken(fam, token);
+        const uiRes = await fetch("https://api.linkedin.com/v2/userinfo", { headers: { Authorization: `Bearer ${at}` } });
+        const ui = await uiRes.json().catch(() => ({}));
+        if (!uiRes.ok || !ui?.sub) throw new Error(ui?.message || "Could not read your LinkedIn profile - reconnect.");
+        authorUrn = `urn:li:person:${ui.sub}`;
+      }
       const meta: Record<string, unknown> = { family: provider.family };
       if (sites.length) meta.sites = sites;
+      if (authorUrn) meta.authorUrn = authorUrn;
       if (expiresIn) meta.expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
       const { error } = await svc.from("workspace_integrations").upsert({
@@ -420,6 +492,32 @@ Deno.serve(async (req: Request) => {
           .update({ last_sync_at: new Date().toISOString(), status: "connected", last_error: "" })
           .eq("workspace_id", workspaceId).eq("provider", connectorId);
         return json({ ...result, propertyUrl: row.property_url }, 200, base);
+      } catch (e) {
+        const err = e as Error & { expired?: boolean };
+        if (err.expired) {
+          await svc.from("workspace_integrations").update({ status: "expired", last_error: "Access expired - reconnect." })
+            .eq("workspace_id", workspaceId).eq("provider", connectorId);
+          return fail(`${connectorId} access expired - please reconnect.`, 401, base);
+        }
+        throw err;
+      }
+    }
+
+    if (action === "publish") {
+      const provider = PROVIDERS[connectorId];
+      if (!provider?.publish) return fail(`Publishing to ${connectorId} isn't available.`, 400, base);
+      const { data: row, error } = await svc.from("workspace_integrations")
+        .select("refresh_token, meta").eq("workspace_id", workspaceId).eq("provider", connectorId).maybeSingle();
+      if (error) throw error;
+      if (!row?.refresh_token) return fail("Not connected", 400, base);
+      const fam = FAMILIES[provider.family];
+      try {
+        const accessToken = await fam.accessToken(fam, row.refresh_token);
+        const result = await provider.publish(accessToken, row as Record<string, unknown>, (body.payload ?? {}) as Record<string, unknown>);
+        await svc.from("workspace_integrations")
+          .update({ last_sync_at: new Date().toISOString(), status: "connected", last_error: "" })
+          .eq("workspace_id", workspaceId).eq("provider", connectorId);
+        return json(result, 200, base);
       } catch (e) {
         const err = e as Error & { expired?: boolean };
         if (err.expired) {
