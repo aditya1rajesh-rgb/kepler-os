@@ -9,10 +9,10 @@ import './FeedbackInsight.css';
  * - the same notes getGuidance() injects - and nudges rating when there's nothing yet.
  *
  * @param {string} workspaceId
- * @param {string} module      - feedback tag: 'blog' | 'ads' | 'outreach' | 'social'
+ * @param {string} module      - feedback tag: 'blog' | 'ads' | 'outreach' | 'social' | 'abm'
  * @param {number} [refreshKey] - bump to reload after new feedback is saved
  */
-const OUTPUT_NOUN = { blog: 'blog', ads: 'ad', outreach: 'outreach', social: 'social' };
+const OUTPUT_NOUN = { blog: 'blog', ads: 'ad', outreach: 'outreach', social: 'social', abm: 'ABM' };
 
 const FeedbackInsight = ({ workspaceId, module, refreshKey = 0 }) => {
     const [summary, setSummary] = useState(null);

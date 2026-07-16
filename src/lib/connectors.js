@@ -121,11 +121,11 @@ export const CONNECTORS = [
                 key: 'grantToken',
                 label: 'Grant token (code)',
                 type: 'password',
-                help: 'Self Client → Generate Code, scopes: ZohoCRM.modules.contacts.ALL,ZohoCRM.modules.tasks.ALL - then paste it and connect within a few minutes (it expires fast).',
+                help: 'Self Client → Generate Code, scopes: ZohoCRM.modules.contacts.ALL,ZohoCRM.modules.tasks.ALL,ZohoCRM.modules.emails.READ,ZohoCRM.send_mail.all.CREATE,ZohoCRM.users.READ - then paste it and connect within a few minutes (it expires fast).',
             },
         ],
         helpUrl: 'https://www.zoho.com/crm/developer/docs/api/v7/register-client.html',
-        description: 'Push outreach sequences into your CRM as a contact plus a dated task per step.',
+        description: 'Push outreach sequences into your CRM, and send approved warm follow-ups from your Zoho identity - every send logged against the contact.',
     },
     {
         id: 'apollo',

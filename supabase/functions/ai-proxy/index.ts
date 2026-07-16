@@ -595,7 +595,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: { message: "Invalid JSON body" } }, 400, headers);
   }
 
-  const { model, messages, temperature, max_tokens, response_format } =
+  const { model, messages, temperature, max_tokens, response_format, grounding } =
     body ?? {};
 
   if (typeof model !== "string" || !model) {
@@ -666,6 +666,12 @@ Deno.serve(async (req: Request) => {
   const safeMaxTokens = clampMaxTokens(max_tokens);
   const hasJsonMode =
     (response_format as { type?: string } | null)?.type === "json_object";
+  // Google Search grounding is opt-in per request. On Vertex Gemini the
+  // googleSearch tool cannot combine with responseMimeType:application/json, so
+  // grounding wins and JSON mode is dropped (the client already suppresses json
+  // when it asks for grounding; this is the server-side guard).
+  const useGrounding = grounding === true;
+  const jsonMode = hasJsonMode && !useGrounding;
 
   // Translate OpenAI-style messages to Vertex format.
   const { contents, systemInstruction } = translateMessages(messages);
@@ -676,12 +682,15 @@ Deno.serve(async (req: Request) => {
       maxOutputTokens: safeMaxTokens,
       ...(typeof temperature === "number" ? { temperature } : {}),
       // response_format: { type: "json_object" } → responseMimeType
-      ...(hasJsonMode ? { responseMimeType: "application/json" } : {}),
+      ...(jsonMode ? { responseMimeType: "application/json" } : {}),
       // Gemini 2.5 Flash enables thinking by default; thinking tokens count
       // against maxOutputTokens. Brand Intelligence sections use small caps
       // (e.g. tagline max_tokens=80) which leaves zero budget for visible JSON.
       thinkingConfig: { thinkingBudget: 0 },
     },
+    // Real-time Google Search grounding for research-grade calls (ABM). Returns
+    // groundingMetadata that we surface to the client as citations.
+    ...(useGrounding ? { tools: [{ googleSearch: {} }] } : {}),
   };
   // systemInstruction is a top-level field, not part of contents[].
   if (systemInstruction) vertexBody.systemInstruction = systemInstruction;
@@ -693,7 +702,8 @@ Deno.serve(async (req: Request) => {
       model: cfg.modelId,
       maxTokens: safeMaxTokens,
       messageCount: messages.length,
-      hasJsonMode,
+      hasJsonMode: jsonMode,
+      grounding: useGrounding,
       hasSystemInstruction: systemInstruction !== null,
     }),
   );
@@ -844,11 +854,33 @@ Deno.serve(async (req: Request) => {
   // Return the normalized response. aiClient.js reads data.choices[0].message.content;
   // `finish_reason` lets the client detect MAX_TOKENS truncation (vs. genuinely
   // malformed output); `usage` and `model` are additive token-accounting fields.
+  // Grounding citations (only when a search-grounded call ran) - deduped web
+  // sources from Vertex groundingMetadata, surfaced so the UI can attribute.
+  const groundingSources = useGrounding
+    ? (() => {
+      const cand = (vertexData as { candidates?: Array<Record<string, unknown>> })
+        ?.candidates?.[0];
+      const chunks = ((cand?.groundingMetadata as {
+        groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>;
+      } | undefined)?.groundingChunks) ?? [];
+      const seen = new Set<string>();
+      const out: Array<{ title: string; url: string }> = [];
+      for (const ch of chunks) {
+        const url = ch?.web?.uri ?? "";
+        if (!url || seen.has(url)) continue;
+        seen.add(url);
+        out.push({ title: ch?.web?.title ?? "", url });
+      }
+      return out;
+    })()
+    : [];
+
   return json(
     {
       choices: [{ message: { content }, finish_reason: finishReason ?? null }],
       usage,
       model: cfg.modelId,
+      ...(useGrounding ? { grounding: groundingSources } : {}),
     },
     200,
     headers,

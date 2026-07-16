@@ -111,6 +111,17 @@ function App() {
                       </WorkspaceMemberRoute>
                     }
                   />
+                  {/* Multi-screen modules (e.g. Outreach) carry a sub-module segment. */}
+                  <Route
+                    path="workspace/:workspaceId/:moduleId/:subModuleId"
+                    element={
+                      <WorkspaceMemberRoute>
+                        <ErrorBoundary>
+                          <Workspace />
+                        </ErrorBoundary>
+                      </WorkspaceMemberRoute>
+                    }
+                  />
                   <Route path="workspace" element={<WorkspaceRedirect />} />
                 </Route>
               </Route>

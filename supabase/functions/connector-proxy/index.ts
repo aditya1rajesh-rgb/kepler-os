@@ -7,6 +7,7 @@
 // the client registry. No backend change per CONNECTION. Mirrors search-console.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ZOHO_DC, zohoAccessToken, zohoToken } from "../_shared/zoho.ts";
 
 // ─── CORS (mirrors ai-proxy / search-console) ─────────────────────────────────
 const parseOriginList = (raw: string | undefined): string[] =>
@@ -86,36 +87,10 @@ interface Adapter {
 }
 
 // ─── Zoho helpers (Self Client OAuth) ─────────────────────────────────────────
-// Zoho is regional: the accounts (token) host and API host differ per data center.
-const ZOHO_DC: Record<string, { accounts: string; api: string }> = {
-  us: { accounts: "https://accounts.zoho.com", api: "https://www.zohoapis.com" },
-  eu: { accounts: "https://accounts.zoho.eu", api: "https://www.zohoapis.eu" },
-  in: { accounts: "https://accounts.zoho.in", api: "https://www.zohoapis.in" },
-  au: { accounts: "https://accounts.zoho.com.au", api: "https://www.zohoapis.com.au" },
-  jp: { accounts: "https://accounts.zoho.jp", api: "https://www.zohoapis.jp" },
-  ca: { accounts: "https://accounts.zohocloud.ca", api: "https://www.zohoapis.ca" },
-};
-// Token endpoint requires params in the QUERY STRING (not a JSON/body object).
-const zohoToken = async (accounts: string, params: Record<string, string>) => {
-  const res = await fetch(`${accounts}/oauth/v2/token?${new URLSearchParams(params).toString()}`, { method: "POST" });
-  const data = await res.json().catch(() => ({} as Record<string, unknown>));
-  return { res, data: data as Record<string, unknown> };
-};
-// Mint a fresh access token from the stored refresh token. Prefers the api_domain
-// Zoho returns (authoritative per account) over the DC default.
-const zohoAccessToken = async (creds: Creds): Promise<{ ok: boolean; token?: string; api?: string; error?: string }> => {
-  const dc = String(creds?.dc ?? "us").toLowerCase();
-  const conf = ZOHO_DC[dc] ?? ZOHO_DC.us;
-  const { res, data } = await zohoToken(conf.accounts, {
-    grant_type: "refresh_token",
-    client_id: String(creds?.clientId ?? ""),
-    client_secret: String(creds?.clientSecret ?? ""),
-    refresh_token: String(creds?.refreshToken ?? ""),
-  });
-  const token = data?.access_token as string | undefined;
-  if (!res.ok || !token) return { ok: false, error: `Zoho token refresh failed${data?.error ? ` (${data.error})` : ""}.` };
-  return { ok: true, token, api: (data?.api_domain as string) || conf.api };
-};
+// Token/DC/session helpers live in ../_shared/zoho.ts, shared with the
+// send-scheduler and inbox-monitor functions. Send-mail is deliberately NOT a
+// connector-proxy action — the browser never sends email (§9); only the
+// scheduled send-scheduler dispatches sends after enforcing the invariants.
 
 const PROVIDER_ADAPTERS: Record<string, Adapter> = {
   hubspot: {
@@ -177,6 +152,14 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
       // seniority + company size sharpen the ICP beyond title alone.
       if (Array.isArray(seniorities) && seniorities.length) body.person_seniorities = seniorities;
       if (Array.isArray(employeeRanges) && employeeRanges.length) body.organization_num_employees_ranges = employeeRanges;
+      // ABM: scope the People Search to specific companies (contacts AT a target
+      // account) by domain. Apollo People Search takes newline-separated domains;
+      // the Gemini validation pass downstream drops any off-account rows anyway,
+      // so an imperfect scope degrades safely rather than returning junk.
+      const organizationDomains = params?.organizationDomains;
+      if (Array.isArray(organizationDomains) && organizationDomains.length) {
+        body.q_organization_domains = organizationDomains.join("\n");
+      }
       if (params?.keywords) body.q_keywords = String(params.keywords);
       const res = await fetch("https://api.apollo.io/api/v1/mixed_people/api_search", {
         method: "POST",
@@ -207,6 +190,12 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
           linkedinUrl: String(p.linkedin_url ?? ""),
           location: [p.city, p.state, p.country].filter(Boolean).join(", "),
           email: email.includes("not_unlocked") ? "" : email,
+          // Org firmographics Apollo already returns (previously discarded) -
+          // real signal for ABM account enrichment + per-contact seniority.
+          seniority: String(p.seniority ?? ""),
+          employeeCount: typeof org.estimated_num_employees === "number" ? org.estimated_num_employees : null,
+          industry: String(org.industry ?? ""),
+          website: String(org.website_url ?? ""),
         };
       });
       return { ok: true, result: { people, total: d?.pagination?.total_entries ?? d?.total_entries ?? people.length } };

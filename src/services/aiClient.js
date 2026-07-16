@@ -265,6 +265,7 @@ export async function callAI(prompt, config = {}) {
     json = false,
     systemPrompt = null,
     includeModelMeta = false,
+    grounding = false,
     traceSection = null,
   } = config
 
@@ -277,11 +278,19 @@ export async function callAI(prompt, config = {}) {
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
   messages.push({ role: 'user', content: prompt })
 
+  // Google Search grounding and forced-JSON are mutually exclusive on Vertex
+  // Gemini (the googleSearch tool cannot combine with responseMimeType:
+  // application/json), so a grounded call always returns prose - json is ignored
+  // when grounding is on. Grounded output is parsed/structured by a separate,
+  // non-grounded JSON call downstream.
+  const useJson = json && !grounding
+
   const body = {
     messages,
     max_tokens: maxTokens,
     temperature,
-    ...(json ? { response_format: { type: 'json_object' } } : {})
+    ...(useJson ? { response_format: { type: 'json_object' } } : {}),
+    ...(grounding ? { grounding: true } : {})
   }
 
   const candidates = Array.from(new Set(
@@ -381,7 +390,7 @@ export async function callAI(prompt, config = {}) {
     }
 
     let parsed = content
-    if (json) {
+    if (useJson) {
       const finishReason = data.choices?.[0]?.finish_reason
       let parsedJson
       try {
@@ -441,7 +450,9 @@ export async function callAI(prompt, config = {}) {
       return {
         content: parsed,
         modelUsed: data.model ?? candidateModel,
-        usage: data.usage ?? null
+        usage: data.usage ?? null,
+        // Grounding citations, when the proxy ran a search-grounded call.
+        ...(Array.isArray(data.grounding) ? { grounding: data.grounding } : {})
       }
     }
 

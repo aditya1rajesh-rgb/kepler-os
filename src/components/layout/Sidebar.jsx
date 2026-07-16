@@ -9,7 +9,6 @@ import {
     Search,
     Megaphone,
     Send,
-    UserSearch,
     AtSign,
     FolderOpen,
     Lock,
@@ -51,7 +50,6 @@ const Sidebar = ({ collapsed, onToggle }) => {
                     { id: 'seo-aeo', label: 'SEO & AEO', icon: Search },
                     { id: 'ad-campaigns', label: 'Ad Campaigns', icon: Megaphone },
                     { id: 'outreach', label: 'Outreach', icon: Send },
-                    { id: 'prospecting', label: 'Prospecting', icon: UserSearch },
                     { id: 'social-media', label: 'Social Media', icon: AtSign },
                     { id: 'library', label: 'Library', icon: FolderOpen },
                 ];

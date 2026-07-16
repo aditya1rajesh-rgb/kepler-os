@@ -15,3 +15,12 @@ verify_jwt = true
 [functions.meta-callbacks]
 verify_jwt = false
 
+
+# send-scheduler + inbox-monitor are invoked by pg_cron (pg_net), which cannot
+# mint user JWTs. They authenticate via the x-scheduler-secret header checked
+# in-function against the SCHEDULER_SECRET edge secret — never browser-callable.
+[functions.send-scheduler]
+verify_jwt = false
+
+[functions.inbox-monitor]
+verify_jwt = false

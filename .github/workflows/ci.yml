@@ -20,4 +20,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Send-path invariant tests (scheduler core + inbox classification) —
+      # the quality mandate's beachhead (ROADMAP-HANDOFF §12).
+      - run: npm test
       - run: npm run build

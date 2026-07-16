@@ -16,7 +16,6 @@ import BrandIntelligence from './workspace-modules/BrandIntelligence';
 import SeoAeo from './workspace-modules/SeoAeo';
 import AdCampaigns from './workspace-modules/AdCampaigns';
 import Outreach from './workspace-modules/Outreach';
-import Prospecting from './workspace-modules/Prospecting';
 import Measurement from './workspace-modules/Measurement';
 import SocialMedia from './workspace-modules/SocialMedia';
 
@@ -68,7 +67,6 @@ const Workspace = () => {
         { id: 'seo-aeo', label: 'SEO & AEO' },
         { id: 'ad-campaigns', label: 'Ad Campaigns' },
         { id: 'outreach', label: 'Outreach' },
-        { id: 'prospecting', label: 'Prospecting' },
         { id: 'social-media', label: 'Social Media' },
         { id: 'library', label: 'Library' },
     ].map((module) => {
@@ -117,7 +115,8 @@ const Workspace = () => {
             case 'seo-aeo': return <SeoAeo workspaceId={workspaceId} />;
             case 'ad-campaigns': return <AdCampaigns workspaceId={workspaceId} />;
             case 'outreach': return <Outreach workspaceId={workspaceId} />;
-            case 'prospecting': return <Prospecting workspaceId={workspaceId} />;
+            // Prospecting moved under Outreach; redirect old top-level links.
+            case 'prospecting': return <Navigate to={workspacePath(workspaceId, 'outreach', 'prospecting')} replace />;
             case 'social-media': return <SocialMedia workspaceId={workspaceId} />;
             case 'library': return <Library workspaceId={workspaceId} />;
             default:

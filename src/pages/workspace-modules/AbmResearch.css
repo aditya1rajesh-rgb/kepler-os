@@ -1,0 +1,181 @@
+.abm-research-module {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ── Chat layer ─────────────────────────────────────────────────────────── */
+.abm-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.abm-chat__log {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 62vh;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.abm-turn {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.abm-msg {
+    display: flex;
+}
+.abm-msg--user { justify-content: flex-end; }
+.abm-msg--assistant { justify-content: flex-start; }
+
+.abm-bubble {
+    max-width: min(680px, 92%);
+    padding: 0.7rem 0.95rem;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    background: var(--surface-2, rgba(255, 255, 255, 0.02));
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.abm-bubble--user {
+    background: var(--accent-soft, rgba(117, 70, 232, 0.16));
+    border-color: var(--accent-border, rgba(117, 70, 232, 0.35));
+}
+.abm-bubble--intro { max-width: 100%; }
+
+.abm-bubble__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+    margin-bottom: 0.3rem;
+}
+.abm-bubble__content { margin: 0; }
+
+/* Typing dots */
+.abm-typing { display: inline-flex; gap: 5px; align-items: center; }
+.abm-typing span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: 0.5;
+    animation: abm-blink 1.2s infinite ease-in-out;
+}
+.abm-typing span:nth-child(2) { animation-delay: 0.2s; }
+.abm-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes abm-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 0.9; } }
+
+.abm-composer {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+.abm-composer__input { flex: 1 1 auto; }
+
+/* ── Result card (account brief + contacts data layer) ──────────────────── */
+.abm-result {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    border-radius: 16px;
+    padding: 1.1rem;
+    background: var(--surface-1, rgba(255, 255, 255, 0.015));
+}
+
+.abm-account { display: flex; flex-direction: column; gap: 0.75rem; }
+.abm-account__head {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+}
+.abm-account__name { margin: 0; font-size: 1.15rem; }
+.abm-account__domain {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    font-size: 0.8rem; opacity: 0.7; text-decoration: none;
+}
+.abm-account__domain:hover { opacity: 1; }
+.abm-account__badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.abm-badge {
+    display: inline-flex; align-items: center;
+    padding: 0.2rem 0.55rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600; text-transform: capitalize;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+    background: var(--surface-2, rgba(255, 255, 255, 0.03));
+}
+.abm-badge--fit-high { color: #34d399; border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.12); }
+.abm-badge--fit-medium { color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.12); }
+.abm-badge--fit-low { color: #94a3b8; border-color: rgba(148, 163, 184, 0.35); background: rgba(148, 163, 184, 0.1); }
+
+.abm-account__facts { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.85rem; }
+.abm-fact__label { opacity: 0.55; margin-right: 0.35rem; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em; }
+
+.abm-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.abm-chip {
+    padding: 0.15rem 0.5rem; border-radius: 8px; font-size: 0.75rem;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+    background: var(--surface-2, rgba(255, 255, 255, 0.03));
+}
+.abm-account__why { margin: 0; font-size: 0.85rem; opacity: 0.8; line-height: 1.5; }
+.abm-sources { font-size: 0.8rem; opacity: 0.8; }
+.abm-sources summary { cursor: pointer; opacity: 0.7; }
+.abm-sources ul { margin: 0.4rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.abm-sources a { color: inherit; }
+
+.abm-note {
+    margin: 0; font-size: 0.8rem; opacity: 0.75;
+    padding: 0.5rem 0.7rem; border-radius: 8px;
+    border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.14));
+}
+
+/* ── Contacts table ─────────────────────────────────────────────────────── */
+.abm-table__scroll { overflow-x: auto; }
+.abm-table { display: flex; flex-direction: column; gap: 0.4rem; min-width: 560px; }
+
+.abm-table__row {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    border-radius: 10px;
+    background: var(--surface-2, rgba(255, 255, 255, 0.02));
+}
+.abm-table__row--head {
+    background: transparent; border: none; padding-bottom: 0;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.55;
+}
+
+.abm-cell { display: flex; align-items: center; }
+.abm-cell--check { flex: 0 0 1.5rem; }
+.abm-cell--name { flex: 1 1 auto; min-width: 200px; flex-direction: column; align-items: flex-start; gap: 0.1rem; }
+.abm-cell--sen { flex: 0 0 84px; text-transform: capitalize; font-size: 0.82rem; opacity: 0.85; }
+.abm-cell--fit { flex: 0 0 52px; justify-content: center; }
+.abm-cell--status { flex: 0 0 96px; }
+.abm-cell--link { flex: 0 0 40px; justify-content: flex-end; }
+
+.abm-contact__name { font-weight: 600; }
+.abm-contact__sub { font-size: 0.8rem; opacity: 0.7; }
+.abm-contact__why { font-size: 0.76rem; opacity: 0.55; line-height: 1.4; }
+
+.abm-fit-score {
+    min-width: 2.2rem; text-align: center;
+    padding: 0.15rem 0.4rem; border-radius: 6px;
+    font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.82rem;
+    background: var(--accent-soft, rgba(117, 70, 232, 0.16));
+}
+
+.abm-saved { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; color: #34d399; white-space: nowrap; }
+.abm-flag {
+    font-size: 0.72rem; padding: 0.12rem 0.4rem; border-radius: 6px;
+    color: #fbbf24; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.3);
+    white-space: nowrap;
+}
+.abm-src { font-size: 0.75rem; opacity: 0.7; }
+.abm-src--apollo { color: #34d399; opacity: 0.9; }
+
+@media (max-width: 640px) {
+    .abm-account__head { flex-direction: column; }
+}

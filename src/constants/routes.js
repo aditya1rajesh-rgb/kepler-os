@@ -15,5 +15,7 @@ export const MODULE_IDS = [
 
 export const isValidModuleId = (moduleId) => MODULE_IDS.includes(moduleId);
 
-export const workspacePath = (workspaceId, moduleId = DEFAULT_MODULE_ID) =>
-    `/workspace/${workspaceId}/${moduleId}`;
+export const workspacePath = (workspaceId, moduleId = DEFAULT_MODULE_ID, subModuleId) =>
+    subModuleId
+        ? `/workspace/${workspaceId}/${moduleId}/${subModuleId}`
+        : `/workspace/${workspaceId}/${moduleId}`;

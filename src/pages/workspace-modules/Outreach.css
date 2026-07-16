@@ -4,6 +4,13 @@
     gap: 24px;
 }
 
+/* Outreach multi-screen shell: secondary sub-nav above the active sub-module. */
+.outreach-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
 .builder-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -73,5 +80,114 @@
 @media (max-width: 1000px) {
     .builder-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ── Send engine (R1a) ─────────────────────────────────────────────────── */
+
+.outreach-engine {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.engine-counters {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.engine-counter {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 20px;
+}
+
+.engine-counter__value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.engine-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.engine-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.engine-row:last-child {
+    border-bottom: none;
+}
+
+.engine-row__main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.engine-row__title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.engine-row__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.engine-review-step {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.engine-prospect-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.engine-prospect-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.engine-prospect-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 720px) {
+    .engine-counters {
+        grid-template-columns: 1fr;
+    }
+
+    .engine-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .engine-row__actions {
+        justify-content: flex-start;
     }
 }
