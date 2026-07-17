@@ -67,6 +67,7 @@ const mapRow = (r) => ({
     approvedBy: r.approved_by ?? null,
     approvedAt: r.approved_at ?? null,
     sendingDomainId: r.sending_domain_id ?? null,
+    targetListId: r.target_list_id ?? null,
     createdAt: r.created_at ?? null,
     updatedAt: r.updated_at ?? null,
 });
@@ -85,7 +86,7 @@ export const sequencesService = {
     },
 
     /** Promote a generated sequence into an executable draft (E1.2 entry point). */
-    promote: async (workspaceId, { name, steps, mode = 'warm', campaignId = null, contentItemId = null }) => {
+    promote: async (workspaceId, { name, steps, mode = 'warm', campaignId = null, contentItemId = null, targetListId = null }) => {
         assertWorkspaceId(workspaceId);
         const executable = toExecutableSteps(steps);
         if (!executable.length) throw new Error('This sequence has no email steps to execute.');
@@ -95,6 +96,7 @@ export const sequencesService = {
                 workspace_id: workspaceId,
                 campaign_id: campaignId,
                 content_item_id: contentItemId,
+                target_list_id: targetListId,
                 name: String(name ?? 'Sequence').slice(0, 200),
                 mode,
                 status: 'draft',

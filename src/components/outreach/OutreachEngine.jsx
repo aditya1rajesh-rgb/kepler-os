@@ -7,6 +7,7 @@ import { sequencesService, findUnresolvableTokens } from '../../services/sequenc
 import { enrollmentsService } from '../../services/enrollmentsService';
 import { repliesService, suppressionService } from '../../services/repliesService';
 import { prospectsService } from '../../services/prospectsService';
+import { prospectListsService } from '../../services/prospectListsService';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import { toUserMessage } from '../../lib/errors';
 
@@ -53,19 +54,23 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [enrolling, setEnrolling] = useState(false);
     const [enrollError, setEnrollError] = useState('');
+    const [lists, setLists] = useState([]);
+    const [enrollListId, setEnrollListId] = useState('');
 
     const load = useCallback(async () => {
         try {
-            const [seqs, enrs, reps, cts] = await Promise.all([
+            const [seqs, enrs, reps, cts, lls] = await Promise.all([
                 sequencesService.list(workspaceId),
                 enrollmentsService.list(workspaceId),
                 repliesService.list(workspaceId),
                 repliesService.activityCounts(workspaceId),
+                prospectListsService.listLists(workspaceId),
             ]);
             setSequences(seqs);
             setEnrollments(enrs);
             setReplies(reps);
             setCounts(cts);
+            setLists(lls);
             setError('');
         } catch (err) {
             setError(toUserMessage(err, 'Could not load the send engine.'));
@@ -111,11 +116,31 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
         setEnrollSeq(seq);
         setEnrollError('');
         setSelectedIds(new Set());
+        setEnrollListId(seq.targetListId || '');
         try {
-            const rows = await prospectsService.list(workspaceId);
-            setProspects(rows.filter((p) => p.email));
+            const rows = (await prospectsService.list(workspaceId)).filter((p) => p.email);
+            setProspects(rows);
+            // If the sequence was built for a list, preselect its emailed members.
+            if (seq.targetListId) {
+                const members = await prospectListsService.listMembers(workspaceId, seq.targetListId);
+                const availIds = new Set(rows.map((p) => p.id));
+                setSelectedIds(new Set(members.filter((m) => m.email && availIds.has(m.id)).map((m) => m.id)));
+            }
         } catch (err) {
             setEnrollError(toUserMessage(err, 'Could not load prospects.'));
+        }
+    };
+
+    // Preselect the checkbox list from a chosen list's emailed members.
+    const onEnrollListChange = async (listId) => {
+        setEnrollListId(listId);
+        if (!listId) { setSelectedIds(new Set()); return; }
+        try {
+            const members = await prospectListsService.listMembers(workspaceId, listId);
+            const availIds = new Set(prospects.map((p) => p.id));
+            setSelectedIds(new Set(members.filter((m) => m.email && availIds.has(m.id)).map((m) => m.id)));
+        } catch (err) {
+            setEnrollError(toUserMessage(err, 'Could not load that list.'));
         }
     };
 
@@ -412,6 +437,15 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                 <p className="brand-intel-module__source-label">
                     Suppressed and already-enrolled prospects are skipped automatically. Sends go out inside business hours ({Intl.DateTimeFormat().resolvedOptions().timeZone}), starting with step 1.
                 </p>
+                {lists.length > 0 && (
+                    <div className="input-group">
+                        <label className="label-text">Preselect from a list (optional)</label>
+                        <select className="intel-input" value={enrollListId} onChange={(e) => onEnrollListChange(e.target.value)}>
+                            <option value="">— none —</option>
+                            {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.memberCount})</option>)}
+                        </select>
+                    </div>
+                )}
                 {prospects.length === 0 ? (
                     <EmptyState message="No prospects with an email address. Add prospects (with emails) in the Prospecting panel first." />
                 ) : (

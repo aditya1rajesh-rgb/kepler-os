@@ -337,9 +337,10 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
       return { ok: true, result: { contactId, tasksCreated } };
     },
     // Two read modes (v7 requires an explicit fields list; Zoho returns 204 when
-    // empty): default lists Contacts (to target a sequence); 'attribution' pulls
-    // recent Leads + Contacts Descriptions so measurement can count CRM records
-    // stamped with a campaign's utm on push.
+    // empty): default lists Contacts (to target a sequence); 'contacts-all' pages
+    // the contact list for de-dup; 'attribution' pulls recent Leads + Contacts
+    // Descriptions for the CRM-record count; 'deals' pulls won-deal revenue for
+    // closed-loop attribution.
     fetch: async (creds, params) => {
       const at = await zohoAccessToken(creds);
       if (!at.ok || !at.token) return { ok: false, error: at.error || "Could not authenticate with Zoho." };
@@ -394,6 +395,41 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
           if (!((d as { info?: { more_records?: boolean } })?.info?.more_records)) break;
         }
         return { ok: true, result: { items: all } };
+      }
+
+      if (String(params?.resource ?? "") === "deals") {
+        // Closed-loop revenue: deals with amount, stage, and the contact they
+        // belong to (for the zohoContactId->campaign reverse-join). Paged + capped
+        // like contacts-all to protect the org's API-credit budget.
+        const MAX_PAGES = 5; // ~1000 most-recently-modified deals
+        const deals: Array<{ id: string; name: string; amount: number; stage: string; closingDate: string; description: string; contactId: string }> = [];
+        for (let page = 1; page <= MAX_PAGES; page++) {
+          const r = await fetch(
+            `${at.api}/crm/v7/Deals?fields=Deal_Name,Amount,Stage,Closing_Date,Description,Contact_Name&per_page=200&page=${page}&sort_by=Modified_Time&sort_order=desc`,
+            { headers: authHeaders },
+          );
+          if (r.status === 204) break;
+          const d = await r.json().catch(() => ({} as Record<string, unknown>));
+          if (!r.ok) {
+            if (page === 1) return { ok: false, error: (d as { message?: string })?.message || `Zoho deals fetch failed (${r.status}).` };
+            break; // a partial list is still useful
+          }
+          const rows = (d as { data?: Array<Record<string, unknown>> })?.data ?? [];
+          for (const dl of rows) {
+            const contact = dl.Contact_Name as { id?: string } | null | undefined;
+            deals.push({
+              id: String(dl.id ?? ""),
+              name: String(dl.Deal_Name ?? ""),
+              amount: Number(dl.Amount ?? 0) || 0,
+              stage: String(dl.Stage ?? ""),
+              closingDate: String(dl.Closing_Date ?? ""),
+              description: String(dl.Description ?? ""),
+              contactId: contact && typeof contact === "object" ? String(contact.id ?? "") : "",
+            });
+          }
+          if (!((d as { info?: { more_records?: boolean } })?.info?.more_records)) break;
+        }
+        return { ok: true, result: { deals } };
       }
 
       const res = await fetch(

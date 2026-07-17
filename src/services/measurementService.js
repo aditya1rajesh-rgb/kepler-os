@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
 import { integrationService } from './integrationService';
 import { matchCampaign, matchByText } from '../lib/tracking';
+import { attributeDeals, DEFAULT_WON_STAGES } from '../lib/revenueAttribution';
 
 const assertWorkspaceId = (workspaceId) => {
     if (!isUuid(workspaceId)) throw new Error('Invalid workspace id');
@@ -96,6 +97,82 @@ export const measurementService = {
             if (error) throw error;
         }
         return { records: records.length, attributed: inserts.length };
+    },
+
+    /**
+     * Aggregate the send engine's OWN events (sent / replied / meetings) per
+     * campaign from v_outreach_sequence_metrics and snapshot them. This is real
+     * outreach performance joined by sequences.campaign_id — not the old
+     * string-matched CRM record count.
+     */
+    pullOutreach: async (workspaceId) => {
+        assertWorkspaceId(workspaceId);
+        const { data, error } = await supabase
+            .from('v_outreach_sequence_metrics')
+            .select('campaign_id, enrolled, sent, replied, meetings')
+            .eq('workspace_id', workspaceId);
+        if (error) throw error;
+        const agg = {};
+        for (const r of data ?? []) {
+            const key = r.campaign_id ?? UNATTRIBUTED;
+            const a = agg[key] || (agg[key] = { campaignId: r.campaign_id ?? null, enrolled: 0, sent: 0, replied: 0, meetings: 0 });
+            a.enrolled += r.enrolled || 0;
+            a.sent += r.sent || 0;
+            a.replied += r.replied || 0;
+            a.meetings += r.meetings || 0;
+        }
+        const inserts = Object.values(agg)
+            .filter((a) => a.enrolled || a.sent || a.replied || a.meetings)
+            .map((a) => ({
+                workspace_id: workspaceId,
+                campaign_id: a.campaignId,
+                provider: 'outreach',
+                metrics: { enrolled: a.enrolled, sent: a.sent, replied: a.replied, meetings: a.meetings },
+            }));
+        if (inserts.length) {
+            const { error: insErr } = await supabase.from('campaign_metrics').insert(inserts);
+            if (insErr) throw insErr;
+        }
+        return { sequences: (data ?? []).length, attributed: inserts.filter((i) => i.campaign_id).length };
+    },
+
+    /**
+     * Closed-loop revenue: pull Zoho won deals, attribute each to a campaign via
+     * the reliable zohoContactId->campaign reverse-join (v_prospect_campaigns),
+     * falling back to the campaign tag in the deal Description, and snapshot the
+     * per-campaign won revenue as provider:'revenue'.
+     */
+    pullZohoRevenue: async (workspaceId, campaigns = []) => {
+        assertWorkspaceId(workspaceId);
+        const res = await integrationService.fetchFromConnector(workspaceId, 'zoho', { resource: 'deals' });
+        const deals = res?.result?.deals ?? [];
+        const { data: rows, error: viewErr } = await supabase
+            .from('v_prospect_campaigns')
+            .select('zoho_contact_id, campaign_id')
+            .eq('workspace_id', workspaceId);
+        if (viewErr) throw viewErr;
+        const contactCampaign = new Map();
+        for (const r of rows ?? []) {
+            if (r.zoho_contact_id && !contactCampaign.has(r.zoho_contact_id)) {
+                contactCampaign.set(String(r.zoho_contact_id), r.campaign_id);
+            }
+        }
+        const { byCampaign, wonTotal, attributedCount } = attributeDeals(deals, {
+            contactCampaign, campaigns, wonStages: DEFAULT_WON_STAGES,
+        });
+        const inserts = Object.values(byCampaign)
+            .filter((a) => a.campaignId) // only snapshot revenue we could attribute
+            .map((a) => ({
+                workspace_id: workspaceId,
+                campaign_id: a.campaignId,
+                provider: 'revenue',
+                metrics: { revenue: a.revenue, wonDeals: a.wonDeals },
+            }));
+        if (inserts.length) {
+            const { error } = await supabase.from('campaign_metrics').insert(inserts);
+            if (error) throw error;
+        }
+        return { deals: deals.length, wonDeals: wonTotal, attributed: attributedCount };
     },
 };
 

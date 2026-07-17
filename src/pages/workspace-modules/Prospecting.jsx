@@ -6,6 +6,7 @@ import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { integrationService } from '../../services/integrationService';
 import { prospectsService } from '../../services/prospectsService';
 import { toUserMessage } from '../../lib/errors';
+import AddToListModal from '../../components/outreach/AddToListModal';
 import '../../styles/module-kepler.css';
 import './Prospecting.css';
 
@@ -48,6 +49,7 @@ const Prospecting = ({ workspaceId }) => {
     const [saved, setSaved] = useState([]);
     const [selected, setSelected] = useState(() => new Set());
     const [pushing, setPushing] = useState(false);
+    const [addListOpen, setAddListOpen] = useState(false);
 
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
@@ -323,10 +325,19 @@ const Prospecting = ({ workspaceId }) => {
                 <PanelHeader
                     title={`Saved prospects${saved.length ? ` · ${saved.length}` : ''}`}
                     meta={zohoConnected ? 'Select prospects and push them into Zoho as Leads' : 'Connect Zoho to push these into your CRM'}
-                    action={zohoConnected && saved.length > 0 && (
-                        <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
-                            {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
-                        </button>
+                    action={saved.length > 0 && (
+                        <div className="module-toolbar module-toolbar--inline">
+                            {selected.size > 0 && (
+                                <button type="button" className="btn btn-secondary" onClick={() => setAddListOpen(true)}>
+                                    Add {selected.size} to list
+                                </button>
+                            )}
+                            {zohoConnected && (
+                                <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
+                                    {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
+                                </button>
+                            )}
+                        </div>
                     )}
                 />
                 {saved.length === 0 ? (
@@ -357,6 +368,17 @@ const Prospecting = ({ workspaceId }) => {
                     </ul>
                 )}
             </Panel>
+
+            <AddToListModal
+                workspaceId={workspaceId}
+                prospectIds={[...selected]}
+                isOpen={addListOpen}
+                onClose={() => setAddListOpen(false)}
+                onAdded={(added, listName, requested) => {
+                    setNotice(`Added ${added} to “${listName}”${requested > added ? ` (${requested - added} already in it)` : ''}.`);
+                    setSelected(new Set());
+                }}
+            />
         </div>
     );
 };

@@ -90,7 +90,7 @@ const makeZohoAdapter = (svc: ReturnType<typeof createClient>): SendAdapter => {
   };
 
   return {
-    send: async ({ workspaceId, prospect, subject, body }): Promise<SendResult> => {
+    send: async ({ workspaceId, prospect, subject, body, campaignId }): Promise<SendResult> => {
       const ctx = await workspaceCtx(workspaceId);
       if ("error" in ctx) return { ok: false, error: ctx.error, authError: ctx.authError };
 
@@ -101,10 +101,16 @@ const makeZohoAdapter = (svc: ReturnType<typeof createClient>): SendAdapter => {
       const meta = (pRow?.meta ?? {}) as Record<string, unknown>;
       let contactId = String(meta.zohoContactId ?? "");
       if (!contactId) {
+        // First send to this prospect: stamp the campaign id8 into the new Contact's
+        // Description so measurement can attribute engine sends (matchByText scans
+        // it), complementing the reliable zohoContactId->campaign reverse-join. Only
+        // set on create (we're here because we have no zohoContactId yet).
+        const campaignTag = campaignId ? `campaign-${String(campaignId).slice(0, 8)}` : "";
         const up = await zohoUpsertContact(ctx.session, {
           firstName: prospect.first_name,
           lastName: prospect.last_name,
           email: prospect.email,
+          description: campaignTag,
         });
         if (!up.ok || !up.contactId) return { ok: false, error: up.error ?? "Zoho contact upsert failed." };
         contactId = up.contactId;

@@ -7,8 +7,10 @@
 // send-scheduler function may call it, after enforcing the §9.5 invariants.
 //
 // Required Self Client scopes (connect help text in src/lib/connectors.js):
-//   ZohoCRM.modules.contacts.ALL, ZohoCRM.modules.tasks.ALL,
+//   ZohoCRM.modules.contacts.ALL, ZohoCRM.modules.leads.ALL,
+//   ZohoCRM.modules.deals.READ, ZohoCRM.modules.tasks.ALL,
 //   ZohoCRM.modules.emails.READ, ZohoCRM.send_mail.all.CREATE, ZohoCRM.users.READ
+//   (leads.ALL: Leads are pushed/read for attribution; deals.READ: won-deal revenue)
 
 export type Creds = Record<string, string>;
 
@@ -77,7 +79,7 @@ export const zohoCurrentUser = async (
 // Upsert a Contact by email (idempotent — duplicate_check_fields) and return its id.
 export const zohoUpsertContact = async (
   s: ZohoSession,
-  contact: { firstName?: string; lastName?: string; email: string },
+  contact: { firstName?: string; lastName?: string; email: string; description?: string },
 ): Promise<{ ok: boolean; contactId?: string; error?: string }> => {
   const email = String(contact.email ?? "").trim();
   const lastName = String(contact.lastName ?? "").trim()
@@ -86,6 +88,7 @@ export const zohoUpsertContact = async (
   if (!email || !lastName) return { ok: false, error: "A recipient email is required." };
   const record: Record<string, unknown> = { Last_Name: lastName, Email: email };
   if (contact.firstName) record.First_Name = String(contact.firstName).trim();
+  if (contact.description) record.Description = String(contact.description).slice(0, 200);
   const res = await fetch(`${s.api}/crm/v7/Contacts/upsert`, {
     method: "POST",
     headers: authHeaders(s),

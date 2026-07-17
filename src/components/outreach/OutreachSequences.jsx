@@ -17,6 +17,7 @@ import { campaignService } from '../../services/campaignService';
 import { feedbackService } from '../../services/feedbackService';
 import { integrationService } from '../../services/integrationService';
 import { sequencesService } from '../../services/sequencesService';
+import { prospectListsService } from '../../services/prospectListsService';
 import { campaignUtm } from '../../lib/tracking';
 import { LIFECYCLE_FLOWS } from '../../lib/outreachSkeletons';
 import { toUserMessage } from '../../lib/errors';
@@ -84,6 +85,8 @@ const OutreachSequences = ({ workspaceId }) => {
     const [promoting, setPromoting] = useState(false);
     const [mode, setMode] = useState('cold');
     const [searchParams] = useSearchParams();
+    const [lists, setLists] = useState([]);
+    const [targetListId, setTargetListId] = useState(() => searchParams.get('list') || '');
     const [campaignCtx] = useState(() => ({
         campaignId: searchParams.get('campaign') || null,
         stepId: searchParams.get('step') || '',
@@ -117,8 +120,14 @@ const OutreachSequences = ({ workspaceId }) => {
         let cancelled = false;
         (async () => {
             try {
-                const rows = await contentService.getContentItems(workspaceId, 'outreach');
-                if (!cancelled) setSaved(rows.filter((r) => r.payload?.sequence?.steps?.length));
+                const [rows, lls] = await Promise.all([
+                    contentService.getContentItems(workspaceId, 'outreach'),
+                    prospectListsService.listLists(workspaceId),
+                ]);
+                if (!cancelled) {
+                    setSaved(rows.filter((r) => r.payload?.sequence?.steps?.length));
+                    setLists(lls);
+                }
             } catch { /* non-fatal */ }
         })();
         return () => { cancelled = true; };
@@ -218,6 +227,7 @@ const OutreachSequences = ({ workspaceId }) => {
                 steps: sequence.steps,
                 mode: 'warm',
                 campaignId: campaignCtx.campaignId,
+                targetListId: targetListId || null,
             });
             setEngineRefresh((v) => v + 1);
             setView('engine');
@@ -389,6 +399,14 @@ const OutreachSequences = ({ workspaceId }) => {
                         <select className="intel-input" value={config.icpId} onChange={(e) => setConfig({ ...config, icpId: e.target.value })}>
                             <option value="">Select a saved ICP…</option>
                             {personas.map((p) => <option key={p.id} value={p.id}>{p.role}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="input-group">
+                        <label className="label-text">Target list (optional)</label>
+                        <select className="intel-input" value={targetListId} onChange={(e) => setTargetListId(e.target.value)}>
+                            <option value="">No list — pick recipients at enroll</option>
+                            {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.memberCount})</option>)}
                         </select>
                     </div>
 

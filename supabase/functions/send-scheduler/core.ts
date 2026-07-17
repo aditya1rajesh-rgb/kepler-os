@@ -33,6 +33,7 @@ export interface SequenceStep {
 export interface SequenceRow {
   id: string;
   workspace_id: string;
+  campaign_id?: string | null;
   mode: "warm" | "cold";
   status: string;
   steps: SequenceStep[];
@@ -356,6 +357,8 @@ export interface SendAdapter {
     prospect: ProspectRow;
     subject: string;
     body: string;
+    /** Campaign the sending sequence belongs to — stamped for attribution. */
+    campaignId?: string | null;
   }): Promise<SendResult>;
 }
 
@@ -510,6 +513,7 @@ export async function runScheduler(deps: {
 
       const result = await adapter.send({
         workspaceId, prospect, subject: decision.subject, body: decision.body,
+        campaignId: sequence?.campaign_id ?? null,
       });
 
       if (result.ok) {

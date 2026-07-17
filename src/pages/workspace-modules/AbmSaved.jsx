@@ -8,6 +8,10 @@ import { prospectsService } from '../../services/prospectsService';
 import { integrationService } from '../../services/integrationService';
 import { buildCrmIndex } from '../../lib/crmDedupe';
 import { toUserMessage } from '../../lib/errors';
+import { useNavigate } from 'react-router-dom';
+import AddToListModal from '../../components/outreach/AddToListModal';
+import { prospectListsService } from '../../services/prospectListsService';
+import { workspacePath } from '../../constants/routes';
 import '../../styles/module-kepler.css';
 import './AbmResearch.css';
 import './Prospecting.css';
@@ -34,20 +38,25 @@ const AbmSaved = ({ workspaceId }) => {
     const [pushing, setPushing] = useState(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
+    const [lists, setLists] = useState([]);
+    const [addListOpen, setAddListOpen] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!workspaceId) return undefined;
         let cancelled = false;
         (async () => {
             try {
-                const [accts, list, zoho] = await Promise.all([
+                const [accts, list, lls, zoho] = await Promise.all([
                     abmService.listAccounts(workspaceId),
                     prospectsService.list(workspaceId),
+                    prospectListsService.listLists(workspaceId),
                     integrationService.getStatus(workspaceId, 'zoho'),
                 ]);
                 if (cancelled) return;
                 setAccounts(accts);
                 setProspects(list);
+                setLists(lls);
                 setZohoConnected(zoho?.status === 'connected');
                 if (zoho?.status === 'connected') {
                     try {
@@ -79,6 +88,19 @@ const AbmSaved = ({ workspaceId }) => {
             setAccounts((prev) => (prev ?? []).filter((a) => a.id !== id));
         } catch (err) {
             setError(toUserMessage(err, 'Could not remove the account.'));
+        }
+    };
+
+    const reloadLists = async () => {
+        try { setLists(await prospectListsService.listLists(workspaceId)); } catch { /* non-fatal */ }
+    };
+
+    const deleteList = async (id) => {
+        try {
+            await prospectListsService.deleteList(workspaceId, id);
+            setLists((prev) => prev.filter((l) => l.id !== id));
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not delete the list.'));
         }
     };
 
@@ -159,10 +181,19 @@ const AbmSaved = ({ workspaceId }) => {
                 <PanelHeader
                     title={`Prospect list${prospects.length ? ` · ${prospects.length}` : ''}`}
                     meta={zohoConnected ? 'Select prospects and push them into Zoho as Leads.' : 'Contacts saved from ABM + Prospecting. Connect Zoho to push them into your CRM.'}
-                    action={zohoConnected && prospects.length > 0 && (
-                        <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
-                            {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
-                        </button>
+                    action={prospects.length > 0 && (
+                        <div className="module-toolbar module-toolbar--inline">
+                            {selected.size > 0 && (
+                                <button type="button" className="btn btn-secondary" onClick={() => setAddListOpen(true)}>
+                                    Add {selected.size} to list
+                                </button>
+                            )}
+                            {zohoConnected && (
+                                <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
+                                    {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
+                                </button>
+                            )}
+                        </div>
                     )}
                 />
                 {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
@@ -194,6 +225,42 @@ const AbmSaved = ({ workspaceId }) => {
                     </ul>
                 )}
             </Panel>
+
+            <Panel className="module-panel">
+                <PanelHeader title={`Lists${lists.length ? ` · ${lists.length}` : ''}`} meta="Named audiences — target one when building a sequence." />
+                {lists.length === 0 ? (
+                    <EmptyState message="No lists yet. Select prospects above and “Add to list”." />
+                ) : (
+                    <ul className="prospect-list">
+                        {lists.map((l) => (
+                            <li key={l.id} className="prospect-row">
+                                <div className="prospect-row__main">
+                                    <span className="prospect-row__name">{l.name}</span>
+                                    <span className="prospect-row__sub">{l.memberCount} prospect{l.memberCount === 1 ? '' : 's'}</span>
+                                </div>
+                                <div className="prospect-row__actions">
+                                    <button type="button" className="btn btn-secondary" onClick={() => navigate(`${workspacePath(workspaceId, 'outreach', 'sequences')}?list=${l.id}`)}>
+                                        Build sequence
+                                    </button>
+                                    <button type="button" className="btn btn-ghost" onClick={() => deleteList(l.id)} title="Delete list"><Trash2 size={15} strokeWidth={1.8} /></button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </Panel>
+
+            <AddToListModal
+                workspaceId={workspaceId}
+                prospectIds={[...selected]}
+                isOpen={addListOpen}
+                onClose={() => setAddListOpen(false)}
+                onAdded={(added, listName, requested) => {
+                    setNotice(`Added ${added} to “${listName}”${requested > added ? ` (${requested - added} already in it)` : ''}.`);
+                    setSelected(new Set());
+                    reloadLists();
+                }}
+            />
         </div>
     );
 };

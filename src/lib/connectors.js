@@ -121,7 +121,7 @@ export const CONNECTORS = [
                 key: 'grantToken',
                 label: 'Grant token (code)',
                 type: 'password',
-                help: 'Self Client → Generate Code, scopes: ZohoCRM.modules.contacts.ALL,ZohoCRM.modules.tasks.ALL,ZohoCRM.modules.emails.READ,ZohoCRM.send_mail.all.CREATE,ZohoCRM.users.READ - then paste it and connect within a few minutes (it expires fast).',
+                help: 'Self Client → Generate Code, scopes: ZohoCRM.modules.contacts.ALL,ZohoCRM.modules.leads.ALL,ZohoCRM.modules.deals.READ,ZohoCRM.modules.tasks.ALL,ZohoCRM.modules.emails.READ,ZohoCRM.send_mail.all.CREATE,ZohoCRM.users.READ - then paste it and connect within a few minutes (it expires fast).',
             },
         ],
         helpUrl: 'https://www.zoho.com/crm/developer/docs/api/v7/register-client.html',

@@ -15,6 +15,7 @@ import './Measurement.css';
 const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
 const dash = (v) => (v === null || v === undefined ? '—' : fmt(v));
 const pct = (x) => `${Math.round((Number(x) || 0) * 100)}%`;
+const money = (n) => `$${new Intl.NumberFormat().format(Math.round(Number(n) || 0))}`;
 
 const Measurement = ({ workspaceId }) => {
     const { brand } = useWorkspaceConfig(workspaceId);
@@ -75,9 +76,15 @@ const Measurement = ({ workspaceId }) => {
             if (zohoConnected) {
                 const r = await measurementService.pullZoho(workspaceId, campaigns);
                 notes.push(`Zoho: ${r.attributed} campaign${r.attributed === 1 ? '' : 's'} from ${r.records} record${r.records === 1 ? '' : 's'}`);
+                const rev = await measurementService.pullZohoRevenue(workspaceId, campaigns);
+                if (rev.wonDeals) notes.push(`Revenue: ${money(rev.revenue)} from ${rev.wonDeals} won deal${rev.wonDeals === 1 ? '' : 's'}`);
+            }
+            const outreach = await measurementService.pullOutreach(workspaceId);
+            if (outreach.sequences) {
+                notes.push(`Outreach: ${outreach.attributed} campaign${outreach.attributed === 1 ? '' : 's'} from ${outreach.sequences} sequence${outreach.sequences === 1 ? '' : 's'}`);
             }
             setSnapshots(await measurementService.getSnapshots(workspaceId));
-            setNotice(notes.length ? `Pulled — ${notes.join(' · ')}.` : 'Nothing connected to pull from.');
+            setNotice(notes.length ? `Pulled — ${notes.join(' · ')}.` : 'Nothing to pull yet — connect GA4/Zoho or run a sequence.');
         } catch (e) {
             setError(e?.message || 'Could not pull outcomes.');
         } finally {
@@ -125,8 +132,11 @@ const Measurement = ({ workspaceId }) => {
             sessions: a.sessions + (s.metrics?.sessions || 0),
             conversions: a.conversions + (s.metrics?.conversions || 0),
             crmRecords: a.crmRecords + (s.metrics?.crmRecords || 0),
+            replied: a.replied + (s.metrics?.replied || 0),
+            meetings: a.meetings + (s.metrics?.meetings || 0),
+            revenue: a.revenue + (s.metrics?.revenue || 0),
         }),
-        { sessions: 0, conversions: 0, crmRecords: 0 },
+        { sessions: 0, conversions: 0, crmRecords: 0, replied: 0, meetings: 0, revenue: 0 },
     );
     const lastPulled = Object.values(snapshots).map((s) => s.capturedAt).filter(Boolean).sort().pop();
 
@@ -137,7 +147,7 @@ const Measurement = ({ workspaceId }) => {
                     title="Measurement"
                     meta="Per-campaign outcomes, attributed via UTM. Ship the tracked links below and GA4 reports back here."
                     action={(
-                        <button type="button" className="btn btn-primary" onClick={pull} disabled={pulling || (!gaReady && !zohoConnected)}>
+                        <button type="button" className="btn btn-primary" onClick={pull} disabled={pulling}>
                             <RefreshCw size={15} strokeWidth={1.8} /> {pulling ? 'Pulling…' : 'Pull latest'}
                         </button>
                     )}
@@ -167,6 +177,14 @@ const Measurement = ({ workspaceId }) => {
                 <div className="cockpit__intel-fact">
                     <span className="cockpit__intel-value font-heading">{fmt(totals.crmRecords)}</span>
                     <span className="cockpit__intel-label">CRM leads</span>
+                </div>
+                <div className="cockpit__intel-fact">
+                    <span className="cockpit__intel-value font-heading">{fmt(totals.meetings)}</span>
+                    <span className="cockpit__intel-label">Meetings</span>
+                </div>
+                <div className="cockpit__intel-fact">
+                    <span className="cockpit__intel-value font-heading">{money(totals.revenue)}</span>
+                    <span className="cockpit__intel-label">Revenue (won)</span>
                 </div>
                 <div className="cockpit__intel-fact">
                     <span className="cockpit__intel-value font-heading">{visibility ? pct(visibility.shareOfVoice) : '—'}</span>
@@ -269,7 +287,11 @@ const Measurement = ({ workspaceId }) => {
                                         <div className="measurement-row__metrics">
                                             <span><strong>{m ? dash(m.sessions) : '—'}</strong> sessions</span>
                                             <span><strong>{m ? dash(m.conversions) : '—'}</strong> conv.</span>
+                                            <span><strong>{m ? dash(m.sent) : '—'}</strong> sent</span>
+                                            <span><strong>{m ? dash(m.replied) : '—'}</strong> replied</span>
+                                            <span><strong>{m ? dash(m.meetings) : '—'}</strong> mtgs</span>
                                             <span><strong>{m ? dash(m.crmRecords) : '—'}</strong> CRM</span>
+                                            <span><strong>{m && m.revenue ? money(m.revenue) : '—'}</strong> rev.</span>
                                         </div>
                                         <button type="button" className="btn btn-ghost" onClick={() => setOpenLinks(open ? null : c.id)} disabled={!baseUrl}>
                                             {open ? 'Hide links' : 'Tracked links'}

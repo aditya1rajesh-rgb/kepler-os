@@ -21,7 +21,7 @@ const SUB_MODULES = [
     { id: 'saved', label: 'Saved' },
     { id: 'sequences', label: 'Sequences' },
 ];
-const SEQ_CONTEXT_PARAMS = ['campaign', 'brief', 'icp', 'step'];
+const SEQ_CONTEXT_PARAMS = ['campaign', 'brief', 'icp', 'step', 'list'];
 
 const Outreach = ({ workspaceId }) => {
     const { subModuleId } = useParams();
