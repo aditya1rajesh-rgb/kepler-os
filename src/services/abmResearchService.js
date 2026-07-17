@@ -76,9 +76,10 @@ export const abmResearchService = {
      * @returns {Promise<{ok:true, account, contacts, sources, modelUsed, apolloUsed:boolean, note?:string}
      *                   | {ok:false, error:string, errorKind?:string}>}
      */
-    researchAccount: async (workspaceId, { companyName = '', notes = '' } = {}) => {
+    researchAccount: async (workspaceId, { companyName = '', notes = '', website = '' } = {}) => {
         if (!workspaceId) return { ok: false, error: 'workspaceId is required' };
         const company = str(companyName, 200);
+        const site = str(website, 255);
         if (!company) return { ok: false, error: 'Enter a company name or website to research.' };
 
         // 0. Brand + ICP grounding (the analyst grades against OUR product, not a
@@ -103,7 +104,7 @@ export const abmResearchService = {
         let research;
         try {
             research = await callAI(
-                `${productBlock}\n\nResearch this company and assess its fit: ${company}${notes ? `\nExtra focus from the user: ${notes}` : ''}`,
+                `${productBlock}\n\nResearch this company and assess its fit: ${company}${site ? ` (website: ${site})` : ''}${notes ? `\nExtra focus from the user: ${notes}` : ''}`,
                 { ...AI_BASE, grounding: true, maxTokens: 2200, temperature: 0.4, systemPrompt: RESEARCH_SYSTEM },
             );
         } catch (err) {
@@ -125,7 +126,7 @@ export const abmResearchService = {
         } catch (err) {
             return { ok: false, error: `Could not structure the research: ${err.message}` };
         }
-        const account = normalizeAccount(structured?.content?.account, { companyName: company, sources });
+        const account = normalizeAccount(structured?.content?.account, { companyName: company, sources, website: site });
         const apolloQuery = normalizeApolloQuery(structured?.content?.apolloQuery, account);
 
         // 3. PULL (Apollo, optional). Degrades to research-only if not connected.

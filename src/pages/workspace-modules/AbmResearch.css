@@ -179,3 +179,27 @@
 @media (max-width: 640px) {
     .abm-account__head { flex-direction: column; }
 }
+
+/* ── Bulk research + Saved view ─────────────────────────────────────────── */
+.abm-bulk { display: flex; flex-direction: column; gap: 0.85rem; }
+.abm-bulk__paste { resize: vertical; min-height: 88px; font-family: inherit; }
+
+.abm-linkbtn {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--accent, #8b6cf0); font: inherit; text-decoration: underline;
+}
+
+/* CRM (Zoho) duplicate flag — distinct from the amber "needs email" flag. */
+.abm-flag--crm {
+    color: #60a5fa; background: rgba(96, 165, 250, 0.12); border-color: rgba(96, 165, 250, 0.3);
+}
+
+.abm-saved-module { display: flex; flex-direction: column; gap: 24px; }
+.abm-saved-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 0.35rem; }
+.abm-saved-open {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: inherit; font: inherit; text-align: left;
+    flex: 1 1 auto; min-width: 0;
+    display: flex; flex-direction: column; gap: 0.15rem;
+}
+.abm-saved-open:hover .prospect-row__name { text-decoration: underline; }

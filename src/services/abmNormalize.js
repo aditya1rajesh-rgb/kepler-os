@@ -41,7 +41,9 @@ export const normalizeAccount = (raw, ctx = {}) => {
     const a = raw && typeof raw === 'object' ? raw : {};
     return {
         companyName: str(a.companyName, 300) || str(ctx.companyName, 300),
-        domain: cleanDomain(a.domain),
+        // Prefer the model's domain; fall back to a caller-supplied website hint
+        // (e.g. the website column from an uploaded company list).
+        domain: cleanDomain(a.domain) || cleanDomain(ctx.website),
         tier: oneOf(a.tier, TIERS, ''),
         icpFit: oneOf(a.icpFit, ICP_FIT, ''),
         employeeSize: str(a.employeeSize, 60),

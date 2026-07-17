@@ -21,6 +21,11 @@ describe('normalizeAccount', () => {
         expect(a.status).toBe('researched');
     });
 
+    it('falls back to the caller website hint for the domain, but the model wins', () => {
+        expect(normalizeAccount({ domain: '' }, { website: 'https://acme.com/careers' }).domain).toBe('acme.com');
+        expect(normalizeAccount({ domain: 'real.io' }, { website: 'ignored.com' }).domain).toBe('real.io');
+    });
+
     it('normalizes tech signals to a bounded string array', () => {
         expect(normalizeAccount({ techSignals: ['Snowflake', '', 42] }).techSignals).toEqual(['Snowflake', '42']);
         expect(normalizeAccount({ techSignals: 'nope' }).techSignals).toEqual([]);

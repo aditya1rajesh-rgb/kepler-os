@@ -362,6 +362,40 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
         return { ok: true, result: { records: [...leads, ...contacts] } };
       }
 
+      if (String(params?.resource ?? "") === "contacts-all") {
+        // Bounded contact list for de-duplication (ABM). Zoho v7 pages at
+        // per_page<=200; cap total pages to protect the org's API-credit budget -
+        // very large CRMs are intentionally under-fetched rather than draining
+        // credits (a future server-side email search would cover them fully).
+        const MAX_PAGES = 5; // ~1000 most-recently-modified contacts
+        const all: Array<{ id: string; firstName: string; lastName: string; email: string; company: string }> = [];
+        for (let page = 1; page <= MAX_PAGES; page++) {
+          const r = await fetch(
+            `${at.api}/crm/v7/Contacts?fields=First_Name,Last_Name,Email,Account_Name&per_page=200&page=${page}&sort_by=Modified_Time&sort_order=desc`,
+            { headers: authHeaders },
+          );
+          if (r.status === 204) break;
+          const d = await r.json().catch(() => ({} as Record<string, unknown>));
+          if (!r.ok) {
+            if (page === 1) return { ok: false, error: (d as { message?: string })?.message || `Zoho fetch failed (${r.status}).` };
+            break; // a partial list is still useful for dedupe
+          }
+          const rows = (d as { data?: Array<Record<string, unknown>> })?.data ?? [];
+          for (const c of rows) {
+            const acct = c.Account_Name as { name?: string } | string | null | undefined;
+            all.push({
+              id: String(c.id ?? ""),
+              firstName: String(c.First_Name ?? ""),
+              lastName: String(c.Last_Name ?? ""),
+              email: String(c.Email ?? ""),
+              company: acct && typeof acct === "object" ? String(acct.name ?? "") : String(acct ?? ""),
+            });
+          }
+          if (!((d as { info?: { more_records?: boolean } })?.info?.more_records)) break;
+        }
+        return { ok: true, result: { items: all } };
+      }
+
       const res = await fetch(
         `${at.api}/crm/v7/Contacts?fields=First_Name,Last_Name,Email&per_page=50&sort_by=Modified_Time&sort_order=desc`,
         { headers: authHeaders },

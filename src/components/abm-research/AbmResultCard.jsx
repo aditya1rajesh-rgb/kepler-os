@@ -6,34 +6,21 @@ import RatingControl from '../ui/RatingControl';
 import { abmService } from '../../services/abmService';
 import { prospectsService } from '../../services/prospectsService';
 import { feedbackService } from '../../services/feedbackService';
+import { crmMatch } from '../../lib/crmDedupe';
+import { contactMatchKey as matchKey, toProspectInsert as toProspect } from '../../lib/abmContact';
 import { toUserMessage } from '../../lib/errors';
 
 // One completed research result: the account brief (classification) + a validated,
-// fit-scored contacts table. Self-contained - owns its own selection + save state
-// so the page is just a transcript of these cards. "Save to prospect list" is the
-// bridge into the existing outreach/CRM rails (prospects is the recipient spine).
+// fit-scored contacts table. Self-contained - owns its own selection + save state.
+// "Save to prospect list" is the bridge into the existing outreach/CRM rails.
+//   readOnly  - the account is already persisted (Saved view): hide "Save research".
+//   crmIndex  - when Zoho is connected, de-dupe: email match hides the row (toggle
+//               to reveal) + blocks save; name+company match flags but keeps it.
 
 const TIER_LABEL = { enterprise: 'Enterprise', 'mid-market': 'Mid-market', smb: 'SMB' };
 const fullName = (c) => [c.firstName, c.lastName].filter(Boolean).join(' ') || '(name pending)';
-// Index-free stable key: works on both abm contacts and mapped prospects so we
-// can match created prospects back to their abm_contact row for the backlink.
-const matchKey = (c) =>
-    c.externalId
-    || (c.email ? `e:${String(c.email).toLowerCase()}` : `n:${String(c.firstName).toLowerCase()}|${String(c.lastName).toLowerCase()}|${String(c.title).toLowerCase()}`);
 
-const toProspect = (c, account) => ({
-    firstName: c.firstName,
-    lastName: c.lastName,
-    title: c.title,
-    company: c.company || account.companyName,
-    email: c.email,
-    linkedinUrl: c.linkedinUrl,
-    location: '',
-    source: 'abm',
-    externalId: c.externalId,
-});
-
-const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
+const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmIndex = null }) => {
     const { account, contacts = [], sources = [], note } = result;
     const [selected, setSelected] = useState(() => new Set());
     const [savedKeys, setSavedKeys] = useState(() => new Set());
@@ -41,6 +28,15 @@ const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
     const [busy, setBusy] = useState('');
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
+    const [showDupes, setShowDupes] = useState(false);
+
+    // CRM de-dup: 'email' = confident (hidden by default + never saved); 'name' =
+    // flagged but kept (emails are sparse before enrichment).
+    const dupOf = (c) => crmMatch(c, crmIndex);
+    const emailDupeCount = crmIndex ? contacts.filter((c) => dupOf(c) === 'email').length : 0;
+    const visibleContacts = (crmIndex && !showDupes)
+        ? contacts.filter((c) => dupOf(c) !== 'email')
+        : contacts;
 
     const toggle = (key) => setSelected((prev) => {
         const n = new Set(prev);
@@ -48,10 +44,11 @@ const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
         return n;
     });
 
-    // Persist the account + all contacts once; returns the saved abm_contacts so
-    // callers can link them to prospects. Idempotent per card.
+    // Ensure the account + contacts are persisted; returns the abm_contacts rows
+    // (with ids) for the prospect backlink. In readOnly mode they already exist.
     const ensureSaved = async () => {
         if (savedRows) return savedRows;
+        if (readOnly) { setSavedRows(contacts); return contacts; }
         const { contacts: rows } = await abmService.saveResearch(workspaceId, { account, contacts });
         setSavedRows(rows);
         return rows;
@@ -68,7 +65,8 @@ const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
     };
 
     const saveToProspects = async () => {
-        const chosen = contacts.filter((c) => selected.has(matchKey(c)));
+        // Never push a confident CRM duplicate into the prospect list.
+        const chosen = contacts.filter((c) => selected.has(matchKey(c)) && dupOf(c) !== 'email');
         if (!chosen.length) { setError('Select at least one contact to save.'); return; }
         setBusy('prospects'); setError(''); setNotice('');
         try {
@@ -145,9 +143,11 @@ const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
                 meta={result.apolloUsed ? 'Pulled from Apollo, validated + scored against your ICP.' : 'Analyst-surfaced targets, scored against your ICP.'}
                 action={
                     <div className="module-toolbar module-toolbar--inline">
-                        <button type="button" className="btn btn-secondary" onClick={saveResearch} disabled={busy !== '' || savedRows !== null}>
-                            {savedRows ? <><Check size={15} strokeWidth={2.1} /> Saved</> : (busy === 'research' ? 'Saving…' : 'Save research')}
-                        </button>
+                        {!readOnly && (
+                            <button type="button" className="btn btn-secondary" onClick={saveResearch} disabled={busy !== '' || savedRows !== null}>
+                                {savedRows ? <><Check size={15} strokeWidth={2.1} /> Saved</> : (busy === 'research' ? 'Saving…' : 'Save research')}
+                            </button>
+                        )}
                         <button type="button" className="btn btn-primary" onClick={saveToProspects} disabled={busy !== '' || selectedCount === 0}>
                             {busy === 'prospects' ? 'Saving…' : `Save ${selectedCount || ''} to prospect list`}
                         </button>
@@ -156,11 +156,21 @@ const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
             />
 
             {note && <p className="abm-note">{note}</p>}
+            {emailDupeCount > 0 && (
+                <p className="abm-note">
+                    {emailDupeCount} contact{emailDupeCount === 1 ? '' : 's'} already in your Zoho CRM {showDupes ? 'shown' : 'hidden'}.{' '}
+                    <button type="button" className="abm-linkbtn" onClick={() => setShowDupes((v) => !v)}>
+                        {showDupes ? 'Hide' : 'Show'}
+                    </button>
+                </p>
+            )}
             {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
             {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
 
             {contacts.length === 0 ? (
                 <EmptyState message="No qualifying leadership contacts surfaced for this account." />
+            ) : visibleContacts.length === 0 ? (
+                <EmptyState message={`All ${contacts.length} contacts are already in your Zoho CRM.`} />
             ) : (
                 <div className="abm-table__scroll">
                     <div className="abm-table" role="table">
@@ -172,14 +182,15 @@ const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
                             <span className="abm-cell abm-cell--status" role="columnheader">Status</span>
                             <span className="abm-cell abm-cell--link" role="columnheader" />
                         </div>
-                        {contacts.map((c) => {
+                        {visibleContacts.map((c) => {
                             const key = matchKey(c);
                             const saved = savedKeys.has(key);
+                            const dup = dupOf(c);
                             const needsEmail = c.flags?.includes('needs-enrichment');
                             return (
                                 <div key={key} className="abm-table__row" role="row">
                                     <span className="abm-cell abm-cell--check" role="cell">
-                                        <input type="checkbox" checked={selected.has(key)} disabled={saved} onChange={() => toggle(key)} aria-label={`Select ${fullName(c)}`} />
+                                        <input type="checkbox" checked={selected.has(key)} disabled={saved || dup === 'email'} onChange={() => toggle(key)} aria-label={`Select ${fullName(c)}`} />
                                     </span>
                                     <span className="abm-cell abm-cell--name" role="cell">
                                         <span className="abm-contact__name">{fullName(c)}</span>
@@ -193,6 +204,10 @@ const AbmResultCard = ({ workspaceId, result, onFeedback }) => {
                                     <span className="abm-cell abm-cell--status" role="cell">
                                         {saved ? (
                                             <span className="abm-saved"><Check size={13} strokeWidth={2.2} /> Saved</span>
+                                        ) : dup === 'email' ? (
+                                            <span className="abm-flag abm-flag--crm" title="Already exists in your Zoho CRM">in Zoho</span>
+                                        ) : dup === 'name' ? (
+                                            <span className="abm-flag" title="A same-name contact may already exist in your Zoho CRM">possible dup</span>
                                         ) : needsEmail ? (
                                             <span className="abm-flag" title="No verified email - needs enrichment before email sends">needs email</span>
                                         ) : (
