@@ -15,6 +15,7 @@ import { campaignService } from '../../services/campaignService';
 import { feedbackService } from '../../services/feedbackService';
 import { integrationService } from '../../services/integrationService';
 import { channelHistoryService } from '../../services/channelHistoryService';
+import { eventService } from '../../services/eventService';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import { SOCIAL_PLATFORM_SPECS } from '../../lib/socialSpecs';
 import { WEEKDAY_LABELS, todayIso, monthCells, toIso } from '../../lib/calendarGrid';
@@ -230,6 +231,7 @@ const SocialMedia = ({ workspaceId }) => {
             const res = await integrationService.publish(workspaceId, provider, { ...payload, text });
             setPublished({ url: res?.postUrl || '' });
             setNotice(`Published to ${label}.`);
+            eventService.log(workspaceId, 'social.published', { title: `Published to ${label}`, entityType: 'social', meta: { provider, postUrl: res?.postUrl || '' } }).catch(() => {});
         } catch (err) {
             setError(toUserMessage(err, `Could not publish to ${label}.`));
         } finally {

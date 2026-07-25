@@ -25,7 +25,7 @@ const SetupRequired = ({ title, summary, requirements = [], workspaceId }) => {
               .filter((req) => !req.done && req.prereq && PREREQ_LINKS[req.prereq])
               .map((req) => ({
                   prereq: req.prereq,
-                  to: `${workspacePath(workspaceId, 'brand-intelligence')}?tab=${PREREQ_LINKS[req.prereq].tab}`,
+                  to: workspacePath(workspaceId, 'brand-intelligence', PREREQ_LINKS[req.prereq].tab),
                   label: PREREQ_LINKS[req.prereq].cta,
               }))
         : [];

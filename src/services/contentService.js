@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
 import { mapContentItemRow } from '../lib/mappers';
+import { eventService } from './eventService';
 
 const assertWorkspaceId = (workspaceId) => {
     if (!isUuid(workspaceId)) throw new Error('Invalid workspace id');
@@ -115,7 +116,9 @@ export const contentService = {
             .select()
             .maybeSingle();
         if (error) throw error;
-        return mapContentItemRow(data ?? insertPayload);
+        const mapped = mapContentItemRow(data ?? insertPayload);
+        eventService.log(workspaceId, 'content.created', { title: mapped.title || `New ${type} asset`, entityType: 'content', entityId: mapped.id }).catch(() => {});
+        return mapped;
     },
 
     /** Bulk create (e.g. seed the queue from a keyword research run). */
@@ -139,7 +142,9 @@ export const contentService = {
             .insert(rows)
             .select();
         if (error) throw error;
-        return (data ?? rows).map(mapContentItemRow);
+        const mapped = (data ?? rows).map(mapContentItemRow);
+        eventService.log(workspaceId, 'content.created', { title: `${mapped.length} ${type} draft${mapped.length === 1 ? '' : 's'} queued`, entityType: 'content', meta: { count: mapped.length } }).catch(() => {});
+        return mapped;
     },
 
     /** Update fields on an item (status transitions, payload writes, edits). */
@@ -163,7 +168,12 @@ export const contentService = {
             .select()
             .maybeSingle();
         if (error) throw error;
-        return data ? mapContentItemRow(data) : null;
+        if (!data) return null;
+        const mapped = mapContentItemRow(data);
+        if (patch.status === 'completed') {
+            eventService.log(workspaceId, 'content.completed', { title: mapped.title || 'Content completed', entityType: 'content', entityId: mapped.id }).catch(() => {});
+        }
+        return mapped;
     },
 
     /** Delete an item. */

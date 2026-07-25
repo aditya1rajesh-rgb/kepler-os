@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
+import { eventService } from './eventService';
 
 // Executable sequences (R1a — the bridge from generation to execution, §9.4).
 // A generated sequence is PROMOTED into `sequences` as a draft; the Approve
@@ -149,7 +150,9 @@ export const sequencesService = {
             .select('*')
             .single();
         if (error) throw error;
-        return mapRow(data);
+        const mapped = mapRow(data);
+        eventService.log(workspaceId, 'sequence.approved', { title: `${mapped.name || 'Sequence'} approved for sending`, entityType: 'sequence', entityId: mapped.id }).catch(() => {});
+        return mapped;
     },
 
     /** Pause stops all future sends for every enrollment on this sequence. */
