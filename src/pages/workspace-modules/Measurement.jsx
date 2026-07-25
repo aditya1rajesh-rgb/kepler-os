@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Check } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import EmptyState from '../../components/ui/EmptyState';
+import Ga4Panel from '../../components/measurement/Ga4Panel';
+import { getModule } from '../../constants/moduleRegistry';
+import { workspacePath } from '../../constants/routes';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { campaignService } from '../../services/campaignService';
 import { measurementService } from '../../services/measurementService';
@@ -17,7 +21,14 @@ const dash = (v) => (v === null || v === undefined ? '—' : fmt(v));
 const pct = (x) => `${Math.round((Number(x) || 0) * 100)}%`;
 const money = (n) => `$${new Intl.NumberFormat().format(Math.round(Number(n) || 0))}`;
 
+const MEASUREMENT = getModule('measurement');
+
+// Measurement is a two-screen parent: Performance (traffic → conversions → revenue,
+// attributed by UTM) and AI Visibility (AEO share of voice). State loads once at the
+// parent so the Performance strip can still surface the AI-share fact and link across.
 const Measurement = ({ workspaceId }) => {
+    const { subModuleId } = useParams();
+    const navigate = useNavigate();
     const { brand } = useWorkspaceConfig(workspaceId);
     const baseUrl = brand?.url || '';
 
@@ -140,11 +151,14 @@ const Measurement = ({ workspaceId }) => {
     );
     const lastPulled = Object.values(snapshots).map((s) => s.capturedAt).filter(Boolean).sort().pop();
 
-    return (
-        <div className="measurement-module module-kepler">
+    const active = MEASUREMENT.children.some((c) => c.id === subModuleId) ? subModuleId : MEASUREMENT.defaultChild;
+    const go = (id) => navigate(workspacePath(workspaceId, 'measurement', id));
+
+    const renderPerformance = () => (
+        <>
             <Panel>
                 <PanelHeader
-                    title="Measurement"
+                    title="Performance"
                     meta="Per-campaign outcomes, attributed via UTM. Ship the tracked links below and GA4 reports back here."
                     action={(
                         <button type="button" className="btn btn-primary" onClick={pull} disabled={pulling}>
@@ -155,7 +169,7 @@ const Measurement = ({ workspaceId }) => {
                 {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                 {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                 {!gaReady && (
-                    <p className="cockpit__intel-hint">Connect Google Analytics 4 and pick a property in <strong>Overview</strong> for the traffic/conversion rail.</p>
+                    <p className="cockpit__intel-hint">Connect Google Analytics 4 and pick a property in <strong>Integrations</strong> for the traffic/conversion rail.</p>
                 )}
                 {!zohoConnected && (
                     <p className="cockpit__intel-hint">Connect Zoho for the CRM lead rail — push a campaign-linked sequence from <strong>Outreach</strong> and it attributes back here.</p>
@@ -186,10 +200,10 @@ const Measurement = ({ workspaceId }) => {
                     <span className="cockpit__intel-value font-heading">{money(totals.revenue)}</span>
                     <span className="cockpit__intel-label">Revenue (won)</span>
                 </div>
-                <div className="cockpit__intel-fact">
+                <button type="button" className="cockpit__intel-fact measurement-fact-link" onClick={() => go('ai-visibility')} title="Open AI Visibility">
                     <span className="cockpit__intel-value font-heading">{visibility ? pct(visibility.shareOfVoice) : '—'}</span>
-                    <span className="cockpit__intel-label">AI share of voice</span>
-                </div>
+                    <span className="cockpit__intel-label">AI share of voice ↗</span>
+                </button>
                 <div className="cockpit__intel-fact">
                     <span className="cockpit__intel-value font-heading">{campaigns.length}</span>
                     <span className="cockpit__intel-label">Campaigns</span>
@@ -199,72 +213,6 @@ const Measurement = ({ workspaceId }) => {
                     <span className="cockpit__intel-label">Last pulled</span>
                 </div>
             </div>
-
-            <Panel className="module-panel">
-                <PanelHeader
-                    title="AI visibility (AEO)"
-                    meta="Share of voice when buyers ask AI assistants — ChatGPT, Claude, Perplexity & Google AI Overviews"
-                    action={(
-                        <div className="measurement-scan-actions">
-                            <button type="button" className="btn btn-primary" onClick={() => runScan(false)} disabled={scanning}>
-                                <RefreshCw size={15} strokeWidth={1.8} /> {scanning ? 'Scanning…' : 'Run visibility scan'}
-                            </button>
-                            <button type="button" className="btn btn-ghost" onClick={() => runScan(true)} disabled={scanning}>
-                                Run sample
-                            </button>
-                        </div>
-                    )}
-                />
-                {!visibility ? (
-                    <EmptyState message="No visibility scans yet. Run a scan to see whether AI assistants mention your brand when buyers ask category questions — connect providers for live data, or run a sample to preview the loop." />
-                ) : (
-                    <>
-                        {!visibility.hasReal && (
-                            <p className="brand-intel-module__source-label">
-                                Sample data — providers not connected yet. Connect Perplexity / ChatGPT / Claude for live measurement.
-                            </p>
-                        )}
-                        <div className="cockpit__intel-facts">
-                            <div className="cockpit__intel-fact">
-                                <span className="cockpit__intel-value font-heading">{pct(visibility.shareOfVoice)}</span>
-                                <span className="cockpit__intel-label">Share of voice</span>
-                            </div>
-                            <div className="cockpit__intel-fact">
-                                <span className="cockpit__intel-value font-heading">{pct(visibility.brandPresenceRate)}</span>
-                                <span className="cockpit__intel-label">Answer presence</span>
-                            </div>
-                            <div className="cockpit__intel-fact">
-                                <span className="cockpit__intel-value font-heading">{fmt(visibility.promptCount)}</span>
-                                <span className="cockpit__intel-label">Prompts tracked</span>
-                            </div>
-                            <div className="cockpit__intel-fact">
-                                <span className="cockpit__intel-value font-heading">{visibility.surfaces.length}</span>
-                                <span className="cockpit__intel-label">Surfaces</span>
-                            </div>
-                            <div className="cockpit__intel-fact">
-                                <span className="cockpit__intel-value font-heading">{visibility.capturedAt ? formatRelativeTime(visibility.capturedAt) : '—'}</span>
-                                <span className="cockpit__intel-label">Last scan</span>
-                            </div>
-                        </div>
-                        {visibility.perCompetitor?.length > 0 && (
-                            <ul className="measurement-list measurement-sov">
-                                <li className="measurement-row measurement-sov__row">
-                                    <span className="measurement-row__title">{brand?.name || 'Your brand'}</span>
-                                    <span className="measurement-sov__bar"><span className="measurement-sov__fill" style={{ width: pct(visibility.shareOfVoice) }} /></span>
-                                    <span className="measurement-sov__val">{pct(visibility.shareOfVoice)}</span>
-                                </li>
-                                {visibility.perCompetitor.map((c) => (
-                                    <li key={c.name} className="measurement-row measurement-sov__row">
-                                        <span className="measurement-row__title">{c.name}</span>
-                                        <span className="measurement-sov__bar"><span className="measurement-sov__fill measurement-sov__fill--comp" style={{ width: pct(c.share) }} /></span>
-                                        <span className="measurement-sov__val">{pct(c.share)}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </>
-                )}
-            </Panel>
 
             <Panel className="module-panel">
                 <PanelHeader title="Campaign performance" meta="Assets → sessions → conversions, matched by UTM" />
@@ -325,6 +273,82 @@ const Measurement = ({ workspaceId }) => {
                     </p>
                 )}
             </Panel>
+
+            <Ga4Panel workspaceId={workspaceId} />
+        </>
+    );
+
+    const renderAiVisibility = () => (
+        <Panel className="module-panel">
+            <PanelHeader
+                title="AI Visibility (AEO)"
+                meta="Share of voice when buyers ask AI assistants — ChatGPT, Claude, Perplexity & Google AI Overviews"
+                action={(
+                    <div className="measurement-scan-actions">
+                        <button type="button" className="btn btn-primary" onClick={() => runScan(false)} disabled={scanning}>
+                            <RefreshCw size={15} strokeWidth={1.8} /> {scanning ? 'Scanning…' : 'Run visibility scan'}
+                        </button>
+                        <button type="button" className="btn btn-ghost" onClick={() => runScan(true)} disabled={scanning}>
+                            Run sample
+                        </button>
+                    </div>
+                )}
+            />
+            {!visibility ? (
+                <EmptyState message="No visibility scans yet. Run a scan to see whether AI assistants mention your brand when buyers ask category questions — connect providers for live data, or run a sample to preview the loop." />
+            ) : (
+                <>
+                    {!visibility.hasReal && (
+                        <p className="brand-intel-module__source-label">
+                            Sample data — providers not connected yet. Connect Perplexity / ChatGPT / Claude for live measurement.
+                        </p>
+                    )}
+                    <div className="cockpit__intel-facts">
+                        <div className="cockpit__intel-fact">
+                            <span className="cockpit__intel-value font-heading">{pct(visibility.shareOfVoice)}</span>
+                            <span className="cockpit__intel-label">Share of voice</span>
+                        </div>
+                        <div className="cockpit__intel-fact">
+                            <span className="cockpit__intel-value font-heading">{pct(visibility.brandPresenceRate)}</span>
+                            <span className="cockpit__intel-label">Answer presence</span>
+                        </div>
+                        <div className="cockpit__intel-fact">
+                            <span className="cockpit__intel-value font-heading">{fmt(visibility.promptCount)}</span>
+                            <span className="cockpit__intel-label">Prompts tracked</span>
+                        </div>
+                        <div className="cockpit__intel-fact">
+                            <span className="cockpit__intel-value font-heading">{visibility.surfaces.length}</span>
+                            <span className="cockpit__intel-label">Surfaces</span>
+                        </div>
+                        <div className="cockpit__intel-fact">
+                            <span className="cockpit__intel-value font-heading">{visibility.capturedAt ? formatRelativeTime(visibility.capturedAt) : '—'}</span>
+                            <span className="cockpit__intel-label">Last scan</span>
+                        </div>
+                    </div>
+                    {visibility.perCompetitor?.length > 0 && (
+                        <ul className="measurement-list measurement-sov">
+                            <li className="measurement-row measurement-sov__row">
+                                <span className="measurement-row__title">{brand?.name || 'Your brand'}</span>
+                                <span className="measurement-sov__bar"><span className="measurement-sov__fill" style={{ width: pct(visibility.shareOfVoice) }} /></span>
+                                <span className="measurement-sov__val">{pct(visibility.shareOfVoice)}</span>
+                            </li>
+                            {visibility.perCompetitor.map((c) => (
+                                <li key={c.name} className="measurement-row measurement-sov__row">
+                                    <span className="measurement-row__title">{c.name}</span>
+                                    <span className="measurement-sov__bar"><span className="measurement-sov__fill measurement-sov__fill--comp" style={{ width: pct(c.share) }} /></span>
+                                    <span className="measurement-sov__val">{pct(c.share)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </>
+            )}
+        </Panel>
+    );
+
+    return (
+        <div className="measurement-module module-kepler">
+            {active === 'ai-visibility' ? renderAiVisibility() : renderPerformance()}
         </div>
     );
 };

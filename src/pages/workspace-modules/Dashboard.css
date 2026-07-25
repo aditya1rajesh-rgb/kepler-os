@@ -1,0 +1,514 @@
+/* Dashboard — reference-matched cockpit. Own .db-* namespace (Home keeps dashboard.css). */
+.db {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding-bottom: 8px;
+}
+
+/* Row 1 — greeting + actions */
+.db__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.db__hello {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.db__sub {
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.db__head-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* Shared card */
+.db-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card);
+    padding: 20px;
+}
+
+.db-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.db-card__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.db-card__head-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Row 2 — KPI grid */
+.db__kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.12fr);
+    gap: 16px;
+}
+
+.kpi {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 132px;
+}
+
+.kpi__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.kpi__label {
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.kpi__icon {
+    color: var(--text-dim);
+}
+
+.kpi__value {
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    margin: 14px 0 8px;
+}
+
+.kpi__foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.kpi__vs {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.kpi__empty {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.kpi__empty-msg {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+/* Trend pill */
+.trend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+}
+
+.trend-pill--up {
+    background: rgba(var(--positive-rgb), 0.12);
+    color: var(--positive);
+}
+
+.trend-pill--down {
+    background: rgba(var(--negative-rgb), 0.12);
+    color: var(--negative);
+}
+
+/* Spotlight card */
+.db-spotlight {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--highlight-grad);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+.db-spotlight::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(120% 100% at 100% 0%, rgba(255, 255, 255, 0.28), transparent 55%);
+    pointer-events: none;
+}
+
+.db-spotlight__corner {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    z-index: 1;
+    transition: background var(--t-fast);
+}
+
+.db-spotlight__corner:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.db-spotlight__icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+.db-spotlight__title {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.db-spotlight__body {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.db-spotlight__progress {
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.22);
+    overflow: hidden;
+}
+
+.db-spotlight__progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: #ffffff;
+}
+
+.db-spotlight__cta {
+    margin-top: auto;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Row 3 — chart + updates */
+.db__mid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.db-chart__dl {
+    padding: 6px 12px;
+}
+
+.db-chart__note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+/* Segmented control */
+.segmented {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+}
+
+.segmented__opt {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.segmented--sm .segmented__opt {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.segmented__opt:hover {
+    color: var(--text);
+}
+
+.segmented__opt--active {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+/* Latest Updates */
+.db-updates {
+    display: flex;
+    flex-direction: column;
+}
+
+.db-updates__search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.db-updates__input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.db-updates__input::placeholder {
+    color: var(--text-dim);
+}
+
+.db-updates__divider {
+    height: 1px;
+    margin: 8px 0;
+    border-top: 1px dashed var(--border-light);
+}
+
+.db-updates__list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+}
+
+.db-updates__row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 8px 6px;
+    border-radius: 9px;
+    transition: background var(--t-fast);
+}
+
+.db-updates__row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.db-updates__icon {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+}
+
+.db-updates__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.db-updates__title {
+    font-size: 13px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.db-updates__time {
+    font-size: 11.5px;
+    color: var(--text-dim);
+}
+
+.db-updates__loading {
+    padding: 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* Campaign table */
+.db-table__scroll {
+    overflow-x: auto;
+}
+
+.db-table__table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.db-table__table th {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+}
+
+.db-table__table td {
+    padding: 14px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.db-table__table tr:last-child td {
+    border-bottom: none;
+}
+
+.db-table__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.db-table__check-col {
+    width: 40px;
+}
+
+.db-table__id {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.db-table__name {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.db-table__chips {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.db-table__chip {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.db-table__filter {
+    position: relative;
+}
+
+.db-table__filter-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 20;
+    min-width: 160px;
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    background: var(--elevated);
+    box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+}
+
+.db-table__filter-opt {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 7px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: background var(--t-fast);
+}
+
+.db-table__filter-opt:hover,
+.db-table__filter-opt.is-active {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+}
+
+.db-table__loading {
+    padding: 16px 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+    .db__kpis {
+        grid-template-columns: 1fr 1fr;
+    }
+    .db-spotlight {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 1024px) {
+    .db__mid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 680px) {
+    .db__kpis {
+        grid-template-columns: 1fr;
+    }
+    .db__head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
