@@ -24,8 +24,13 @@
     flex-shrink: 0;
 }
 
+/* Collapsed: stack the logo and the expand button so the toggle stays reachable. */
 .sidebar__brand--collapsed {
-    padding: 0 8px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    height: auto;
+    padding: 14px 0 10px;
 }
 
 .sidebar__brand-cluster {
@@ -77,8 +82,10 @@
     color: var(--text);
 }
 
+/* Keep the toggle visible when collapsed — it becomes the expand button. */
 .sidebar--collapsed .sidebar__collapse-btn {
-    display: none;
+    width: 36px;
+    height: 32px;
 }
 
 /* Search field (opens the command palette) */
