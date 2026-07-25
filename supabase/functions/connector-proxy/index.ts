@@ -84,6 +84,8 @@ interface Adapter {
   push?: (creds: Creds, payload: Record<string, unknown>) => Promise<{ ok: boolean; result?: Record<string, unknown>; error?: string }>;
   // Optional: a consumption READ action (e.g. list CRM contacts to target).
   fetch?: (creds: Creds, params: Record<string, unknown>) => Promise<{ ok: boolean; result?: Record<string, unknown>; error?: string }>;
+  // Optional: a credit-based ENRICH action (e.g. Apollo reveals emails/phones).
+  enrich?: (creds: Creds, payload: Record<string, unknown>) => Promise<{ ok: boolean; result?: Record<string, unknown>; error?: string }>;
 }
 
 // ─── Zoho helpers (Self Client OAuth) ─────────────────────────────────────────
@@ -199,6 +201,55 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
         };
       });
       return { ok: true, result: { people, total: d?.pagination?.total_entries ?? d?.total_entries ?? people.length } };
+    },
+    // People Enrichment (credit-based): reveal emails/phones for up to 10 contacts
+    // per call via /people/bulk_match. reveal_personal_emails ~1 credit; phone
+    // reveal costs more and may arrive asynchronously on some plans - we read any
+    // synchronously-returned number and leave phone blank otherwise. Matches come
+    // back in input order, so the client maps result[i] -> prospect[i].
+    enrich: async (creds, payload) => {
+      const key = String(creds?.apiKey ?? "").trim();
+      if (!key) return { ok: false, error: "Missing Apollo API key." };
+      const contacts = Array.isArray(payload?.contacts) ? (payload.contacts as Array<Record<string, unknown>>).slice(0, 10) : [];
+      if (!contacts.length) return { ok: true, result: { matches: [] } };
+      const fields = (payload?.fields ?? {}) as { email?: boolean; phone?: boolean };
+      const details = contacts.map((c) => ({
+        id: c.externalId ? String(c.externalId) : undefined,
+        first_name: c.firstName ? String(c.firstName) : undefined,
+        last_name: c.lastName ? String(c.lastName) : undefined,
+        organization_name: c.company ? String(c.company) : undefined,
+        domain: c.domain ? String(c.domain) : undefined,
+        linkedin_url: c.linkedinUrl ? String(c.linkedinUrl) : undefined,
+        email: c.email ? String(c.email) : undefined,
+      }));
+      const body: Record<string, unknown> = { details };
+      if (fields.email !== false) body.reveal_personal_emails = true;
+      if (fields.phone) body.reveal_phone_number = true;
+      const res = await fetch("https://api.apollo.io/api/v1/people/bulk_match", {
+        method: "POST",
+        headers: { "X-Api-Key": key, "Content-Type": "application/json", "Cache-Control": "no-cache" },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, error: "Apollo rejected enrichment - it must be a MASTER API key." };
+      }
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) return { ok: false, error: `Apollo enrichment failed (${res.status}).` };
+      const matches = Array.isArray((data as { matches?: unknown[] }).matches)
+        ? (data as { matches: Array<Record<string, unknown> | null> }).matches
+        : [];
+      const result = contacts.map((c, i) => {
+        const m = matches[i] as Record<string, unknown> | null;
+        const rawEmail = String(m?.email ?? "");
+        const phones = Array.isArray(m?.phone_numbers) ? (m!.phone_numbers as Array<Record<string, unknown>>) : [];
+        const phone = phones.length ? String(phones[0]?.sanitized_number ?? phones[0]?.raw_number ?? "") : "";
+        return {
+          externalId: String(c.externalId ?? m?.id ?? ""),
+          email: rawEmail.includes("not_unlocked") ? "" : rawEmail,
+          phone,
+        };
+      });
+      return { ok: true, result: { matches: result } };
     },
   },
   zoho: {
@@ -530,6 +581,17 @@ Deno.serve(async (req: Request) => {
       if (!row?.credentials) return fail("Not connected", 400, base);
       const result = await adapter.fetch(row.credentials as Creds, (body.params ?? {}) as Record<string, unknown>);
       if (!result.ok) return fail(result.error || "Fetch failed.", 400, base);
+      return json({ ok: true, result: result.result ?? {} }, 200, base);
+    }
+
+    if (action === "enrich") {
+      const adapter = PROVIDER_ADAPTERS[provider];
+      if (!adapter?.enrich) return fail(`Connector "${provider}" does not support enrichment.`, 400, base);
+      const { data: row } = await svc.from("workspace_integrations")
+        .select("credentials").eq("workspace_id", workspaceId).eq("provider", provider).maybeSingle();
+      if (!row?.credentials) return fail("Not connected", 400, base);
+      const result = await adapter.enrich(row.credentials as Creds, (body.payload ?? {}) as Record<string, unknown>);
+      if (!result.ok) return fail(result.error || "Enrichment failed.", 400, base);
       return json({ ok: true, result: result.result ?? {} }, 200, base);
     }
 

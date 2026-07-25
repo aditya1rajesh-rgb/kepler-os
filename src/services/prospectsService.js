@@ -13,6 +13,7 @@ const mapRow = (r) => ({
     title: r.title ?? '',
     company: r.company ?? '',
     email: r.email ?? '',
+    phone: r.phone ?? '',
     linkedinUrl: r.linkedin_url ?? '',
     location: r.location ?? '',
     source: r.source ?? 'apollo',
@@ -92,6 +93,27 @@ export const prospectsService = {
             .eq('workspace_id', workspaceId)
             .in('id', ids);
         if (error) throw error;
+    },
+
+    /**
+     * Persist enriched email/phone back onto prospects after an Apollo reveal.
+     * updates = [{ id, email?, phone? }]. Requires migration 029 (phone/enriched_at).
+     * One write per row (values differ); partial failures don't sink the batch.
+     */
+    updateEnrichment: async (workspaceId, updates = []) => {
+        assertWorkspaceId(workspaceId);
+        const rows = (updates ?? []).filter((u) => isUuid(u.id) && (u.email || u.phone));
+        if (!rows.length) return 0;
+        const stamp = new Date().toISOString();
+        const results = await Promise.all(rows.map((u) => {
+            const patch = { enriched_at: stamp };
+            if (u.email) patch.email = String(u.email).slice(0, 320);
+            if (u.phone) patch.phone = String(u.phone).slice(0, 60);
+            return supabase.from('prospects').update(patch)
+                .eq('workspace_id', workspaceId).eq('id', u.id)
+                .then(({ error }) => (error ? 0 : 1), () => 0);
+        }));
+        return results.reduce((a, b) => a + b, 0);
     },
 };
 

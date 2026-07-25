@@ -95,7 +95,9 @@ export const prospectListsService = {
         assertWorkspaceId(workspaceId);
         const { data, error } = await supabase
             .from('prospect_list_members')
-            .select('id, prospect:prospects(id, first_name, last_name, title, company, email, linkedin_url, location, external_id, status)')
+            // select * on the prospect so the phone column (migration 029) is picked
+            // up automatically once applied, without erroring before it exists.
+            .select('id, prospect:prospects(*)')
             .eq('workspace_id', workspaceId)
             .eq('list_id', listId)
             .order('created_at', { ascending: false });

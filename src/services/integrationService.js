@@ -148,6 +148,10 @@ export const integrationService = {
     // Consumption READ - list records from a connected provider (e.g. Zoho contacts).
     fetchFromConnector: (workspaceId, provider, params = {}) =>
         callEdgeFunction('connector-proxy', { action: 'fetch', provider, workspaceId, params }, { timeoutMs: 30000 }),
+    // Consumption ENRICH - reveal emails/phones for a batch of contacts (Apollo
+    // bulk_match). payload = { contacts:[{externalId,firstName,lastName,...}], fields }.
+    enrichContacts: (workspaceId, provider, payload) =>
+        callEdgeFunction('connector-proxy', { action: 'enrich', provider, workspaceId, payload }, { timeoutMs: 45000 }),
 
     // Disconnect routes by the connector's auth style: OAuth → oauth-proxy,
     // api-key → connector-proxy.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Trash2, Check, Send } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import Tabs from '../../components/ui/Tabs';
 import EmptyState from '../../components/ui/EmptyState';
 import SelectionBar from '../../components/ui/SelectionBar';
 import AbmResultCard from '../../components/abm-research/AbmResultCard';
@@ -41,6 +42,7 @@ const AbmSaved = ({ workspaceId }) => {
     const [notice, setNotice] = useState('');
     const [lists, setLists] = useState([]);
     const [addListOpen, setAddListOpen] = useState(false);
+    const [view, setView] = useState('accounts'); // accounts | prospects | lists — one at a time, no long scroll
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -154,9 +156,20 @@ const AbmSaved = ({ workspaceId }) => {
 
     return (
         <div className="abm-saved-module module-kepler">
+            <Tabs
+                tabs={[
+                    { id: 'accounts', label: `Accounts · ${accounts?.length ?? 0}` },
+                    { id: 'prospects', label: `Prospects · ${prospects.length}` },
+                    { id: 'lists', label: `Lists · ${lists.length}` },
+                ]}
+                activeTab={view}
+                onTabChange={setView}
+                variant="kepler"
+            />
+            {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+            {view === 'accounts' && (
             <Panel className="module-panel">
                 <PanelHeader title={`Saved accounts${accounts?.length ? ` · ${accounts.length}` : ''}`} meta="Researched accounts — click to reopen the brief and contacts." />
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                 {accounts === null || loadingDetail ? (
                     <EmptyState loading message="Loading…" />
                 ) : accounts.length === 0 ? (
@@ -177,7 +190,8 @@ const AbmSaved = ({ workspaceId }) => {
                     </ul>
                 )}
             </Panel>
-
+            )}
+            {view === 'prospects' && (
             <Panel className="module-panel">
                 <PanelHeader
                     title={`Prospect list${prospects.length ? ` · ${prospects.length}` : ''}`}
@@ -230,9 +244,10 @@ const AbmSaved = ({ workspaceId }) => {
                     </>
                 )}
             </Panel>
-
+            )}
+            {view === 'lists' && (
             <Panel className="module-panel">
-                <PanelHeader title={`Lists${lists.length ? ` · ${lists.length}` : ''}`} meta="Named audiences — target one when building a sequence." />
+                <PanelHeader title={`Lists${lists.length ? ` · ${lists.length}` : ''}`} meta="Named audiences — open one to view contacts, export, and enrich." />
                 {lists.length === 0 ? (
                     <EmptyState message="No lists yet. Select prospects above and “Add to list”." />
                 ) : (
@@ -267,6 +282,7 @@ const AbmSaved = ({ workspaceId }) => {
                     </ul>
                 )}
             </Panel>
+            )}
 
             <AddToListModal
                 workspaceId={workspaceId}
