@@ -11,42 +11,51 @@
     padding: 0 24px;
 }
 
-/* Search */
-.header__search {
-    position: relative;
-    width: 100%;
-    max-width: 28rem;
-}
-
-.header__search-icon {
-    pointer-events: none;
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--kepler-muted);
-}
-
-.header__search-input {
-    width: 100%;
+/* Hamburger — mobile only (the sidebar becomes an overlay ≤1024px) */
+.header__mobile-nav {
+    display: none;
+    width: 36px;
     height: 36px;
-    padding: 0 12px 0 36px;
+    align-items: center;
+    justify-content: center;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background-color: var(--kepler-panel);
-    font-size: 13px;
-    color: var(--kepler-text);
-    outline: none;
-    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    color: var(--text-muted);
+    margin-right: 4px;
 }
 
-.header__search-input::placeholder {
-    color: var(--kepler-muted);
+.header__mobile-nav:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
 }
 
-.header__search-input:focus {
-    border-color: rgba(117, 70, 232, 0.5);
-    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+@media (max-width: 1024px) {
+    .header__mobile-nav {
+        display: flex;
+    }
+}
+
+/* Page title + breadcrumb (single nav surface is the sidebar) */
+.header__title-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    line-height: 1.15;
+}
+
+.header__crumb {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-dim);
+}
+
+.header__title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Right utility cluster */
@@ -77,14 +86,15 @@
     color: var(--kepler-text);
 }
 
-.header__notification-dot {
+.header__chip-dot {
     position: absolute;
-    right: 8px;
-    top: 8px;
-    width: 6px;
-    height: 6px;
+    right: 7px;
+    top: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background-color: var(--kepler-accent-3);
+    background-color: var(--negative);
+    border: 2px solid var(--surface);
 }
 
 .header__divider {
@@ -116,7 +126,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background-color: rgba(117, 70, 232, 0.18);
+    background-color: rgba(var(--accent-rgb), 0.18);
     font-size: 12px;
     font-weight: 600;
     color: var(--kepler-accent-2);
@@ -136,7 +146,7 @@
 }
 
 .header__chip-btn.is-active {
-    border-color: rgba(117, 70, 232, 0.5);
+    border-color: rgba(var(--accent-rgb), 0.5);
     color: var(--kepler-text);
 }
 
@@ -150,16 +160,10 @@
     padding: 10px;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(18, 19, 31, 0.98);
+    background: rgba(18, 19, 23, 0.98);
     backdrop-filter: blur(20px) saturate(135%);
     -webkit-backdrop-filter: blur(20px) saturate(135%);
     box-shadow: 0 18px 44px -20px rgba(0, 0, 0, 0.8);
-}
-
-.header__search-panel {
-    left: 0;
-    right: 0;
-    width: auto;
 }
 
 .header__panel--right {
@@ -219,49 +223,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.header__help-list {
-    list-style: none;
-    margin: 4px 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.header__help-item {
-    display: flex;
-    gap: 10px;
-    padding: 6px 8px;
-}
-
-.header__help-num {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    font-size: 11px;
-    font-weight: 600;
-    color: #d3c6fa;
-    background: rgba(117, 70, 232, 0.18);
-    border: 1px solid rgba(170, 150, 248, 0.35);
-}
-
-.header__help-title {
-    display: block;
-    font-size: 13px;
-    color: var(--kepler-text);
-}
-
-.header__help-desc {
-    display: block;
-    margin-top: 2px;
-    font-size: 12px;
-    line-height: 1.4;
-    color: var(--kepler-muted);
 }
 
 .header__user-menu {

@@ -14,6 +14,7 @@ import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import GoogleOAuthCallback from './pages/GoogleOAuthCallback';
 import ProfilePage from './pages/ProfilePage';
+import HelpCenterPage from './pages/HelpCenterPage';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
 import DataDeletion from './pages/legal/DataDeletion';
@@ -99,6 +100,11 @@ function App() {
                   <Route path="profile" element={
                     <ErrorBoundary>
                       <ProfilePage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="help" element={
+                    <ErrorBoundary>
+                      <HelpCenterPage />
                     </ErrorBoundary>
                   } />
                   <Route

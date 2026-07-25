@@ -1,207 +1,173 @@
-import { createContext, useMemo } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
-    Home,
-    LayoutDashboard,
-    TrendingUp,
-    Target,
-    Telescope,
     Search,
-    Megaphone,
-    Send,
-    AtSign,
-    FolderOpen,
-    Lock,
+    ChevronDown,
     PanelLeftClose,
     PanelLeft,
-    ChevronsUpDown,
 } from '../../lib/icons';
-import { workspacePath } from '../../constants/routes';
+import {
+    NAV_SECTIONS,
+    MODULES,
+    parseWorkspaceLocation,
+    getParentOf,
+} from '../../constants/moduleRegistry';
 import { useActiveWorkspaceId } from '../../hooks/useActiveWorkspaceId';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useActivation } from '../../context/ActivationContext';
-import { isModuleLocked, MODULE_GATES, nextStepModuleId } from '../../lib/activation';
-import { workspaceService } from '../../services/workspaceService';
+import { nextStepModuleId } from '../../lib/activation';
+import { clientState } from '../../lib/clientState';
+import SidebarNavItem from './SidebarNavItem';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
 import './Sidebar.css';
 
-export const SidebarContext = createContext({ collapsed: false });
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
-const Sidebar = ({ collapsed, onToggle }) => {
-    const navigate = useNavigate();
+const Sidebar = ({ collapsed, onToggle, onOpenPalette }) => {
+    const location = useLocation();
     const workspaceId = useActiveWorkspaceId();
     const { workspaces, getWorkspaceById } = useWorkspace();
     const { readiness, activation } = useActivation();
+
     const effectiveWorkspaceId = workspaceId ?? (workspaces[0]?.id ? String(workspaces[0].id) : null);
     const currentWorkspace = effectiveWorkspaceId ? getWorkspaceById(effectiveWorkspaceId) : null;
+
     const nextModuleId = nextStepModuleId(activation);
+    const nextParentId = nextModuleId ? getParentOf(nextModuleId)?.id : null;
 
-    const navItems = useMemo(
-        () => {
-            const items = [
-                { label: 'Home', path: '/', icon: Home, end: true },
-            ];
+    // Active node from the URL (the sidebar sits outside the routed element).
+    const loc = parseWorkspaceLocation(location.pathname);
+    const activeModuleId = loc?.moduleId ?? null;
+    const activeSubModuleId = loc?.subModuleId ?? null;
 
-            if (effectiveWorkspaceId) {
-                const mods = [
-                    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-                    { id: 'measurement', label: 'Measurement', icon: TrendingUp },
-                    { id: 'brand-intelligence', label: 'Brand Intelligence', icon: Telescope },
-                    { id: 'campaigns', label: 'Campaigns', icon: Target },
-                    { id: 'seo-aeo', label: 'SEO & AEO', icon: Search },
-                    { id: 'ad-campaigns', label: 'Ad Campaigns', icon: Megaphone },
-                    { id: 'outreach', label: 'Outreach', icon: Send },
-                    { id: 'social-media', label: 'Social Media', icon: AtSign },
-                    { id: 'library', label: 'Library', icon: FolderOpen },
-                ];
+    // Per-section collapse (persisted). Default: all expanded.
+    const [sectionState, setSectionState] = useState(() => clientState.getNavSectionState());
+    const toggleSection = (id) => {
+        setSectionState((prev) => {
+            const next = { ...prev, [id]: prev[id] === false ? true : false };
+            clientState.setNavSectionState(next);
+            return next;
+        });
+    };
+    const isSectionOpen = (id) => sectionState[id] !== false;
 
-                mods.forEach((mod) => {
-                    const locked = isModuleLocked(mod.id, readiness);
-                    items.push({
-                        label: mod.label,
-                        path: workspacePath(effectiveWorkspaceId, mod.id),
-                        icon: mod.icon,
-                        locked,
-                        isNext: mod.id === nextModuleId,
-                        lockHint: locked ? MODULE_GATES[mod.id]?.unmetLabel : undefined,
-                    });
-                });
-            }
+    // Per-parent expand. Auto-expand the parent that contains the active route.
+    const activeParentId = activeModuleId && getParentOf(activeSubModuleId)?.id === activeModuleId
+        ? activeModuleId
+        : (MODULES.find((m) => m.id === activeModuleId && m.children)?.id ?? null);
+    const [expandedParents, setExpandedParents] = useState(() => new Set(activeParentId ? [activeParentId] : []));
 
-            return items;
-        },
-        [effectiveWorkspaceId, readiness, nextModuleId]
-    );
+    useEffect(() => {
+        if (activeParentId) {
+            setExpandedParents((prev) => (prev.has(activeParentId) ? prev : new Set(prev).add(activeParentId)));
+        }
+    }, [activeParentId]);
 
-    const handleWorkspaceChange = async (event) => {
-        const nextId = event.target.value;
-        await workspaceService.setActiveWorkspaceId(nextId);
-        navigate(workspacePath(nextId));
+    const toggleExpand = (id) => {
+        setExpandedParents((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
     };
 
-    const workspaceInitials = (currentWorkspace?.name ?? 'WS').slice(0, 2).toUpperCase();
+    const sections = useMemo(
+        () => NAV_SECTIONS.map((section) => ({
+            ...section,
+            modules: MODULES.filter((m) => m.section === section.id),
+        })),
+        []
+    );
 
     return (
         <aside className={`sidebar kepler-shell ${collapsed ? 'sidebar--collapsed' : ''}`}>
             <div className={`sidebar__brand ${collapsed ? 'sidebar__brand--collapsed' : ''}`}>
-                <div className="sidebar__brand-cluster">
-                    <div className="sidebar__brand-badge">
+                <Link to="/" className="sidebar__brand-cluster" title="All workspaces">
+                    <span className="sidebar__brand-badge">
                         <img src="/kepler-logo.png" alt="KEPLER" className="sidebar__brand-badge-mark" />
-                    </div>
-                    {!collapsed && (
-                        <div className="sidebar__brand-text">
-                            <span className="sidebar__wordmark font-heading">KEPLER</span>
-                        </div>
-                    )}
-                </div>
-                {!collapsed && (
-                    <button
-                        type="button"
-                        className="sidebar__collapse-btn"
-                        onClick={onToggle}
-                        aria-label="Collapse sidebar"
-                    >
-                        <PanelLeftClose size={16} strokeWidth={1.6} />
-                    </button>
-                )}
+                    </span>
+                    {!collapsed && <span className="sidebar__wordmark font-heading">KEPLER</span>}
+                </Link>
+                <button
+                    type="button"
+                    className="sidebar__collapse-btn"
+                    onClick={onToggle}
+                    aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                    {collapsed ? <PanelLeft size={16} strokeWidth={1.6} /> : <PanelLeftClose size={16} strokeWidth={1.6} />}
+                </button>
             </div>
 
-            {collapsed && (
-                <div className="sidebar__expand">
-                    <button
-                        type="button"
-                        className="sidebar__expand-btn"
-                        onClick={onToggle}
-                        aria-label="Expand sidebar"
-                    >
-                        <PanelLeft size={16} strokeWidth={1.6} />
-                    </button>
-                </div>
-            )}
+            <div className="sidebar__search-wrap">
+                <button
+                    type="button"
+                    className={`sidebar__search ${collapsed ? 'sidebar__search--collapsed' : ''}`}
+                    onClick={() => onOpenPalette?.()}
+                    title={collapsed ? 'Search' : undefined}
+                >
+                    <Search size={16} strokeWidth={1.7} className="sidebar__search-icon" />
+                    {!collapsed && (
+                        <>
+                            <span className="sidebar__search-text">Search…</span>
+                            <kbd className="sidebar__search-kbd">{isMac ? '⌘' : 'Ctrl'} K</kbd>
+                        </>
+                    )}
+                </button>
+            </div>
 
             <nav className="sidebar__nav">
-                {!collapsed && (
-                    <p className="sidebar__nav-heading">Workspace</p>
-                )}
-                <ul className="sidebar__nav-list">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                            <li key={item.path}>
-                                <NavLink
-                                    to={item.path}
-                                    end={item.end}
-                                    className={({ isActive }) =>
-                                        [
-                                            'sidebar__item',
-                                            isActive ? 'sidebar__item--active kepler-nav-active' : '',
-                                            item.isNext ? 'sidebar__item--next' : '',
-                                            collapsed ? 'sidebar__item--collapsed' : '',
-                                        ].filter(Boolean).join(' ')
-                                    }
-                                    title={collapsed ? item.label : (item.lockHint || undefined)}
+                {sections.map((section) => {
+                    const open = isSectionOpen(section.id);
+                    return (
+                        <div key={section.id} className="sidebar__section">
+                            {!collapsed ? (
+                                <button
+                                    type="button"
+                                    className="sidebar__section-header"
+                                    onClick={() => toggleSection(section.id)}
+                                    aria-expanded={open}
                                 >
-                                    <Icon
-                                        className="sidebar__item-icon"
-                                        size={18}
-                                        strokeWidth={1.6}
+                                    <span className="sidebar__section-label">{section.label}</span>
+                                    <ChevronDown
+                                        className={`sidebar__section-chevron ${open ? '' : 'sidebar__section-chevron--closed'}`}
+                                        size={13}
+                                        strokeWidth={2}
                                     />
-                                    {!collapsed && (
-                                        <span className="sidebar__item-label">{item.label}</span>
-                                    )}
-                                    {!collapsed && item.locked && (
-                                        <Lock className="sidebar__item-lock" size={13} strokeWidth={1.8} />
-                                    )}
-                                    {!collapsed && item.isNext && (
-                                        <span className="sidebar__item-next-dot" aria-hidden="true" />
-                                    )}
-                                </NavLink>
-                            </li>
-                        );
-                    })}
-                </ul>
+                                </button>
+                            ) : (
+                                <div className="sidebar__section-divider" aria-hidden="true" />
+                            )}
+
+                            {(open || collapsed) && (
+                                <ul className="sidebar__section-items">
+                                    {section.modules.map((mod) => (
+                                        <SidebarNavItem
+                                            key={mod.id}
+                                            module={mod}
+                                            workspaceId={effectiveWorkspaceId}
+                                            collapsed={collapsed}
+                                            readiness={readiness}
+                                            nextModuleId={nextModuleId}
+                                            nextParentId={nextParentId}
+                                            activeModuleId={activeModuleId}
+                                            activeSubModuleId={activeSubModuleId}
+                                            expanded={expandedParents.has(mod.id)}
+                                            onToggleExpand={toggleExpand}
+                                        />
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    );
+                })}
             </nav>
 
             <div className="sidebar__footer">
-                {!collapsed && workspaces.length > 1 ? (
-                    <label className="sidebar__workspace-switcher">
-                        <div className="sidebar__workspace-avatar">
-                            <span className="font-heading">{workspaceInitials}</span>
-                        </div>
-                        <div className="sidebar__workspace-info">
-                            <select
-                                className="sidebar__workspace-select"
-                                value={effectiveWorkspaceId ?? ''}
-                                onChange={handleWorkspaceChange}
-                                aria-label="Switch workspace"
-                            >
-                                {workspaces.map((ws) => (
-                                    <option key={ws.id} value={ws.id}>
-                                        {ws.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <span className="sidebar__ws-plan">Active workspace</span>
-                        </div>
-                        <ChevronsUpDown className="sidebar__workspace-chevron" size={16} strokeWidth={1.6} />
-                    </label>
-                ) : (
-                    <div className={`sidebar__workspace-switcher ${collapsed ? 'sidebar__workspace-switcher--collapsed' : ''}`}>
-                        <div className="sidebar__workspace-avatar">
-                            <span className="font-heading">{workspaceInitials}</span>
-                        </div>
-                        {!collapsed && (
-                            <>
-                                <div className="sidebar__workspace-info">
-                                    <span className="sidebar__ws-name">
-                                        {currentWorkspace?.name ?? 'Workspace'}
-                                    </span>
-                                    <span className="sidebar__ws-plan">Active workspace</span>
-                                </div>
-                                <ChevronsUpDown className="sidebar__workspace-chevron" size={16} strokeWidth={1.6} />
-                            </>
-                        )}
-                    </div>
-                )}
+                <WorkspaceSwitcher
+                    workspaces={workspaces}
+                    currentWorkspace={currentWorkspace}
+                    collapsed={collapsed}
+                />
             </div>
         </aside>
     );

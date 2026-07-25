@@ -130,6 +130,16 @@ const Campaigns = ({ workspaceId }) => {
         return () => { cancelled = true; };
     }, [workspaceId]);
 
+    // Palette / deep-link "New campaign": ?new=1 opens the conversational intake once.
+    useEffect(() => {
+        if (searchParams.get('new') === '1') {
+            setShowIntake(true);
+            const next = new URLSearchParams(searchParams);
+            next.delete('new');
+            setSearchParams(next, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
     // Load / refresh the detail campaign when ?campaign changes (e.g. returning
     // from a specialist that generated a step). No-op in list view.
     useEffect(() => {
