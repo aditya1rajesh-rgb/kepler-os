@@ -7,11 +7,11 @@
     border-radius: 8px;
     margin-bottom: 16px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(117, 70, 232, 0.06);
+    background: rgba(var(--accent-rgb), 0.06);
 }
 
 .population-banner--running {
-    border-color: rgba(117, 70, 232, 0.25);
+    border-color: rgba(var(--accent-rgb), 0.25);
 }
 
 .population-banner--success {
@@ -42,8 +42,8 @@
     height: 12px;
     margin-right: 8px;
     vertical-align: -1px;
-    border: 2px solid rgba(117, 70, 232, 0.3);
-    border-top-color: rgba(117, 70, 232, 0.9);
+    border: 2px solid rgba(var(--accent-rgb), 0.3);
+    border-top-color: rgba(var(--accent-rgb), 0.9);
     border-radius: 50%;
     animation: population-banner-spin 0.7s linear infinite;
 }

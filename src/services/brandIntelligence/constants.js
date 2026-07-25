@@ -21,8 +21,8 @@ export const SOURCE_PRIORITY = [
 
 /** Known onboarding default palette - not promoted as confirmed brand colours. */
 export const ONBOARDING_DEFAULT_PALETTE = [
-    '#6666ff',
-    '#b9b8ff',
+    '#4a6cf7',
+    '#9db1fb',
     '#b9f0d7',
     '#ffffff',
 ];

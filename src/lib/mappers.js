@@ -6,7 +6,7 @@ export const mapWorkspaceRow = (row) => ({
     url: row.url ?? '',
     tagline: row.tagline ?? '',
     industry: row.industry ?? 'Consumer Brand',
-    logoColor: row.logo_color ?? '#6666ff',
+    logoColor: row.logo_color ?? '#4a6cf7',
     brandColors: row.brand_colors ?? [],
     lastActiveModule: row.last_active_module ?? 'Brand Intelligence',
     brandIntelStatus: row.brand_intel_status ?? 0,
@@ -202,6 +202,6 @@ export const toWorkspaceInsert = (data) => ({
     url: data.url ?? '',
     tagline: data.tagline ?? '',
     industry: data.industry ?? 'Consumer Brand',
-    logo_color: data.logoColor ?? '#6666ff',
-    brand_colors: data.brandColors ?? ['#6666ff', '#b9b8ff', '#b9f0d7', '#ffffff'],
+    logo_color: data.logoColor ?? '#4a6cf7',
+    brand_colors: data.brandColors ?? ['#4a6cf7', '#9db1fb', '#b9f0d7', '#ffffff'],
 });

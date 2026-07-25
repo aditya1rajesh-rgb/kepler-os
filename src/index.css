@@ -1,58 +1,66 @@
-/* Type system: Manrope everywhere — single family, hierarchy by weight
-   (H1/.font-display 800, H2/.font-heading/.font-section 700, body 400). */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap');
+/* Type system: Inter everywhere — single family, hierarchy by weight
+   (H1/.font-display 700, H2/.font-heading/.font-section 700, body 400).
+   Font loaded via <link> in index.html (not @import — avoids serial fetch). */
 
 :root {
-  /* === KEPLER OS DESIGN SYSTEM v2 === */
+  /* === KEPLER OS DESIGN SYSTEM v3 — reference-blue === */
 
-  /* Surfaces - clean solid-black canvas; depth lives on cards only */
-  --bg: #0a0a0c;
-  --surface: #101015;
-  --card: #12131f;
-  --card-hover: #141520;
-  --elevated: #16172a;
+  /* Surfaces - neutral near-black canvas; depth lives on cards only */
+  --bg: #0a0b0d;
+  --surface: #0e0f12;
+  --card: #121317;
+  --card-hover: #16171c;
+  --elevated: #1a1b21;
 
-  /* Borders */
-  --border: #1e1f2e;
-  --border-light: #2a2b3d;
+  /* Borders - hairline white per reference */
+  --border: rgba(255, 255, 255, 0.07);
+  --border-light: rgba(255, 255, 255, 0.12);
 
   /* Text */
-  --text: #f0f0f6;
-  --text-secondary: #e5e7eb;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
+  --text: #f2f3f5;
+  --text-secondary: #d5d7dd;
+  --text-muted: #9aa0ab;
+  --text-dim: #6c7280;
 
-  /* Accent - dual-purple system (Majorelle primary signal, Persian Indigo deep anchor) */
-  --accent: #7546e8;
-  --accent-deep: #2d1c7f;
-  --accent-text: #b7a6f3;
-  --accent-glow: rgba(117, 70, 232, 0.5);
-  --highlight-grad: linear-gradient(140deg, #9a6bff 0%, #7546e8 44%, #2a1670 100%);
-  --card-grad: linear-gradient(160deg, #24263a 0%, #15151f 52%, #0b0b11 100%);
+  /* Accent - indigo-blue system (reference north star) */
+  --accent: #4a6cf7;
+  --accent-rgb: 74, 108, 247;          /* enables rgba(var(--accent-rgb), x) */
+  --accent-hover: #5f7df8;
+  --accent-deep: #2436a8;
+  --accent-text: #9db1fb;
+  --accent-glow: rgba(74, 108, 247, 0.5);
+  --highlight-grad: linear-gradient(140deg, #6d8bff 0%, #4a6cf7 44%, #1f2e86 100%);
+  --card-grad: linear-gradient(160deg, #1b1c22 0%, #131418 52%, #0b0c0e 100%);
 
   /* Semantic */
-  --mint: #7ee0a8;
-  --error: #f87171;
+  --positive: #34d399;
+  --positive-rgb: 52, 211, 153;
+  --negative: #f65a5a;
+  --negative-rgb: 246, 90, 90;
+  --mint: var(--positive);             /* compat alias */
+  --error: var(--negative);            /* compat alias */
 
-  /* KEPLER brand tokens (aligned with kepler-os-dashboard) */
-  --kepler-base: #0c0c16;
-  --kepler-surface: #0d0f1a;
-  --kepler-panel: rgba(18, 19, 31, 0.72);
-  --kepler-elevated: rgba(22, 23, 42, 0.82);
-  --kepler-border: rgba(255, 255, 255, 0.08);
-  --kepler-border-strong: rgba(255, 255, 255, 0.14);
-  --kepler-text: #f0f0f6;
-  --kepler-muted: #9ca3af;
-  --kepler-accent: #7546e8;
-  --kepler-accent-2: #b7a6f3;
-  --kepler-accent-3: #7ee0a8;
-  --kepler-accent-deep: #2d1c7f;
+  /* KEPLER glass tokens — COLLAPSED to aliases of the core set.
+     Deprecated as an independent namespace: keep translucency for glass
+     materials, but all colors resolve through the tokens above. */
+  --kepler-base: var(--bg);
+  --kepler-surface: var(--surface);
+  --kepler-panel: rgba(18, 19, 23, 0.72);
+  --kepler-elevated: rgba(26, 27, 33, 0.82);
+  --kepler-border: var(--border);
+  --kepler-border-strong: var(--border-light);
+  --kepler-text: var(--text);
+  --kepler-muted: var(--text-muted);
+  --kepler-accent: var(--accent);
+  --kepler-accent-2: var(--accent-text);
+  --kepler-accent-3: var(--positive);
+  --kepler-accent-deep: var(--accent-deep);
 
-  /* Typography - font stacks */
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;      /* body + H3 (400) */
-  --font-heading: 'Manrope', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
-  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;   /* H1 hero (800) */
-  --font-section: 'Manrope', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
+  /* Typography - font stacks (Inter single family) */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;      /* body + H3 (400) */
+  --font-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;   /* H1 hero (700) */
+  --font-section: 'Inter', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
   --font-mono: ui-monospace, 'SF Mono', monospace;
 
   /* Spacing */
@@ -69,10 +77,11 @@
   --r-sm: 4px;
   --r-md: 6px;
   --r-lg: 8px;
+  --r-card: 16px;
 
   /* Sidebar widths */
-  --sidebar-expanded: 240px;
-  --sidebar-collapsed: 56px;
+  --sidebar-expanded: 260px;
+  --sidebar-collapsed: 60px;
   --sidebar-width: var(--sidebar-expanded);
 
   /* Shell chrome */
@@ -166,7 +175,7 @@ h6 {
 
 .font-display {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 700;
   text-transform: capitalize;
 }
 
@@ -207,14 +216,14 @@ button:disabled {
 .btn-primary {
   background: linear-gradient(
     180deg,
-    #8f66f0 0%,
-    #7546e8 100%
+    #6d8bff 0%,
+    #4a6cf7 100%
   );
   color: #ffffff;
-  border: 1px solid rgba(160, 140, 245, 0.5);
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-    0 6px 18px -8px rgba(117, 70, 232, 0.7);
+    0 6px 18px -8px rgba(var(--accent-rgb), 0.7);
   transition:
     background 0.15s ease,
     box-shadow 0.15s ease,
@@ -223,10 +232,10 @@ button:disabled {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #9b76f4 0%, #6a3ce0 100%);
+  background: linear-gradient(180deg, #7d97ff 0%, #3a56d4 100%);
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
-    0 8px 22px -8px rgba(117, 70, 232, 0.85);
+    0 8px 22px -8px rgba(var(--accent-rgb), 0.85);
 }
 
 .btn-primary:active:not(:disabled) {

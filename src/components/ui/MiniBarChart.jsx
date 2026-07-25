@@ -24,8 +24,8 @@ const MiniBarChart = ({ data = [], highlightIndex = -1, className = '' }) => {
         >
             <defs>
                 <linearGradient id="mbc-hi" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#9b7cf2" />
-                    <stop offset="1" stopColor="#7546e8" />
+                    <stop offset="0" stopColor="#6d8bff" />
+                    <stop offset="1" stopColor="#4a6cf7" />
                 </linearGradient>
             </defs>
             {data.map((d, i) => {
@@ -45,7 +45,7 @@ const MiniBarChart = ({ data = [], highlightIndex = -1, className = '' }) => {
                             fill={hi ? 'url(#mbc-hi)' : 'rgba(255,255,255,0.13)'}
                         />
                         {hi && d.value > 0 && (
-                            <text x={x + barW / 2} y={y - 8} textAnchor="middle" fontSize="12" fontWeight="600" fill="#e9e5fb">
+                            <text x={x + barW / 2} y={y - 8} textAnchor="middle" fontSize="12" fontWeight="600" fill="#e6ecff">
                                 {d.value}
                             </text>
                         )}

@@ -61,8 +61,8 @@
     padding: 2px 7px;
     border-radius: 999px;
     color: #d3c6fa;
-    background: rgba(117, 70, 232, 0.18);
-    border: 1px solid rgba(170, 150, 248, 0.3);
+    background: rgba(var(--accent-rgb), 0.18);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
 }
 
 .targeting-why {
@@ -161,7 +161,7 @@
 }
 
 .platform-pill.active {
-    border-color: rgba(117, 70, 232, 0.45);
+    border-color: rgba(var(--accent-rgb), 0.45);
 }
 
 .budget-slider-labels {
@@ -194,7 +194,7 @@
 }
 
 .tree-node.campaign {
-    border: 1px solid rgba(117, 70, 232, 0.35);
+    border: 1px solid rgba(var(--accent-rgb), 0.35);
 }
 
 .tree-nodes-row {

@@ -36,7 +36,7 @@
     display: block;
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--accent, #7546e8), var(--accent-soft, #b9b8ff));
+    background: linear-gradient(90deg, var(--accent, #4a6cf7), var(--accent-soft, #9db1fb));
     transition: width 0.5s ease;
 }
 

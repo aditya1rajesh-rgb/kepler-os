@@ -1,4 +1,10 @@
 import { workspacePath } from '../constants/routes';
+import { MODULE_GATES, isNavNodeLocked } from '../constants/moduleRegistry';
+
+// Gates + locking now live in the module registry (single source of truth). Re-exported
+// here so existing callers (Sidebar, Workspace, SetupRequired) keep their imports.
+export { MODULE_GATES };
+export const isModuleLocked = (moduleId, readiness = {}) => isNavNodeLocked(moduleId, readiness);
 
 /**
  * Activation state - the single "where is this workspace on the path to value" model.
@@ -20,7 +26,7 @@ const buildNextAction = (stepId, workspaceId) => {
                 label: 'Build your brand profile',
                 description: 'Add your website or a file to auto-build it - or fill it in manually.',
                 cta: 'Open Brand Intelligence',
-                to: `${workspacePath(workspaceId, 'brand-intelligence')}?tab=overview`,
+                to: workspacePath(workspaceId, 'brand-intelligence', 'overview'),
             };
         case 'icp':
             return {
@@ -28,7 +34,7 @@ const buildNextAction = (stepId, workspaceId) => {
                 label: 'Confirm your first ICP',
                 description: 'Choose who you sell to - it unlocks SEO, Ads and Outreach.',
                 cta: 'Add an ICP',
-                to: `${workspacePath(workspaceId, 'brand-intelligence')}?tab=audience`,
+                to: workspacePath(workspaceId, 'brand-intelligence', 'audience'),
             };
         case 'generate':
             return {
@@ -74,25 +80,6 @@ export const deriveActivation = ({ readiness = {}, contentTotal = 0, workspaceId
         : buildNextAction(steps[currentStepIndex].id, workspaceId);
 
     return { steps, currentStepIndex, isActivated, completedCount, progress, nextAction };
-};
-
-/**
- * Per-module gate metadata - maps a module to the readiness flag that unlocks it
- * (mirrors deriveReadiness) plus the human-readable "how to unlock" hint used by
- * nav lock cues and SetupRequired. Modules absent here (overview, brand-intelligence)
- * are never locked.
- */
-export const MODULE_GATES = {
-    'seo-aeo': { key: 'seoReady', unmetLabel: 'Add brand context + an ICP to unlock' },
-    'ad-campaigns': { key: 'adsReady', unmetLabel: 'Add brand context + an ICP to unlock' },
-    outreach: { key: 'outreachReady', unmetLabel: 'Add an ICP to unlock' },
-    'social-media': { key: 'socialReady', unmetLabel: 'Add brand context to unlock' },
-};
-
-export const isModuleLocked = (moduleId, readiness = {}) => {
-    const gate = MODULE_GATES[moduleId];
-    if (!gate) return false;
-    return !readiness[gate.key];
 };
 
 /** The module a given activation step routes into (for "Start here" nav cues). */

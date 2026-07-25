@@ -18,6 +18,46 @@
     gap: 4px;
 }
 
+/* Connectors-moved pointer card */
+.profile__pointer {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+}
+
+.profile__pointer-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent-text);
+}
+
+.profile__pointer-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile__pointer-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.profile__pointer-text {
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.profile__pointer-cta {
+    flex-shrink: 0;
+}
+
 .profile__title {
     font-size: 30px;
     font-weight: 500;

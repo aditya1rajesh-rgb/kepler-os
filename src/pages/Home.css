@@ -203,7 +203,7 @@
 }
 
 .home-activity-btn:focus-visible {
-    outline: 2px solid rgba(117, 70, 232, 0.8);
+    outline: 2px solid rgba(var(--accent-rgb), 0.8);
     outline-offset: 1px;
 }
 
@@ -279,8 +279,8 @@
 }
 
 .home-workspaces-search:focus {
-    border-color: rgba(117, 70, 232, 0.5);
-    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35);
 }
 
 .home-workspace-grid {

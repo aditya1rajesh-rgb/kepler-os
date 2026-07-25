@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
 import { mapCampaignRow, mapContentItemRow, toCampaignInsert } from '../lib/mappers';
+import { eventService } from './eventService';
 
 const assertWorkspaceId = (workspaceId) => {
     if (!isUuid(workspaceId)) throw new Error('Invalid workspace id');
@@ -59,7 +60,9 @@ export const campaignService = {
             .select()
             .maybeSingle();
         if (error) throw error;
-        return mapCampaignRow(data ?? insert);
+        const mapped = mapCampaignRow(data ?? insert);
+        eventService.log(workspaceId, 'campaign.created', { title: mapped.title || 'New campaign', entityType: 'campaign', entityId: mapped.id }).catch(() => {});
+        return mapped;
     },
 
     /** Patch title/goal/status/campaignType/plan on a campaign. */
@@ -80,7 +83,12 @@ export const campaignService = {
             .select()
             .maybeSingle();
         if (error) throw error;
-        return data ? mapCampaignRow(data) : null;
+        if (!data) return null;
+        const mapped = mapCampaignRow(data);
+        if (patch.status === 'completed') {
+            eventService.log(workspaceId, 'campaign.completed', { title: `${mapped.title || 'Campaign'} completed`, entityType: 'campaign', entityId: mapped.id }).catch(() => {});
+        }
+        return mapped;
     },
 
     /**
@@ -102,6 +110,15 @@ export const campaignService = {
         let nextStatus;
         if (allSettled && campaign.status === 'active') nextStatus = 'completed';
         else if (!allSettled && campaign.status === 'completed') nextStatus = 'active';
+
+        if (stepPatch.status === 'done') {
+            const step = nextSteps.find((s) => s.id === stepId);
+            eventService.log(workspaceId, 'campaign.step_done', {
+                title: `${step?.title || 'Step'} done · ${campaign.title || 'campaign'}`,
+                entityType: 'campaign',
+                entityId: campaignId,
+            }).catch(() => {});
+        }
 
         return campaignService.updateCampaign(workspaceId, campaignId, {
             plan,

@@ -5,7 +5,7 @@
 const FALLBACK = {
     bg: '#16162a',
     text: '#f5f5fa',
-    accent: '#7546e8',
+    accent: '#4a6cf7',
     muted: 'rgba(245,245,250,0.7)',
 };
 

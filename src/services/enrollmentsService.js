@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
+import { eventService } from './eventService';
 
 // Enrollments: one prospect × one sequence — the scheduler's work queue.
 // Client-side checks here (email present, not suppressed, no duplicates) are a
@@ -90,7 +91,11 @@ export const enrollmentsService = {
             })))
             .select('id');
         if (error) throw error;
-        return { enrolled: (data ?? []).length, skipped };
+        const enrolled = (data ?? []).length;
+        if (enrolled > 0) {
+            eventService.log(workspaceId, 'sequence.enrolled', { title: `${enrolled} prospect${enrolled === 1 ? '' : 's'} enrolled`, entityType: 'sequence', entityId: sequenceId, meta: { count: enrolled } }).catch(() => {});
+        }
+        return { enrolled, skipped };
     },
 
     list: async (workspaceId, { sequenceId = null } = {}) => {
@@ -159,6 +164,7 @@ export const enrollmentsService = {
             .eq('workspace_id', workspaceId)
             .eq('id', id);
         if (error) throw error;
+        eventService.log(workspaceId, 'outreach.meeting', { title: 'Meeting booked from outreach', entityType: 'enrollment', entityId: id }).catch(() => {});
     },
 };
 

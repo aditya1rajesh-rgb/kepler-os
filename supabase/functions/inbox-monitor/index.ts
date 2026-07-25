@@ -161,6 +161,13 @@ Deno.serve(async (req: Request) => {
             throw rErr;
           }
 
+          // Surface a genuine reply on the dashboard feed (best-effort; never blocks).
+          if (kind === "reply") {
+            await svc.from("workspace_events").insert({
+              workspace_id: anchor.workspaceId, kind: "outreach.reply", title: "New reply from a prospect", entity_type: "enrollment", entity_id: anchor.enrollmentId,
+            }).then(() => {}, () => {});
+          }
+
           const { data: enrollment } = await svc.from("enrollments")
             .select("id, status, next_send_at").eq("id", anchor.enrollmentId).maybeSingle();
           const t = transitionFor(kind, enrollment ?? null, now);

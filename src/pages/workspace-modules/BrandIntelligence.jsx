@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { workspacePath } from '../../constants/routes';
 import { useActivation } from '../../context/ActivationContext';
-import Tabs from '../../components/ui/Tabs';
 import Panel from '../../components/ui/Panel';
 import UploadZone from '../../components/ui/UploadZone';
 import { brandService } from '../../services/brandService';
@@ -118,8 +117,11 @@ const SUB_TABS = [
 ];
 
 const BrandIntelligence = ({ workspaceId, workspace }) => {
-    const [subTab, setSubTab] = useState('overview');
-    const [searchParams] = useSearchParams();
+    // The active screen is the URL's :subModuleId (the 5 Brand Intelligence screens
+    // are real destinations now, not local tab state). The resolver guarantees a valid
+    // child, but default defensively.
+    const { subModuleId } = useParams();
+    const subTab = SUB_TABS.some((t) => t.id === subModuleId) ? subModuleId : 'overview';
     const navigate = useNavigate();
     const { refresh: refreshActivation } = useActivation();
     const [loading, setLoading] = useState(true);
@@ -215,14 +217,6 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
     useEffect(() => {
         if (!editing) setDraft(brandData);
     }, [brandData, editing]);
-
-    // Deep-link support: ?tab=audience (etc.) opens that subtab on load.
-    useEffect(() => {
-        const tab = searchParams.get('tab');
-        if (tab && SUB_TABS.some((t) => t.id === tab)) {
-            setSubTab(tab);
-        }
-    }, [searchParams]);
 
     const isLiveEmptyBrand =
         !brandData.overview &&
@@ -1169,10 +1163,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
             {loading ? (
                 <p className="brand-intel-module__loading">Loading brand intelligence…</p>
             ) : (
-                <>
-                    <Tabs tabs={SUB_TABS} activeTab={subTab} onTabChange={setSubTab} variant="kepler" />
-                    <Panel className="module-panel">{renderSubContent()}</Panel>
-                </>
+                <Panel className="module-panel">{renderSubContent()}</Panel>
             )}
         </div>
     );

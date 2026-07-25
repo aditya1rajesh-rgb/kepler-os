@@ -127,8 +127,8 @@
 .campaigns__channel-chip {
     font-size: 11px;
     color: var(--accent-text);
-    background: rgba(117, 70, 232, 0.12);
-    border: 1px solid rgba(117, 70, 232, 0.28);
+    background: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-rgb), 0.28);
     padding: 2px 8px;
     border-radius: 6px;
 }
@@ -138,8 +138,8 @@
     font-weight: 600;
     letter-spacing: 0.03em;
     color: var(--accent-text);
-    background: rgba(117, 70, 232, 0.14);
-    border: 1px solid rgba(170, 150, 248, 0.3);
+    background: rgba(var(--accent-rgb), 0.14);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
     padding: 3px 9px;
     border-radius: 6px;
 }
@@ -444,7 +444,7 @@
 
 .campaigns__viewtoggle button.is-active {
     color: var(--text);
-    background: rgba(117, 70, 232, 0.2);
+    background: rgba(var(--accent-rgb), 0.2);
 }
 
 .campaigns__viewtoggle button:hover:not(.is-active) {
@@ -538,7 +538,7 @@
 }
 
 .campaigns__cal-cell.is-today {
-    border-color: rgba(170, 150, 248, 0.4);
+    border-color: rgba(var(--accent-rgb), 0.4);
 }
 
 .campaigns__cal-daynum {
@@ -556,15 +556,15 @@
     padding: 3px 6px;
     border-radius: 6px;
     color: var(--accent-text);
-    background: rgba(117, 70, 232, 0.14);
-    border: 1px solid rgba(117, 70, 232, 0.28);
+    background: rgba(var(--accent-rgb), 0.14);
+    border: 1px solid rgba(var(--accent-rgb), 0.28);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     transition: background var(--t-fast);
 }
 
-.campaigns__cal-chip:hover { background: rgba(117, 70, 232, 0.24); }
+.campaigns__cal-chip:hover { background: rgba(var(--accent-rgb), 0.24); }
 
 .campaigns__cal-chip--done {
     color: var(--mint);
@@ -662,8 +662,8 @@
 }
 
 .campaigns__type-tile.is-active {
-    border-color: rgba(170, 150, 248, 0.55);
-    background: rgba(117, 70, 232, 0.12);
+    border-color: rgba(var(--accent-rgb), 0.55);
+    background: rgba(var(--accent-rgb), 0.12);
 }
 
 .campaigns__type-tile-label {

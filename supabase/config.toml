@@ -24,3 +24,8 @@ verify_jwt = false
 
 [functions.inbox-monitor]
 verify_jwt = false
+
+# metrics-snapshot is invoked daily by pg_cron (migration 028); same shared-secret
+# auth as the schedulers above.
+[functions.metrics-snapshot]
+verify_jwt = false

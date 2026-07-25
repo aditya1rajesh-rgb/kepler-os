@@ -25,7 +25,7 @@
 
 .legal__wordmark {
     font-family: var(--font-heading, inherit);
-    font-weight: 800;
+    font-weight: 700;
     font-size: 1.15rem;
     letter-spacing: -0.02em;
     color: var(--kepler-text, #ece9f5);
@@ -60,14 +60,14 @@
     letter-spacing: 0.14em;
     font-size: 0.72rem;
     font-weight: 600;
-    color: var(--kepler-accent, #8a7cf0);
+    color: var(--kepler-accent, #4a6cf7);
     margin: 0 0 0.7rem;
 }
 
 .legal__title {
     font-family: var(--font-heading, inherit);
     font-size: clamp(1.9rem, 5vw, 2.7rem);
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: -0.025em;
     line-height: 1.08;
     margin: 0 0 0.6rem;
@@ -115,7 +115,7 @@
 }
 
 .legal__body a {
-    color: var(--kepler-accent, #8a7cf0);
+    color: var(--kepler-accent, #4a6cf7);
 }
 
 .legal__body strong {

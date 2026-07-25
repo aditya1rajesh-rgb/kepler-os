@@ -1,0 +1,66 @@
+.bar-chart {
+    position: relative;
+    width: 100%;
+}
+
+.bar-chart__svg {
+    display: block;
+    overflow: visible;
+}
+
+.bar-chart__grid {
+    stroke: var(--border);
+}
+
+.bar-chart__guide {
+    stroke: rgba(var(--accent-rgb), 0.6);
+}
+
+.bar-chart__ytick,
+.bar-chart__xtick {
+    fill: var(--text-dim);
+    font-size: 11px;
+    font-family: var(--font-sans);
+}
+
+.bar-chart__bar {
+    transition: fill var(--t-fast);
+}
+
+.bar-chart__dot {
+    fill: var(--accent);
+    stroke: #ffffff;
+    stroke-width: 2.5;
+}
+
+.bar-chart__tooltip {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    pointer-events: none;
+    min-width: 128px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    background: var(--elevated);
+    box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
+    z-index: 2;
+}
+
+.bar-chart__tip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.bar-chart__tip-k {
+    color: var(--text-muted);
+}
+
+.bar-chart__tip-v {
+    color: var(--text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

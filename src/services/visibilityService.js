@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
 import { getBrandContextForGeneration } from './brandContextService';
 import { mapVisibilityScanRow } from '../lib/mappers';
+import { eventService } from './eventService';
 import {
     SURFACE_IDS,
     buildBuyerPrompts,
@@ -135,6 +136,11 @@ export const visibilityService = {
         }
 
         const counts = inserts.reduce((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a; }, { ok: 0, stub: 0, mock: 0, error: 0 });
+        eventService.log(workspaceId, 'aeo.scanned', {
+            title: `AI visibility scan · ${prompts.length} prompts`,
+            entityType: 'visibility',
+            meta: { shareOfVoice, promptCount: prompts.length },
+        }).catch(() => {});
         return { scanRunId, promptCount: prompts.length, surfaces, counts, shareOfVoice };
     },
 
