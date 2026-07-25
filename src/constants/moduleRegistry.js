@@ -57,6 +57,7 @@ export const MODULES = [
         children: [
             { id: 'abm', label: 'ABM Research' },
             { id: 'prospecting', label: 'Prospecting' },
+            { id: 'lists', label: 'Lists' },
             { id: 'saved', label: 'Saved' },
             { id: 'sequences', label: 'Sequences' },
         ],

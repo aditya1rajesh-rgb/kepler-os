@@ -30,6 +30,11 @@ const mapMember = (r) => {
         title: p.title ?? '',
         company: p.company ?? '',
         email: p.email ?? '',
+        // phone is added by the enrichment migration (029); until then it's blank.
+        phone: p.phone ?? '',
+        location: p.location ?? '',
+        externalId: p.external_id ?? '',
+        status: p.status ?? '',
         linkedinUrl: p.linkedin_url ?? '',
     };
 };
@@ -90,7 +95,7 @@ export const prospectListsService = {
         assertWorkspaceId(workspaceId);
         const { data, error } = await supabase
             .from('prospect_list_members')
-            .select('id, prospect:prospects(id, first_name, last_name, title, company, email, linkedin_url)')
+            .select('id, prospect:prospects(id, first_name, last_name, title, company, email, linkedin_url, location, external_id, status)')
             .eq('workspace_id', workspaceId)
             .eq('list_id', listId)
             .order('created_at', { ascending: false });

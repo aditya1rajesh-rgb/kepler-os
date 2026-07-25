@@ -3,6 +3,7 @@ import OutreachSequences from '../../components/outreach/OutreachSequences';
 import Prospecting from './Prospecting';
 import AbmResearch from './AbmResearch';
 import AbmSaved from './AbmSaved';
+import OutreachLists from './OutreachLists';
 import { getModule } from '../../constants/moduleRegistry';
 import '../../styles/module-kepler.css';
 import './Outreach.css';
@@ -22,6 +23,7 @@ const Outreach = ({ workspaceId }) => {
             <div className="outreach-shell__screen">
                 {active === 'abm' && <AbmResearch workspaceId={workspaceId} />}
                 {active === 'prospecting' && <Prospecting workspaceId={workspaceId} />}
+                {active === 'lists' && <OutreachLists workspaceId={workspaceId} />}
                 {active === 'saved' && <AbmSaved workspaceId={workspaceId} />}
                 {active === 'sequences' && <OutreachSequences workspaceId={workspaceId} />}
             </div>

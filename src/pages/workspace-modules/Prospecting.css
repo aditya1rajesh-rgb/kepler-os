@@ -24,6 +24,16 @@
     background: var(--surface-2, rgba(255, 255, 255, 0.02));
 }
 
+.prospect-row--clickable {
+    cursor: pointer;
+    transition: border-color var(--t-fast), background-color var(--t-fast);
+}
+
+.prospect-row--clickable:hover {
+    border-color: var(--accent);
+    background: var(--card-hover);
+}
+
 .prospect-row__main {
     display: flex;
     flex-direction: column;

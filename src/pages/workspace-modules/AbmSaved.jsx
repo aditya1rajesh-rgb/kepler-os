@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, Check } from '../../lib/icons';
+import { ArrowLeft, Trash2, Check, Send } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import EmptyState from '../../components/ui/EmptyState';
 import SelectionBar from '../../components/ui/SelectionBar';
@@ -237,20 +237,33 @@ const AbmSaved = ({ workspaceId }) => {
                     <EmptyState message="No lists yet. Select prospects above and “Add to list”." />
                 ) : (
                     <ul className="prospect-list">
-                        {lists.map((l) => (
-                            <li key={l.id} className="prospect-row">
-                                <div className="prospect-row__main">
-                                    <span className="prospect-row__name">{l.name}</span>
-                                    <span className="prospect-row__sub">{l.memberCount} prospect{l.memberCount === 1 ? '' : 's'}</span>
-                                </div>
-                                <div className="prospect-row__actions">
-                                    <button type="button" className="btn btn-secondary" onClick={() => navigate(`${workspacePath(workspaceId, 'outreach', 'sequences')}?list=${l.id}`)}>
-                                        Build sequence
-                                    </button>
-                                    <button type="button" className="btn btn-ghost" onClick={() => deleteList(l.id)} title="Delete list"><Trash2 size={15} strokeWidth={1.8} /></button>
-                                </div>
-                            </li>
-                        ))}
+                        {lists.map((l) => {
+                            const openList = () => navigate(`${workspacePath(workspaceId, 'outreach', 'lists')}?listId=${l.id}`);
+                            return (
+                                <li
+                                    key={l.id}
+                                    className="prospect-row prospect-row--clickable"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={openList}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') openList(); }}
+                                >
+                                    <div className="prospect-row__main">
+                                        <span className="prospect-row__name">{l.name}</span>
+                                        <span className="prospect-row__sub">{l.memberCount} prospect{l.memberCount === 1 ? '' : 's'}</span>
+                                    </div>
+                                    <div className="prospect-row__actions">
+                                        <button type="button" className="btn btn-secondary" onClick={(e) => { e.stopPropagation(); openList(); }}>
+                                            Open
+                                        </button>
+                                        <button type="button" className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); navigate(`${workspacePath(workspaceId, 'outreach', 'sequences')}?list=${l.id}`); }} title="Build sequence">
+                                            <Send size={15} strokeWidth={1.8} />
+                                        </button>
+                                        <button type="button" className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); deleteList(l.id); }} title="Delete list"><Trash2 size={15} strokeWidth={1.8} /></button>
+                                    </div>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </Panel>
