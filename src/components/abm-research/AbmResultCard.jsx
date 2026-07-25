@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Check } from '../../lib/icons';
+import { ExternalLink, Check, Download } from '../../lib/icons';
 import { PanelHeader } from '../ui/Panel';
 import EmptyState from '../ui/EmptyState';
 import RatingControl from '../ui/RatingControl';
@@ -8,21 +8,31 @@ import { prospectsService } from '../../services/prospectsService';
 import { feedbackService } from '../../services/feedbackService';
 import { crmMatch } from '../../lib/crmDedupe';
 import { contactMatchKey as matchKey, toProspectInsert as toProspect } from '../../lib/abmContact';
+import { buildReportHtml, openReport } from '../../lib/abmReport';
 import { toUserMessage } from '../../lib/errors';
 
 // One completed research result: the account brief (classification) + a validated,
-// fit-scored contacts table. Self-contained - owns its own selection + save state.
-// "Save to prospect list" is the bridge into the existing outreach/CRM rails.
-//   readOnly  - the account is already persisted (Saved view): hide "Save research".
-//   crmIndex  - when Zoho is connected, de-dupe: email match hides the row (toggle
-//               to reveal) + blocks save; name+company match flags but keeps it.
+// fit-scored contacts table. Selection is controlled by the parent when `selected`
+// is passed (so a "select all" across cards works + a shared "Add to list"), and
+// falls back to internal state when used standalone (Saved view). "Save research"
+// persists the account; "Save N to prospect list" is the per-card bridge; the parent
+// SelectionBar drives the cross-card "Add to list". A "Download report" opens a
+// print-ready page. crmIndex de-dupes contacts already in Zoho.
 
 const TIER_LABEL = { enterprise: 'Enterprise', 'mid-market': 'Mid-market', smb: 'SMB' };
 const fullName = (c) => [c.firstName, c.lastName].filter(Boolean).join(' ') || '(name pending)';
 
-const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmIndex = null }) => {
+const AbmResultCard = ({
+    workspaceId, result, onFeedback, readOnly = false, crmIndex = null,
+    entryId = 'x', workspaceName = '',
+    selected = null, onToggleContact, onToggleCardAll, onDeselect,
+}) => {
     const { account, contacts = [], sources = [], note } = result;
-    const [selected, setSelected] = useState(() => new Set());
+    // Controlled selection when the parent passes `selected`; else internal.
+    const [localSel, setLocalSel] = useState(() => new Set());
+    const sel = selected ?? localSel;
+    const selKey = (c) => `${entryId}::${matchKey(c)}`;
+
     const [savedKeys, setSavedKeys] = useState(() => new Set());
     const [savedRows, setSavedRows] = useState(null); // persisted abm_contacts (with ids)
     const [busy, setBusy] = useState('');
@@ -38,18 +48,32 @@ const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmI
         ? contacts.filter((c) => dupOf(c) !== 'email')
         : contacts;
 
-    const toggle = (key) => setSelected((prev) => {
-        const n = new Set(prev);
-        if (n.has(key)) n.delete(key); else n.add(key);
-        return n;
-    });
+    const toggleOne = (c) => {
+        const k = selKey(c);
+        if (onToggleContact) { onToggleContact(k); return; }
+        setLocalSel((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+    };
 
-    // Ensure the account + contacts are persisted; returns the abm_contacts rows
-    // (with ids) for the prospect backlink. In readOnly mode they already exist.
+    // Selectable = visible, not already saved this session, not a confident CRM dup.
+    const selectableKeys = visibleContacts
+        .filter((c) => !savedKeys.has(matchKey(c)) && dupOf(c) !== 'email')
+        .map(selKey);
+    const allCardSelected = selectableKeys.length > 0 && selectableKeys.every((k) => sel.has(k));
+    const toggleCardAll = () => {
+        if (onToggleCardAll) { onToggleCardAll(selectableKeys, !allCardSelected); return; }
+        setLocalSel((prev) => {
+            const n = new Set(prev);
+            if (allCardSelected) selectableKeys.forEach((k) => n.delete(k));
+            else selectableKeys.forEach((k) => n.add(k));
+            return n;
+        });
+    };
+
+    // Ensure the account + contacts are persisted; returns the abm_contacts rows.
     const ensureSaved = async () => {
         if (savedRows) return savedRows;
         if (readOnly) { setSavedRows(contacts); return contacts; }
-        const { contacts: rows } = await abmService.saveResearch(workspaceId, { account, contacts });
+        const { contacts: rows } = await abmService.saveResearch(workspaceId, { account, contacts, researchBrief: result.researchBrief });
         setSavedRows(rows);
         return rows;
     };
@@ -65,14 +89,12 @@ const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmI
     };
 
     const saveToProspects = async () => {
-        // Never push a confident CRM duplicate into the prospect list.
-        const chosen = contacts.filter((c) => selected.has(matchKey(c)) && dupOf(c) !== 'email');
+        const chosen = contacts.filter((c) => sel.has(selKey(c)) && dupOf(c) !== 'email');
         if (!chosen.length) { setError('Select at least one contact to save.'); return; }
         setBusy('prospects'); setError(''); setNotice('');
         try {
             const rows = await ensureSaved();
             const created = await prospectsService.save(workspaceId, chosen.map((c) => toProspect(c, account)));
-            // Best-effort backlink abm_contact -> prospect (never blocks the save).
             try {
                 const idByKey = new Map(rows.map((r) => [matchKey(r), r.id]));
                 const links = created
@@ -81,7 +103,7 @@ const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmI
                 if (links.length) await abmService.markSavedToProspects(workspaceId, links);
             } catch { /* backlink is non-essential */ }
             setSavedKeys((prev) => new Set([...prev, ...chosen.map(matchKey)]));
-            setSelected(new Set());
+            if (onDeselect) onDeselect(chosen.map(selKey)); else setLocalSel(new Set());
             setNotice(created.length
                 ? `Saved ${created.length} contact${created.length === 1 ? '' : 's'} to your prospect list - find them under Prospecting.`
                 : 'Those contacts are already in your prospect list.');
@@ -90,7 +112,9 @@ const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmI
         } finally { setBusy(''); }
     };
 
-    const selectedCount = selected.size;
+    const downloadReport = () => openReport(buildReportHtml(result, { workspaceName }));
+
+    const selectedCount = contacts.filter((c) => sel.has(selKey(c)) && dupOf(c) !== 'email').length;
 
     return (
         <div className="abm-result">
@@ -143,6 +167,9 @@ const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmI
                 meta={result.apolloUsed ? 'Pulled from Apollo, validated + scored against your ICP.' : 'Analyst-surfaced targets, scored against your ICP.'}
                 action={
                     <div className="module-toolbar module-toolbar--inline">
+                        <button type="button" className="btn btn-ghost" onClick={downloadReport} title="Download a print-ready report">
+                            <Download size={15} strokeWidth={1.8} /> Report
+                        </button>
                         {!readOnly && (
                             <button type="button" className="btn btn-secondary" onClick={saveResearch} disabled={busy !== '' || savedRows !== null}>
                                 {savedRows ? <><Check size={15} strokeWidth={2.1} /> Saved</> : (busy === 'research' ? 'Saving…' : 'Save research')}
@@ -175,7 +202,15 @@ const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmI
                 <div className="abm-table__scroll">
                     <div className="abm-table" role="table">
                         <div className="abm-table__row abm-table__row--head" role="row">
-                            <span className="abm-cell abm-cell--check" role="columnheader" />
+                            <span className="abm-cell abm-cell--check" role="columnheader">
+                                <input
+                                    type="checkbox"
+                                    checked={allCardSelected}
+                                    disabled={selectableKeys.length === 0}
+                                    onChange={toggleCardAll}
+                                    aria-label="Select all contacts in this account"
+                                />
+                            </span>
                             <span className="abm-cell abm-cell--name" role="columnheader">Contact</span>
                             <span className="abm-cell abm-cell--sen" role="columnheader">Seniority</span>
                             <span className="abm-cell abm-cell--fit" role="columnheader">Fit</span>
@@ -190,7 +225,7 @@ const AbmResultCard = ({ workspaceId, result, onFeedback, readOnly = false, crmI
                             return (
                                 <div key={key} className="abm-table__row" role="row">
                                     <span className="abm-cell abm-cell--check" role="cell">
-                                        <input type="checkbox" checked={selected.has(key)} disabled={saved || dup === 'email'} onChange={() => toggle(key)} aria-label={`Select ${fullName(c)}`} />
+                                        <input type="checkbox" checked={sel.has(selKey(c))} disabled={saved || dup === 'email'} onChange={() => toggleOne(c)} aria-label={`Select ${fullName(c)}`} />
                                     </span>
                                     <span className="abm-cell abm-cell--name" role="cell">
                                         <span className="abm-contact__name">{fullName(c)}</span>

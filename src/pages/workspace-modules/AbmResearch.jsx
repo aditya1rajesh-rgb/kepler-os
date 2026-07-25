@@ -1,17 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import { Telescope, Sparkles } from '../../lib/icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Telescope, Sparkles, Download } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import EmptyState from '../../components/ui/EmptyState';
 import UploadZone from '../../components/ui/UploadZone';
 import FeedbackInsight from '../../components/ui/FeedbackInsight';
+import SelectionBar from '../../components/ui/SelectionBar';
 import AbmResultCard from '../../components/abm-research/AbmResultCard';
+import AddToListModal from '../../components/outreach/AddToListModal';
 import { abmResearchService } from '../../services/abmResearchService';
 import { abmService } from '../../services/abmService';
 import { prospectsService } from '../../services/prospectsService';
 import { integrationService } from '../../services/integrationService';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
 import { parseCompanyList, MAX_COMPANIES } from '../../lib/companyList';
 import { buildCrmIndex, crmMatch } from '../../lib/crmDedupe';
 import { contactMatchKey, toProspectInsert } from '../../lib/abmContact';
+import { buildBatchReportHtml, openReport } from '../../lib/abmReport';
 import { toUserMessage } from '../../lib/errors';
 import '../../styles/module-kepler.css';
 import './AbmResearch.css';
@@ -39,6 +43,10 @@ const AbmResearch = ({ workspaceId }) => {
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
     const [savingBulk, setSavingBulk] = useState(false);
+    const bulk = useBulkSelect();               // cross-card contact selection
+    const [addListOpen, setAddListOpen] = useState(false);
+    const [listProspectIds, setListProspectIds] = useState([]);
+    const [addingList, setAddingList] = useState(false);
     const logRef = useRef(null);
     const cancelRef = useRef(false);
     const fileInputRef = useRef(null);
@@ -68,6 +76,50 @@ const AbmResearch = ({ workspaceId }) => {
     const doneEntries = transcript.filter((e) => e.status === 'done' && e.result);
     const failedCount = transcript.filter((e) => e.status === 'error').length;
 
+    // Every selectable contact across all completed cards (skip confident CRM email
+    // dupes — they can't be saved anyway). selKey namespaces by entry so identical
+    // names across companies stay distinct. orderedKeys drives "select top N by fit".
+    const allRows = useMemo(() => {
+        const rows = [];
+        for (const e of doneEntries) {
+            for (const c of (e.result.contacts ?? [])) {
+                if (crmMatch(c, crmIndex) === 'email') continue;
+                rows.push({ selKey: `${e.id}::${contactMatchKey(c)}`, contact: c, account: e.result.account, fit: c.fitScore ?? 0 });
+            }
+        }
+        return rows;
+    }, [doneEntries, crmIndex]);
+    const orderedKeys = useMemo(() => [...allRows].sort((a, b) => b.fit - a.fit).map((r) => r.selKey), [allRows]);
+
+    // Bulk "Add to list": save the selected contacts as prospects (idempotent), then
+    // open the existing choose/create-list modal with their prospect ids.
+    const addSelectedToList = async () => {
+        const chosen = allRows.filter((r) => bulk.selected.has(r.selKey));
+        if (!chosen.length) return;
+        setAddingList(true); setError(''); setNotice('');
+        try {
+            const seen = new Set();
+            const picks = [];
+            for (const r of chosen) {
+                const k = contactMatchKey(r.contact);
+                if (seen.has(k)) continue;
+                seen.add(k);
+                picks.push(toProspectInsert(r.contact, r.account));
+            }
+            await prospectsService.save(workspaceId, picks); // dedupes on external_id
+            const all = await prospectsService.list(workspaceId);
+            const idByKey = new Map(all.map((p) => [contactMatchKey(p), p.id]));
+            const ids = [...new Set(chosen.map((r) => idByKey.get(contactMatchKey(r.contact))).filter(Boolean))];
+            if (!ids.length) { setNotice('Those contacts are already in your prospect list.'); return; }
+            setListProspectIds(ids);
+            setAddListOpen(true);
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not prepare the contacts for a list.'));
+        } finally { setAddingList(false); }
+    };
+
+    const downloadAllReport = () => openReport(buildBatchReportHtml(doneEntries.map((e) => e.result)));
+
     // Run a list of companies through the pipeline sequentially, paced under the
     // rate limit, cancellable. autoPersist=true saves each result immediately.
     const runCompanies = async (companies, autoPersist) => {
@@ -95,8 +147,8 @@ const AbmResearch = ({ workspaceId }) => {
                     let result = res;
                     if (autoPersist) {
                         try {
-                            const saved = await abmService.saveResearch(workspaceId, { account: res.account, contacts: res.contacts });
-                            result = { account: saved.account, contacts: saved.contacts, sources: res.sources, apolloUsed: res.apolloUsed, persisted: true };
+                            const saved = await abmService.saveResearch(workspaceId, { account: res.account, contacts: res.contacts, researchBrief: res.researchBrief });
+                            result = { account: saved.account, contacts: saved.contacts, sources: res.sources, apolloUsed: res.apolloUsed, note: res.note, researchBrief: res.researchBrief, persisted: true };
                         } catch { /* keep the unsaved result if persistence fails */ }
                     }
                     setTranscript((t) => t.map((e) => (e.id === item.id ? { ...e, status: 'done', result } : e)));
@@ -119,7 +171,9 @@ const AbmResearch = ({ workspaceId }) => {
         const q = text.trim();
         if (!q || pending) return;
         setText('');
-        runCompanies([{ name: q, website: '' }], false);
+        // Auto-persist single-company chat research too, so nothing is lost — it's
+        // then revisitable under Saved and downloadable as a report.
+        runCompanies([{ name: q, website: '' }], true);
     };
 
     const runBulk = () => {
@@ -186,9 +240,14 @@ const AbmResearch = ({ workspaceId }) => {
                     title="Bulk research"
                     meta={`Upload a .csv/.txt or paste a list — one company per line (name, or name,website). Up to ${MAX_COMPANIES} per run.`}
                     action={doneEntries.length > 0 && (
-                        <button type="button" className="btn btn-secondary" onClick={saveAllQualifying} disabled={savingBulk || pending}>
-                            {savingBulk ? 'Saving…' : `Save qualifying (fit ≥ ${FIT_THRESHOLD}) to prospects`}
-                        </button>
+                        <div className="module-toolbar module-toolbar--inline">
+                            <button type="button" className="btn btn-ghost" onClick={downloadAllReport} title="Download a print-ready report of every researched company">
+                                <Download size={15} strokeWidth={1.8} /> Report ({doneEntries.length})
+                            </button>
+                            <button type="button" className="btn btn-secondary" onClick={saveAllQualifying} disabled={savingBulk || pending}>
+                                {savingBulk ? 'Saving…' : `Save qualifying (fit ≥ ${FIT_THRESHOLD})`}
+                            </button>
+                        </div>
                     )}
                 />
                 <input ref={fileInputRef} type="file" accept=".csv,.txt" hidden onChange={onFile} />
@@ -229,6 +288,18 @@ const AbmResearch = ({ workspaceId }) => {
 
             {/* Chat + results */}
             <Panel className="module-panel abm-chat">
+                <SelectionBar
+                    total={allRows.length}
+                    selectedCount={bulk.size}
+                    label="contacts selected"
+                    onSelectAll={() => bulk.selectAll(allRows.map((r) => r.selKey))}
+                    onSelectN={(n) => bulk.selectTop(n, orderedKeys)}
+                    onClear={bulk.clear}
+                >
+                    <button type="button" className="btn btn-primary" onClick={addSelectedToList} disabled={addingList}>
+                        {addingList ? 'Adding…' : `Add ${bulk.size} to list`}
+                    </button>
+                </SelectionBar>
                 <div className="abm-chat__log" ref={logRef} role="log" aria-live="polite">
                     <div className="abm-msg abm-msg--assistant">
                         <div className="abm-bubble abm-bubble--assistant abm-bubble--intro">
@@ -266,6 +337,11 @@ const AbmResearch = ({ workspaceId }) => {
                                     result={e.result}
                                     readOnly={!!e.result.persisted}
                                     crmIndex={crmIndex}
+                                    entryId={e.id}
+                                    selected={bulk.selected}
+                                    onToggleContact={bulk.toggle}
+                                    onToggleCardAll={(keys, add) => (add ? bulk.addMany(keys) : bulk.removeMany(keys))}
+                                    onDeselect={bulk.removeMany}
                                     onFeedback={() => setFeedbackVersion((v) => v + 1)}
                                 />
                             )}
@@ -288,6 +364,17 @@ const AbmResearch = ({ workspaceId }) => {
                     </button>
                 </div>
             </Panel>
+
+            <AddToListModal
+                workspaceId={workspaceId}
+                prospectIds={listProspectIds}
+                isOpen={addListOpen}
+                onClose={() => setAddListOpen(false)}
+                onAdded={(added, listName, requested) => {
+                    setNotice(`Added ${added} to “${listName}”${requested > added ? ` (${requested - added} already in it)` : ''}.`);
+                    bulk.clear();
+                }}
+            />
         </div>
     );
 };

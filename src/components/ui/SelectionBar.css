@@ -1,0 +1,50 @@
+.selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+}
+
+.selection-bar__picks {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.selection-bar__btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-light);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: background-color var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+
+.selection-bar__btn:hover {
+    color: var(--text);
+    background: var(--card-hover);
+    border-color: var(--accent);
+}
+
+.selection-bar__count {
+    margin-left: 4px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+
+.selection-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}

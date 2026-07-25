@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Trash2, Check } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import EmptyState from '../../components/ui/EmptyState';
+import SelectionBar from '../../components/ui/SelectionBar';
 import AbmResultCard from '../../components/abm-research/AbmResultCard';
 import { abmService } from '../../services/abmService';
 import { prospectsService } from '../../services/prospectsService';
@@ -181,25 +182,28 @@ const AbmSaved = ({ workspaceId }) => {
                 <PanelHeader
                     title={`Prospect list${prospects.length ? ` · ${prospects.length}` : ''}`}
                     meta={zohoConnected ? 'Select prospects and push them into Zoho as Leads.' : 'Contacts saved from ABM + Prospecting. Connect Zoho to push them into your CRM.'}
-                    action={prospects.length > 0 && (
-                        <div className="module-toolbar module-toolbar--inline">
-                            {selected.size > 0 && (
-                                <button type="button" className="btn btn-secondary" onClick={() => setAddListOpen(true)}>
-                                    Add {selected.size} to list
-                                </button>
-                            )}
-                            {zohoConnected && (
-                                <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
-                                    {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
-                                </button>
-                            )}
-                        </div>
-                    )}
                 />
                 {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                 {prospects.length === 0 ? (
                     <EmptyState message="No prospects yet. Save contacts from ABM Research or Prospecting." />
                 ) : (
+                    <>
+                    <SelectionBar
+                        total={prospects.filter((p) => p.status !== 'pushed').length}
+                        selectedCount={selected.size}
+                        onSelectAll={() => setSelected(new Set(prospects.filter((p) => p.status !== 'pushed').map((p) => p.id)))}
+                        onSelectN={(n) => setSelected(new Set(prospects.filter((p) => p.status !== 'pushed').slice(0, n).map((p) => p.id)))}
+                        onClear={() => setSelected(new Set())}
+                    >
+                        <button type="button" className="btn btn-secondary" onClick={() => setAddListOpen(true)}>
+                            Add {selected.size} to list
+                        </button>
+                        {zohoConnected && (
+                            <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
+                                {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
+                            </button>
+                        )}
+                    </SelectionBar>
                     <ul className="prospect-list">
                         {prospects.map((p) => {
                             const pushed = p.status === 'pushed';
@@ -223,6 +227,7 @@ const AbmSaved = ({ workspaceId }) => {
                             );
                         })}
                     </ul>
+                    </>
                 )}
             </Panel>
 

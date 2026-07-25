@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserSearch, Check, Trash2, ExternalLink } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import EmptyState from '../../components/ui/EmptyState';
+import SelectionBar from '../../components/ui/SelectionBar';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { integrationService } from '../../services/integrationService';
 import { prospectsService } from '../../services/prospectsService';
@@ -325,24 +326,27 @@ const Prospecting = ({ workspaceId }) => {
                 <PanelHeader
                     title={`Saved prospects${saved.length ? ` · ${saved.length}` : ''}`}
                     meta={zohoConnected ? 'Select prospects and push them into Zoho as Leads' : 'Connect Zoho to push these into your CRM'}
-                    action={saved.length > 0 && (
-                        <div className="module-toolbar module-toolbar--inline">
-                            {selected.size > 0 && (
-                                <button type="button" className="btn btn-secondary" onClick={() => setAddListOpen(true)}>
-                                    Add {selected.size} to list
-                                </button>
-                            )}
-                            {zohoConnected && (
-                                <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
-                                    {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
-                                </button>
-                            )}
-                        </div>
-                    )}
                 />
                 {saved.length === 0 ? (
                     <EmptyState message="No saved prospects yet. Search Apollo above and save the good ones." />
                 ) : (
+                    <>
+                    <SelectionBar
+                        total={saved.filter((p) => p.status !== 'pushed').length}
+                        selectedCount={selected.size}
+                        onSelectAll={() => setSelected(new Set(saved.filter((p) => p.status !== 'pushed').map((p) => p.id)))}
+                        onSelectN={(n) => setSelected(new Set(saved.filter((p) => p.status !== 'pushed').slice(0, n).map((p) => p.id)))}
+                        onClear={() => setSelected(new Set())}
+                    >
+                        <button type="button" className="btn btn-secondary" onClick={() => setAddListOpen(true)}>
+                            Add {selected.size} to list
+                        </button>
+                        {zohoConnected && (
+                            <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || selectedCount === 0}>
+                                {pushing ? 'Pushing…' : `Push ${selectedCount || ''} to Zoho`}
+                            </button>
+                        )}
+                    </SelectionBar>
                     <ul className="prospect-list">
                         {saved.map((p) => {
                             const pushed = p.status === 'pushed';
@@ -366,6 +370,7 @@ const Prospecting = ({ workspaceId }) => {
                             );
                         })}
                     </ul>
+                    </>
                 )}
             </Panel>
 

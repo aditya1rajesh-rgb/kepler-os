@@ -47,6 +47,7 @@ const mapAccount = (r) => ({
     recommendedChannel: r.recommended_channel ?? '',
     sources: Array.isArray(r.sources) ? r.sources : [],
     status: r.status ?? 'researched',
+    researchBrief: r.meta?.researchBrief ?? '',
     createdAt: r.created_at ?? null,
 });
 
@@ -87,6 +88,9 @@ const toAccountInsert = (workspaceId, a) => ({
     recommended_channel: str(a.recommendedChannel, 120),
     sources: sourceArray(a.sources, 12),
     status: oneOf(a.status, ['researched', 'saved', 'archived'], 'researched'),
+    // The full grounded research narrative rides in the meta JSONB (no dedicated
+    // column) so the Saved view + downloadable report can show it later.
+    meta: a.researchBrief ? { researchBrief: str(a.researchBrief, 20000) } : {},
 });
 
 const toContactInsert = (workspaceId, accountId, c) => ({
@@ -154,12 +158,12 @@ export const abmService = {
      * Persist a completed research run: one account + its contacts. Returns the
      * saved { account, contacts } (with ids) so the UI can act on them.
      */
-    saveResearch: async (workspaceId, { account, contacts = [] } = {}) => {
+    saveResearch: async (workspaceId, { account, contacts = [], researchBrief = '' } = {}) => {
         assertWorkspaceId(workspaceId);
         if (!account) throw new Error('An account is required to save research.');
         const { data: acct, error: acctErr } = await supabase
             .from('abm_accounts')
-            .insert(toAccountInsert(workspaceId, { ...account, status: 'saved' }))
+            .insert(toAccountInsert(workspaceId, { ...account, status: 'saved', researchBrief: researchBrief || account.researchBrief }))
             .select('*')
             .single();
         if (acctErr) throw acctErr;

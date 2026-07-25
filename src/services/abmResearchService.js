@@ -173,6 +173,7 @@ export const abmResearchService = {
             sources,
             apolloUsed,
             note,
+            researchBrief: researchProse,
             modelUsed: research?.modelUsed ?? validated?.modelUsed ?? null,
         };
     },
