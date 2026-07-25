@@ -48,16 +48,16 @@
     text-transform: none;
     color: var(--kepler-muted);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background-color: rgba(18, 19, 31, 0.4);
+    background-color: rgba(18, 19, 23, 0.4);
 }
 
 .onboarding-page__step--active {
     color: var(--kepler-text);
-    border-color: rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.35);
     background: linear-gradient(
         100deg,
-        rgba(117, 70, 232, 0.22),
-        rgba(117, 70, 232, 0.08)
+        rgba(var(--accent-rgb), 0.22),
+        rgba(var(--accent-rgb), 0.08)
     );
 }
 
@@ -111,8 +111,8 @@
 }
 
 .onboarding-page__input:focus {
-    border-color: rgba(117, 70, 232, 0.5);
-    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35);
 }
 
 .onboarding-page__input--file {

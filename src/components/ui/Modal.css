@@ -24,7 +24,7 @@
         linear-gradient(
             160deg,
             rgba(30, 31, 52, 0.55) 0%,
-            rgba(18, 19, 31, 0.72) 46%,
+            rgba(18, 19, 23, 0.72) 46%,
             rgba(14, 15, 26, 0.78) 100%
         );
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -61,7 +61,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    background-color: rgba(18, 19, 31, 0.4);
+    background-color: rgba(18, 19, 23, 0.4);
 }
 
 .close-btn {

@@ -42,8 +42,8 @@
     line-height: 1.5;
 }
 .abm-bubble--user {
-    background: var(--accent-soft, rgba(117, 70, 232, 0.16));
-    border-color: var(--accent-border, rgba(117, 70, 232, 0.35));
+    background: var(--accent-soft, rgba(var(--accent-rgb), 0.16));
+    border-color: var(--accent-border, rgba(var(--accent-rgb), 0.35));
 }
 .abm-bubble--intro { max-width: 100%; }
 
@@ -164,7 +164,7 @@
     min-width: 2.2rem; text-align: center;
     padding: 0.15rem 0.4rem; border-radius: 6px;
     font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.82rem;
-    background: var(--accent-soft, rgba(117, 70, 232, 0.16));
+    background: var(--accent-soft, rgba(var(--accent-rgb), 0.16));
 }
 
 .abm-saved { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; color: #34d399; white-space: nowrap; }
@@ -186,7 +186,7 @@
 
 .abm-linkbtn {
     background: none; border: none; padding: 0; cursor: pointer;
-    color: var(--accent, #8b6cf0); font: inherit; text-decoration: underline;
+    color: var(--accent, #4a6cf7); font: inherit; text-decoration: underline;
 }
 
 /* CRM (Zoho) duplicate flag — distinct from the amber "needs email" flag. */

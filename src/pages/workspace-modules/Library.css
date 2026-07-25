@@ -35,8 +35,8 @@
 
 .library__filter.is-active {
     color: #d3c6fa;
-    border-color: rgba(170, 150, 248, 0.4);
-    background: rgba(117, 70, 232, 0.14);
+    border-color: rgba(var(--accent-rgb), 0.4);
+    background: rgba(var(--accent-rgb), 0.14);
 }
 
 .library__filter-count {
@@ -46,7 +46,7 @@
 }
 
 .library__filter.is-active .library__filter-count {
-    color: #b7a6f3;
+    color: #9db1fb;
 }
 
 .library__search {
@@ -57,7 +57,7 @@
     padding: 0 14px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: var(--kepler-panel, rgba(18, 19, 31, 0.6));
+    background: var(--kepler-panel, rgba(18, 19, 23, 0.6));
     font-size: 13px;
     color: var(--kepler-text, #f0f0f6);
     outline: none;
@@ -69,8 +69,8 @@
 }
 
 .library__search:focus {
-    border-color: rgba(117, 70, 232, 0.5);
-    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35);
 }
 
 .library__list {
@@ -103,7 +103,7 @@
 }
 
 .library__row:focus-visible {
-    outline: 2px solid rgba(117, 70, 232, 0.8);
+    outline: 2px solid rgba(var(--accent-rgb), 0.8);
     outline-offset: 1px;
 }
 
@@ -113,7 +113,7 @@
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: #b7a6f3;
+    color: #9db1fb;
 }
 
 .library__type--ads {

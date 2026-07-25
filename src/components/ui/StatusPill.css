@@ -36,7 +36,7 @@
 .status-pill.approved,
 .status-pill.aiwriting,
 .status-pill.optimizing {
-    border-color: rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.35);
     color: var(--kepler-accent-2);
 }
 

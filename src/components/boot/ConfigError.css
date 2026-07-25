@@ -4,7 +4,7 @@
     align-items: center;
     justify-content: center;
     padding: 32px 24px;
-    background-color: var(--kepler-base, #0c0c16);
+    background-color: var(--kepler-base, #0a0b0d);
     color: var(--kepler-text, #f0f0f6);
 }
 
@@ -14,7 +14,7 @@
     padding: 28px;
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(18, 19, 31, 0.85);
+    background: rgba(18, 19, 23, 0.85);
 }
 
 .config-error__eyebrow {

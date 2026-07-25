@@ -344,7 +344,7 @@ const Home = () => {
                                                     ) : (
                                                         <span
                                                             className="ws-row__avatar"
-                                                            style={{ background: ws.logoColor || '#7546e8' }}
+                                                            style={{ background: ws.logoColor || '#4a6cf7' }}
                                                         >
                                                             {ws.name.charAt(0).toUpperCase()}
                                                         </span>
@@ -445,7 +445,7 @@ const Home = () => {
                                                         <span className="activity-table__title">
                                                             <span
                                                                 className="activity-table__dot"
-                                                                style={{ background: ws?.logoColor || '#7546e8' }}
+                                                                style={{ background: ws?.logoColor || '#4a6cf7' }}
                                                             />
                                                             <span className="activity-table__name">
                                                                 {item.title || 'Untitled'}

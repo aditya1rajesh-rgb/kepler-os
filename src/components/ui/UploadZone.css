@@ -8,13 +8,13 @@
     border-radius: 12px;
     gap: 8px;
     text-align: center;
-    background-color: rgba(18, 19, 31, 0.4);
+    background-color: rgba(18, 19, 23, 0.4);
     transition: border-color var(--t-fast), background-color var(--t-fast);
     cursor: pointer;
 }
 
 .upload-zone:hover {
-    border-color: rgba(117, 70, 232, 0.45);
+    border-color: rgba(var(--accent-rgb), 0.45);
     background-color: rgba(255, 255, 255, 0.03);
 }
 

@@ -44,14 +44,14 @@
     font-weight: 700;
     color: var(--kepler-accent-2);
     padding: 2px 8px;
-    background-color: rgba(117, 70, 232, 0.12);
-    border: 1px solid rgba(117, 70, 232, 0.35);
+    background-color: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-rgb), 0.35);
     border-radius: 4px;
     text-transform: none;
 }
 
 .message-box {
-    background-color: rgba(18, 19, 31, 0.5);
+    background-color: rgba(18, 19, 23, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.06);
     padding: 12px;
     border-radius: 8px;
@@ -106,7 +106,7 @@
 
 .engine-counter__value {
     font-size: 28px;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.1;
 }
 

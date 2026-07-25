@@ -216,7 +216,7 @@
 }
 
 .comp-row.selected {
-    border-color: rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.35);
 }
 
 .comp-info-small h4 {
@@ -316,7 +316,7 @@
 
 .status-pill-minimal.processing {
     color: var(--kepler-accent-2);
-    border: 1px solid rgba(117, 70, 232, 0.35);
+    border: 1px solid rgba(var(--accent-rgb), 0.35);
 }
 
 .status-pill-minimal.ready {

@@ -1,8 +1,8 @@
 /* Visible learning loop - shows which past notes are shaping the next generation. */
 .feedback-insight {
     margin-bottom: 12px;
-    border: 1px solid rgba(117, 70, 232, 0.25);
-    background: rgba(117, 70, 232, 0.07);
+    border: 1px solid rgba(var(--accent-rgb), 0.25);
+    background: rgba(var(--accent-rgb), 0.07);
     border-radius: 10px;
     padding: 2px;
 }
@@ -35,13 +35,13 @@
 }
 
 .feedback-insight__head:focus-visible {
-    outline: 2px solid rgba(117, 70, 232, 0.8);
+    outline: 2px solid rgba(var(--accent-rgb), 0.8);
     outline-offset: 1px;
 }
 
 .feedback-insight__icon {
     flex: none;
-    color: #b7a6f3;
+    color: #9db1fb;
 }
 
 .feedback-insight__text {

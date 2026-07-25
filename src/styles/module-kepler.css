@@ -26,8 +26,8 @@
 .module-kepler .intel-input:focus,
 .module-kepler .intel-textarea:focus,
 .module-kepler select.intel-input:focus {
-    border-color: rgba(117, 70, 232, 0.5);
-    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35);
 }
 
 .module-kepler .data-label,
@@ -43,7 +43,7 @@
 .module-kepler .file-drop-zone-full,
 .module-kepler .logo-drop-zone {
     border-color: rgba(255, 255, 255, 0.12);
-    background-color: rgba(18, 19, 31, 0.4);
+    background-color: rgba(18, 19, 23, 0.4);
     color: var(--kepler-muted);
     border-radius: 12px;
     transition: border-color var(--t-fast), background-color var(--t-fast), color var(--t-fast);
@@ -54,7 +54,7 @@
 .module-kepler .add-variant-placeholder:hover,
 .module-kepler .file-drop-zone-full:hover,
 .module-kepler .logo-drop-zone:hover {
-    border-color: rgba(117, 70, 232, 0.45);
+    border-color: rgba(var(--accent-rgb), 0.45);
     color: var(--kepler-text);
     background-color: rgba(255, 255, 255, 0.03);
 }
@@ -78,8 +78,8 @@
 }
 
 .module-kepler .module-search-input:focus {
-    border-color: rgba(117, 70, 232, 0.5);
-    box-shadow: 0 0 0 1px rgba(117, 70, 232, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35);
 }
 
 .module-kepler .module-toolbar {
@@ -116,4 +116,69 @@
     line-height: 1.5;
     margin: 0;
     padding: 16px 0;
+}
+
+/* ── Shared "intel facts" strip ─────────────────────────────────
+   Extracted from Overview.css (now removed) so its consumers — Measurement,
+   Prospecting, SocialMedia, BrandHealthStrip, CompetitorAdsPanel, Ga4Panel —
+   keep these styles. */
+.cockpit__intel-facts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.85rem;
+    margin-top: 0.4rem;
+}
+
+.cockpit__intel-fact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.cockpit__intel-value {
+    font-size: 1.35rem;
+    line-height: 1;
+    color: var(--text);
+}
+
+.cockpit__intel-label {
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+}
+
+.cockpit__intel-hint {
+    margin: 0.9rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.cockpit__intel-link {
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--accent-text);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cockpit__intel-link:hover {
+    color: var(--text);
+}
+
+.cockpit__intel-feedback {
+    margin: 1rem 0 0;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 960px) {
+    .cockpit__intel-facts {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
