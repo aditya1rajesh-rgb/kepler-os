@@ -4,6 +4,7 @@ import { LoaderCircle, TriangleAlert } from '../lib/icons';
 import AuthLayout from '../components/layout/AuthLayout';
 import Panel from '../components/ui/Panel';
 import { integrationService } from '../services/integrationService';
+import { eventService } from '../services/eventService';
 import { CONNECTORS } from '../lib/connectors';
 import { workspacePath } from '../constants/routes';
 import './GoogleOAuthCallback.css';
@@ -74,6 +75,9 @@ const GoogleOAuthCallback = () => {
             try {
                 const res = await exchangeOnce(init.code, init.state);
                 if (cancelled) return;
+                if (init.workspaceId) {
+                    eventService.log(init.workspaceId, 'connector.connected', { title: `${connectorLabel} connected`, entityType: 'connector', meta: { connector: init.connectorId } }).catch(() => {});
+                }
                 if (!res.sites || res.sites.length <= 1) {
                     goToModule();
                 } else {
