@@ -102,6 +102,59 @@ export const normalizeContact = (raw, ctx = {}) => {
     };
 };
 
+/**
+ * Merge the VALIDATE stage's SCORES onto the real Apollo candidates. Identity
+ * (name/title/company/LinkedIn/externalId) comes ONLY from Apollo — the model can
+ * never author a person, a LinkedIn URL, or an email. The model output is just a
+ * per-candidate score keyed by index `i` (or externalId as a fallback); anything
+ * that doesn't resolve to a real candidate is dropped. Email is always blank here
+ * (revealed later by enrichment). Pure + unit-tested.
+ */
+export const mergeScoredContacts = (candidates, scores, ctx = {}) => {
+    const cands = Array.isArray(candidates) ? candidates : [];
+    const list = Array.isArray(scores) ? scores : [];
+    const byExternal = new Map(cands.map((c, i) => [str(c.externalId, 200), i]).filter(([id]) => id));
+    const seen = new Set();
+    const out = [];
+    for (const s of list) {
+        if (!s || s.keep === false) continue;
+        // Resolve the REAL candidate: by index first, then externalId.
+        let idx = Number(s.i);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= cands.length) {
+            idx = s.externalId != null ? byExternal.get(str(s.externalId, 200)) : undefined;
+        }
+        if (idx == null || !cands[idx]) continue;
+        const cand = cands[idx];
+        const firstName = str(cand.firstName, 200);
+        const lastName = str(cand.lastName, 200);
+        const title = str(cand.title, 300);
+        if (!firstName && !lastName && !title) continue;
+        const externalId = str(cand.externalId, 200);
+        const key = externalId || `n:${lower(firstName)} ${lower(lastName)}|${lower(title)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+            firstName,
+            lastName,
+            title,
+            company: str(cand.company, 300) || str(ctx.companyName, 300),
+            linkedinUrl: str(cand.linkedinUrl, 500), // real Apollo URL, never model-authored
+            email: '',                               // revealed by enrichment, never guessed
+            phone: '',
+            seniorityTier: oneOf(s.seniorityTier, SENIORITY_TIERS, '') || oneOf(cand.seniority, SENIORITY_TIERS, 'other'),
+            fitScore: intIn(s.fitScore, 0, 100),
+            fitReasoning: str(s.fitReasoning, 1000),
+            icpRelevance: str(s.icpRelevance, 300),
+            recommendedChannel: str(s.recommendedChannel, 120),
+            source: 'apollo',
+            externalId,
+            confidence: oneOf(s.confidence, CONFIDENCE, ''),
+            flags: Array.from(new Set([...strList(s.flags, 12, 60), 'needs-enrichment'])),
+        });
+    }
+    return out.sort((x, y) => y.fitScore - x.fitScore).slice(0, MAX_CONTACTS);
+};
+
 /** Normalize + dedupe + rank the VALIDATE stage's contact array. Pure. */
 export const normalizeContacts = (rawList, ctx = {}) => {
     const list = Array.isArray(rawList) ? rawList : [];

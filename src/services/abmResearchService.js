@@ -2,7 +2,7 @@ import { callAI, FREE_MODEL_FALLBACKS } from './aiClient';
 import { getBrandContextForGeneration } from './brandContextService';
 import { feedbackService } from './feedbackService';
 import { integrationService } from './integrationService';
-import { str, normalizeAccount, normalizeApolloQuery, normalizeContacts } from './abmNormalize';
+import { str, normalizeAccount, normalizeApolloQuery, mergeScoredContacts } from './abmNormalize';
 
 // ABM research pipeline: a GTM segmentation analyst that researches a target
 // company and returns an ICP-fit classification + a validated contact list.
@@ -35,20 +35,19 @@ const STRUCTURE_SYSTEM = `You convert a research brief into ONE raw JSON object 
 Shape:
 {"account":{"companyName":"","domain":"primary web domain only, no protocol/path","tier":"enterprise|mid-market|smb","icpFit":"high|medium|low","employeeSize":"e.g. 1000-5000","revenue":"e.g. $500M+ or unknown","techSignals":["short signals"],"whyGrounding":"1-3 sentences of evidence behind the tier + fit call","recommendedChannel":"e.g. 1:1 LinkedIn + personalized email"},"apolloQuery":{"titles":["leadership titles to search for"],"seniorities":["subset of: founder,c_suite,vp,head,director,manager"],"employeeRanges":["Apollo ranges as min,max e.g. 1000,5000"],"organizationDomains":["the account's domain(s)"]}}`;
 
-const VALIDATE_SYSTEM = `You validate and score a target contact list for an ABM pitch. You are given the target ACCOUNT, the RESEARCH brief, OUR PRODUCT & ICP, and CANDIDATES pulled from a contact database (Apollo) which is often noisy and inaccurate.
+const VALIDATE_SYSTEM = `You FILTER and SCORE a list of candidate contacts for an ABM pitch. You are given the target ACCOUNT, the RESEARCH brief, OUR PRODUCT & ICP, and CANDIDATES pulled from Apollo — each with an index "i". Apollo is noisy, so your job is to decide who is worth keeping and how well they fit.
 
-Return ONE raw JSON object (no markdown/fences): {"contacts":[ ... ]}.
+CRITICAL: You do NOT write any contact details. The person's name, title, company, and LinkedIn URL come from the candidate record verbatim — you never author, correct, or infer them. You NEVER output an email or phone. You NEVER invent a person or an index that is not in CANDIDATES. Referencing anyone not in the candidate list is a hard error.
+
+Return ONE raw JSON object (no markdown/fences): {"contacts":[{"i":0,"keep":true,"seniorityTier":"","fitScore":0,"fitReasoning":"","icpRelevance":"","recommendedChannel":"","confidence":"high|medium|low","flags":[]}]}.
 
 Rules:
-- Keep only people who plausibly work AT the target account in a relevant LEADERSHIP role (C-suite/founder/VP/Head/Director). Drop wrong-company rows, junior individual contributors, and irrelevant functions (sales, HR, support).
+- Output one entry per candidate you KEEP. Set keep:false (or omit) for wrong-company rows, junior individual contributors, and irrelevant functions (sales, HR, support).
+- "i" is the candidate's index in CANDIDATES — it is how we map your score back to the real person. Every "i" MUST exist in CANDIDATES.
 - Score fit 0-100 against OUR ICP; add a one-line fitReasoning and icpRelevance.
 - seniorityTier: one of c_suite, founder, vp, head, director, manager, other.
-- source: "apollo" for a candidate from the list, "research" for anyone you add from the brief.
-- confidence: high|medium|low that this is a real, correctly-attributed person.
-- NEVER fabricate email or phone. Use ONLY values present in the candidate data; if absent leave "" and put "needs-enrichment" in flags. Add other flags for issues (e.g. "title-mismatch","unverified").
-
-Contact shape:
-{"firstName":"","lastName":"","title":"","seniorityTier":"","company":"","linkedinUrl":"","email":"","phone":"","fitScore":0,"fitReasoning":"","icpRelevance":"","recommendedChannel":"","source":"apollo|research","confidence":"high|medium|low","flags":[]}`;
+- confidence: high|medium|low that this candidate is a correctly-attributed decision-maker at the account.
+- flags: note issues if any (e.g. "title-mismatch","wrong-company-risk").`;
 
 // Compact Apollo candidates for the validation prompt (drop noise, cap count).
 const serializeCandidates = (people = []) =>
@@ -146,25 +145,35 @@ export const abmResearchService = {
                 });
                 apolloPeople = res?.result?.people ?? [];
                 apolloUsed = true;
-                if (!apolloPeople.length) note = 'Apollo returned no matches for the recommended titles - contacts below are analyst-surfaced.';
+                if (!apolloPeople.length) note = 'Apollo returned no matches for the recommended titles - broaden the titles or try again.';
             } else if (status?.status !== 'connected') {
-                note = 'Apollo is not connected - contacts are analyst-surfaced (best-effort). Connect Apollo for verified contacts.';
+                note = 'Apollo is not connected - connect it for real, verified people (contacts are only shown when they come from Apollo).';
             }
         } catch {
-            note = 'Apollo lookup failed - contacts below are analyst-surfaced. Try again or check the Apollo connection.';
+            note = 'Apollo lookup failed - try again or check the Apollo connection.';
         }
 
-        // 4. VALIDATE + score (non-grounded JSON). Gemini filters Apollo's noise.
-        let validated;
-        try {
-            validated = await callAI(
-                `${productBlock}\n\nACCOUNT: ${JSON.stringify({ companyName: account.companyName, domain: account.domain, tier: account.tier, icpFit: account.icpFit })}\n\nRESEARCH BRIEF:\n${researchProse}\n\nCANDIDATES (from Apollo, may be noisy):\n${JSON.stringify(serializeCandidates(apolloPeople))}\n\nValidate, score and return the contacts.`,
-                { ...AI_BASE, json: true, maxTokens: 3000, temperature: 0.3, systemPrompt: VALIDATE_SYSTEM },
-            );
-        } catch (err) {
-            return { ok: false, error: `Could not validate contacts: ${err.message}` };
+        // 4. SCORE + filter (non-grounded JSON). The model NEVER authors identity or
+        //    PII — it only scores the REAL Apollo candidates by index, and
+        //    mergeScoredContacts rebuilds each contact from the Apollo record (real
+        //    name/title/LinkedIn). No Apollo candidates => no contacts: we never
+        //    fabricate people. Emails/phones come only from enrichment.
+        let contacts = [];
+        if (apolloPeople.length) {
+            let validated;
+            try {
+                validated = await callAI(
+                    `${productBlock}\n\nACCOUNT: ${JSON.stringify({ companyName: account.companyName, domain: account.domain, tier: account.tier, icpFit: account.icpFit })}\n\nRESEARCH BRIEF:\n${researchProse}\n\nCANDIDATES (from Apollo, may be noisy — keep/score by index i):\n${JSON.stringify(serializeCandidates(apolloPeople))}\n\nReturn keep + fit scores keyed to each candidate's index.`,
+                    { ...AI_BASE, json: true, maxTokens: 2500, temperature: 0.2, systemPrompt: VALIDATE_SYSTEM },
+                );
+            } catch (err) {
+                return { ok: false, error: `Could not score contacts: ${err.message}` };
+            }
+            contacts = mergeScoredContacts(apolloPeople, validated?.content?.contacts, { companyName: account.companyName });
+            if (!contacts.length && !note) note = 'No candidates cleared ICP scoring — broaden the target titles or try again.';
+        } else if (!note) {
+            note = 'No verified Apollo contacts for these titles. Connect Apollo (or broaden the titles) for real, contactable people.';
         }
-        const contacts = normalizeContacts(validated?.content?.contacts, { companyName: account.companyName });
 
         return {
             ok: true,
@@ -174,7 +183,7 @@ export const abmResearchService = {
             apolloUsed,
             note,
             researchBrief: researchProse,
-            modelUsed: research?.modelUsed ?? validated?.modelUsed ?? null,
+            modelUsed: research?.modelUsed ?? null,
         };
     },
 };
