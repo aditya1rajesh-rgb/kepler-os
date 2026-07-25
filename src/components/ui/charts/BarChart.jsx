@@ -54,7 +54,7 @@ const BarChart = ({ data = [], height = 260, yTicks = 4, formatTick = (v) => v, 
             const val = (m / yTicks) * i;
             return { val, y: PAD.top + pH - (i / yTicks) * pH };
         });
-        return { bars, ticks: t, max: m, plotH: pH };
+        return { bars: b, ticks: t, max: m, plotH: pH };
     }, [data, width, height, yTicks]);
 
     const active = hovered ?? activeIndex;
