@@ -85,3 +85,34 @@
 .list-table__muted {
     color: var(--text-dim);
 }
+
+.ld-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    vertical-align: middle;
+    cursor: help;
+}
+
+.ld-badge--ok {
+    color: var(--positive);
+    background: rgba(var(--positive-rgb), 0.12);
+    border: 1px solid rgba(var(--positive-rgb), 0.3);
+}
+
+.ld-badge--warn {
+    color: #e0a83a;
+    background: rgba(224, 168, 58, 0.12);
+    border: 1px solid rgba(224, 168, 58, 0.3);
+}
+
+.ld-badge--bad {
+    color: var(--negative);
+    background: rgba(var(--negative-rgb), 0.12);
+    border: 1px solid rgba(var(--negative-rgb), 0.3);
+}

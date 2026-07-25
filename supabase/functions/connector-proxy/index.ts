@@ -498,6 +498,48 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
   },
 };
 
+// ─── Enrichment waterfall + verifier gate ─────────────────────────────────────
+// Ordered enrichment providers. The orchestrator tries each connected provider
+// for the fields still missing and stops when satisfied. POC = [apollo]; add an
+// adapter with an `enrich` method and append its id here to extend the cascade
+// (e.g. "prospeo", "findymail") — no other change needed. Everything keys on the
+// contact's externalId / LinkedIn URL so a later provider can't mis-attribute.
+const ENRICH_WATERFALL = ["apollo"];
+
+// Free, always-available email verifier (format + disposable + role + MX). This is
+// the "gate" slot — it never confirms a mailbox (that needs SMTP from a reputation-
+// managed pool, i.e. a paid API). Swap/append a paid verifier here later; the UI
+// already renders whatever status comes back.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ROLE_LOCALS = new Set(["info", "support", "sales", "admin", "contact", "hello", "team", "billing", "help", "office", "marketing", "noreply", "no-reply", "hr", "jobs", "careers", "press", "legal", "privacy"]);
+const DISPOSABLE_DOMAINS = new Set(["mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com", "temp-mail.org", "throwawaymail.com", "yopmail.com", "getnada.com", "trashmail.com", "sharklasers.com", "dispostable.com", "maildrop.cc", "fakeinbox.com", "mailnesia.com", "spamgourmet.com", "mytemp.email", "moakt.com", "emailondeck.com"]);
+
+async function domainHasMx(domain: string, cache: Map<string, boolean>): Promise<boolean> {
+  if (cache.has(domain)) return cache.get(domain)!;
+  try {
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=MX`, { headers: { accept: "application/dns-json" } });
+    const data = await res.json().catch(() => ({} as Record<string, unknown>));
+    const answers = (data as { Answer?: Array<{ type?: number }> }).Answer ?? [];
+    const hasMx = Array.isArray(answers) && answers.some((a) => a.type === 15);
+    cache.set(domain, hasMx);
+    return hasMx;
+  } catch {
+    cache.set(domain, true); // network hiccup: don't penalize the address
+    return true;
+  }
+}
+
+// Status vocabulary: ok | role | disposable | no_mx | invalid. "ok" = passed the
+// free checks (NOT mailbox-confirmed — that's the paid verifier's job).
+async function verifyEmailFree(email: string, cache: Map<string, boolean>): Promise<string> {
+  const e = String(email ?? "").toLowerCase().trim();
+  if (!EMAIL_RE.test(e)) return "invalid";
+  const [local, domain] = e.split("@");
+  if (DISPOSABLE_DOMAINS.has(domain)) return "disposable";
+  if (ROLE_LOCALS.has(local)) return "role";
+  return (await domainHasMx(domain, cache)) ? "ok" : "no_mx";
+}
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   const base = corsHeaders(req.headers.get("Origin") ?? "");
@@ -585,14 +627,41 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "enrich") {
-      const adapter = PROVIDER_ADAPTERS[provider];
-      if (!adapter?.enrich) return fail(`Connector "${provider}" does not support enrichment.`, 400, base);
-      const { data: row } = await svc.from("workspace_integrations")
-        .select("credentials").eq("workspace_id", workspaceId).eq("provider", provider).maybeSingle();
-      if (!row?.credentials) return fail("Not connected", 400, base);
-      const result = await adapter.enrich(row.credentials as Creds, (body.payload ?? {}) as Record<string, unknown>);
-      if (!result.ok) return fail(result.error || "Enrichment failed.", 400, base);
-      return json({ ok: true, result: result.result ?? {} }, 200, base);
+      const payload = (body.payload ?? {}) as { contacts?: Array<Record<string, unknown>>; fields?: { email?: boolean; phone?: boolean } };
+      const contacts = Array.isArray(payload.contacts) ? payload.contacts.slice(0, 10) : [];
+      const fields = payload.fields ?? { email: true };
+      if (!contacts.length) return json({ ok: true, result: { matches: [] } }, 200, base);
+
+      // Waterfall: each connected provider fills only the fields still missing.
+      const results = contacts.map((c) => ({ externalId: String(c.externalId ?? ""), email: "", phone: "", source: "", emailStatus: "" }));
+      let attempted = false;
+      let lastError = "";
+      for (const providerId of ENRICH_WATERFALL) {
+        const adapter = PROVIDER_ADAPTERS[providerId];
+        if (!adapter?.enrich) continue;
+        const pending = results.map((_, i) => i).filter((i) => (fields.email && !results[i].email) || (fields.phone && !results[i].phone));
+        if (!pending.length) break;
+        const { data: row } = await svc.from("workspace_integrations")
+          .select("credentials").eq("workspace_id", workspaceId).eq("provider", providerId).maybeSingle();
+        if (!row?.credentials) continue;
+        attempted = true;
+        const res = await adapter.enrich(row.credentials as Creds, { contacts: pending.map((i) => contacts[i]), fields });
+        if (!res.ok) { lastError = res.error ?? "Enrichment failed."; continue; }
+        const matches = (res.result?.matches ?? []) as Array<{ email?: string; phone?: string }>;
+        pending.forEach((origIdx, k) => {
+          const m = matches[k] ?? {};
+          if (fields.email && m.email && !results[origIdx].email) { results[origIdx].email = m.email; results[origIdx].source = providerId; }
+          if (fields.phone && m.phone && !results[origIdx].phone) { results[origIdx].phone = m.phone; if (!results[origIdx].source) results[origIdx].source = providerId; }
+        });
+      }
+      if (!attempted) return fail("No connected enrichment provider — connect Apollo in Integrations.", 400, base);
+
+      // Verifier gate: free format/disposable/role/MX pass on every revealed email.
+      const mxCache = new Map<string, boolean>();
+      for (const r of results) if (r.email) r.emailStatus = await verifyEmailFree(r.email, mxCache);
+
+      if (lastError && results.every((r) => !r.email && !r.phone)) return fail(lastError, 400, base);
+      return json({ ok: true, result: { matches: results } }, 200, base);
     }
 
     if (action === "test") {

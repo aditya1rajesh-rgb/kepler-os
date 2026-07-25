@@ -23,6 +23,16 @@ const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i +=
 const EMAIL_CREDITS = 1;
 const PHONE_CREDITS = 8;
 
+// Verification status from the free gate (format/disposable/role/MX). "ok" = passed
+// the free checks, not mailbox-confirmed (that's the paid verifier). Tooltip says so.
+const STATUS_BADGE = {
+    ok: { label: 'valid', cls: 'ld-badge--ok', title: 'Passed format + domain (MX) checks. Not mailbox-confirmed until a paid verifier is added.' },
+    role: { label: 'role', cls: 'ld-badge--warn', title: 'Role-based address (info@, sales@…) — often not a person.' },
+    no_mx: { label: 'no MX', cls: 'ld-badge--warn', title: 'Domain has no mail server — likely undeliverable.' },
+    disposable: { label: 'disposable', cls: 'ld-badge--bad', title: 'Disposable/temporary email domain.' },
+    invalid: { label: 'invalid', cls: 'ld-badge--bad', title: 'Malformed address.' },
+};
+
 const EXPORT_COLUMNS = [
     { key: 'firstName', label: 'First name' },
     { key: 'lastName', label: 'Last name' },
@@ -45,6 +55,7 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
     const [enrichFields, setEnrichFields] = useState('both'); // 'email' | 'phone' | 'both'
     const [enriching, setEnriching] = useState(false);
     const [progress, setProgress] = useState(null); // { done, total }
+    const [statusById, setStatusById] = useState({}); // memberId -> email verification status
     const cancelRef = useRef(false);
     const bulk = useBulkSelect();
 
@@ -97,6 +108,7 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
         const fields = { email: wantEmail, phone: wantPhone };
         const batches = chunk(list, 10);
         const applied = new Map();
+        const statusMap = {};
         let done = 0;
         let revealed = 0;
         try {
@@ -114,8 +126,10 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                     const mm = matches[i] || {};
                     const email = fields.email && mm.email ? mm.email : '';
                     const phone = fields.phone && mm.phone ? mm.phone : '';
+                    if (mm.emailStatus) statusMap[m.id] = mm.emailStatus;
                     if (email || phone) { updates.push({ id: m.id, email: email || undefined, phone: phone || undefined }); applied.set(m.id, { email, phone }); revealed += 1; }
                 });
+                if (Object.keys(statusMap).length) setStatusById((prev) => ({ ...prev, ...statusMap }));
                 if (updates.length) await prospectsService.updateEnrichment(workspaceId, updates);
                 done += batch.length;
                 setProgress({ done, total: list.length });
@@ -221,7 +235,14 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                                             <td className="list-table__name">{fullName(m)}</td>
                                             <td>{m.title || <span className="list-table__muted">—</span>}</td>
                                             <td>{m.company || <span className="list-table__muted">—</span>}</td>
-                                            <td>{m.email || <span className="list-table__muted">—</span>}</td>
+                                            <td>
+                                                {m.email || <span className="list-table__muted">—</span>}
+                                                {STATUS_BADGE[statusById[m.id]] && (
+                                                    <span className={`ld-badge ${STATUS_BADGE[statusById[m.id]].cls}`} title={STATUS_BADGE[statusById[m.id]].title}>
+                                                        {STATUS_BADGE[statusById[m.id]].label}
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td>{m.phone || <span className="list-table__muted">—</span>}</td>
                                             <td>
                                                 {m.linkedinUrl ? (
