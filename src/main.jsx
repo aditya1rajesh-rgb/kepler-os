@@ -6,6 +6,7 @@ import ConfigError from './components/boot/ConfigError';
 import './index.css';
 import './styles/kepler-materials.css';
 import './styles/dashboard.css';
+import './styles/card-edge.css';
 
 const env = validateClientEnv();
 const rootEl = document.getElementById('root');

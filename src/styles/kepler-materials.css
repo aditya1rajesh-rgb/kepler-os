@@ -9,7 +9,7 @@
 .kepler-panel {
   position: relative;
   background: var(--card-grad);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   backdrop-filter: blur(20px) saturate(135%);
   -webkit-backdrop-filter: blur(20px) saturate(135%);
@@ -20,19 +20,25 @@
     0 18px 40px -24px rgba(0, 0, 0, 0.7);
 }
 
-/* A faint highlight that catches the top edge of the acrylic */
+/* Gradient border ring — a bright specular edge caught at the top-left corner,
+   fading to transparent by mid-card. Shared across every card surface (see the
+   .card-edge rule in card-edge.css that mirrors this for non-Panel cards). */
 .kepler-panel::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1px;
+  padding: 1.5px;
   background: linear-gradient(
-    150deg,
-    rgba(var(--accent-rgb), 0.22),
-    rgba(255, 255, 255, 0) 28%
+    135deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.2) 22%,
+    rgba(255, 255, 255, 0) 50%
   );
   -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
