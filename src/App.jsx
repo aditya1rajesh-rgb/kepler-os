@@ -92,7 +92,11 @@ function App() {
 
               <Route element={<AppOnboardingGuard />}>
                 <Route path="/" element={<AppLayout />}>
-                  <Route index element={
+                  {/* Unified landing: the dashboard IS the home. Root resolves the
+                      active workspace and lands on its Dashboard. The cross-workspace
+                      portfolio lives at /workspaces (reached via the switcher). */}
+                  <Route index element={<WorkspaceRedirect />} />
+                  <Route path="workspaces" element={
                     <ErrorBoundary>
                       <Home />
                     </ErrorBoundary>

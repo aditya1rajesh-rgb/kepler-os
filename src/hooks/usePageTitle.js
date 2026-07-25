@@ -5,7 +5,8 @@ import { parseWorkspaceLocation, titleFor } from '../constants/moduleRegistry';
 // { crumb, title } for the current path directly.
 export const usePageTitle = () => {
     const { pathname } = useLocation();
-    if (pathname === '/') return { crumb: null, title: 'Home' };
+    if (pathname === '/') return { crumb: null, title: 'Dashboard' };
+    if (pathname.startsWith('/workspaces')) return { crumb: null, title: 'All Workspaces' };
     if (pathname.startsWith('/profile')) return { crumb: null, title: 'Settings' };
     if (pathname.startsWith('/help')) return { crumb: null, title: 'Help Center' };
     const loc = parseWorkspaceLocation(pathname);

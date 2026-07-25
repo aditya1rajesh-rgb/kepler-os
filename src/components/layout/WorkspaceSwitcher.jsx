@@ -84,7 +84,7 @@ const WorkspaceSwitcher = ({ workspaces, currentWorkspace, collapsed }) => {
                         type="button"
                         role="menuitem"
                         className="ws-switcher__action"
-                        onClick={() => { setOpen(false); navigate('/'); }}
+                        onClick={() => { setOpen(false); navigate('/workspaces'); }}
                     >
                         <Home size={15} strokeWidth={1.7} /> All workspaces
                     </button>

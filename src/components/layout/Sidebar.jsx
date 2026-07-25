@@ -82,7 +82,7 @@ const Sidebar = ({ collapsed, onToggle, onOpenPalette }) => {
     return (
         <aside className={`sidebar kepler-shell ${collapsed ? 'sidebar--collapsed' : ''}`}>
             <div className={`sidebar__brand ${collapsed ? 'sidebar__brand--collapsed' : ''}`}>
-                <Link to="/" className="sidebar__brand-cluster" title="All workspaces">
+                <Link to="/" className="sidebar__brand-cluster" title="Dashboard">
                     <span className="sidebar__brand-badge">
                         <img src="/kepler-logo.png" alt="KEPLER" className="sidebar__brand-badge-mark" />
                     </span>
