@@ -1,5 +1,7 @@
 import { callAI, FREE_MODEL_FALLBACKS } from './aiClient';
 import { getBrandContextForGeneration } from './brandContextService';
+import { groundingService, groundedContextBlock } from './groundingService';
+import { buildBlogSchema } from '../lib/blogSchema';
 import { humanize } from './humanizeService';
 import { aeoScoreService } from './aeoScoreService';
 import { feedbackService } from './feedbackService';
@@ -29,6 +31,12 @@ WRITING RULES:
 HARD ANTI-FABRICATION:
 - Use ONLY facts, stats, product details, and claims present in the provided context/source files.
 - NEVER invent statistics, numbers, customer counts, percentages, or sources. If you lack a number, write qualitatively instead.
+
+E-E-A-T & AI-CITATION (write to be quoted by AI answer engines):
+- Show first-hand experience and expertise: concrete specifics, real examples, honest trade-offs and limitations - not a generic overview.
+- When you use a fact or statistic from the LIVE WEB RESEARCH, attribute it inline (e.g. "according to <source>") so the passage is citable.
+- Prefer recent, current facts and note the year where it matters. Keep every claim verifiable.
+- Make key passages self-contained: name the subject explicitly instead of leaning on "it"/"they", so a passage can be quoted standalone.
 
 OUTPUT CONTRACT (must follow exactly):
 - Respond with ONE raw JSON object matching the requested schema.
@@ -62,7 +70,7 @@ Return JSON only:
  "keyTakeaways":["3-5 bullet takeaways, each one sentence"],
  "sections":[{"h2":"heading","body":"markdown prose for this section. For question headings, open with a direct 40-60 word answer; otherwise open with a strong claim or a concrete example. Connect to the surrounding sections with transitions and vary paragraph shape."}],
  "faq":[{"q":"question","a":"40-60 word answer a search/AI engine could quote directly"}]}
-Follow every writing rule. Write a flowing guide a person would enjoy reading, NOT a Q&A list. Do not fabricate facts or numbers.`;
+Follow every writing rule. Write a flowing guide a person would enjoy reading, NOT a Q&A list. Do not fabricate facts or numbers. Attribute any external fact or statistic to its source inline so passages are citable.`;
 
 const buildReviewPrompt = (markdown, metrics, { targetKeyword }) => `Review this blog draft for target keyword "${targetKeyword}".
 
@@ -137,34 +145,9 @@ const assembleMarkdown = (draft) => {
     return lines.join('\n').trim();
 };
 
-/** Build BlogPosting + FAQPage JSON-LD (@graph) deterministically from the draft. */
-const buildSchema = (draft, { brandName }) => {
-    const graph = [
-        {
-            '@type': 'BlogPosting',
-            headline: str(draft.title, 110),
-            description: str(draft.metaDescription, 160),
-            author: { '@type': 'Organization', name: brandName || 'Brand' },
-            datePublished: new Date().toISOString(),
-            dateModified: new Date().toISOString(),
-        },
-    ];
-    if (draft.faq?.length) {
-        graph.push({
-            '@type': 'FAQPage',
-            mainEntity: draft.faq.map((item) => ({
-                '@type': 'Question',
-                name: str(item.q, 300),
-                acceptedAnswer: { '@type': 'Answer', text: str(item.a, 1200) },
-            })),
-        });
-    }
-    return { '@context': 'https://schema.org', '@graph': graph };
-};
-
 const BLOCKING_THRESHOLD = 80;
 
-const runDraft = async (context, outline, contentItem, brandName) => {
+const runDraft = async (context, outline, contentItem, schemaMeta) => {
     const res = await callAI(buildDraftPrompt(context, outline, { targetKeyword: contentItem.targetKeyword }), {
         model: FREE_MODEL_FALLBACKS[0],
         modelFallbacks: FREE_MODEL_FALLBACKS,
@@ -177,7 +160,8 @@ const runDraft = async (context, outline, contentItem, brandName) => {
     const draft = res?.content ?? {};
     if (!Array.isArray(draft.sections) || draft.sections.length === 0) return null;
     const markdown = assembleMarkdown(draft);
-    return { draft, markdown, metrics: computeTextMetrics(markdown), schema: buildSchema(draft, { brandName }) };
+    const schema = buildBlogSchema(draft, { ...schemaMeta, intent: contentItem.intent, targetKeyword: contentItem.targetKeyword });
+    return { draft, markdown, metrics: computeTextMetrics(markdown), schema };
 };
 
 // Run the humanizer finishing-pass over an assembled draft, recomputing metrics
@@ -216,9 +200,23 @@ export const blogPipelineService = {
 
         const brandName = brandContext.structured?.name ?? '';
         const brandVoice = (brandContext.structured?.tone ?? []).join(', ');
+        // Schema metadata (WS3) — richer JSON-LD + E-E-A-T. author stays null unless
+        // the brand supplies a REAL author; we never fabricate a named human author.
+        const schemaMeta = {
+            brandName,
+            brandUrl: brandContext.structured?.url ?? '',
+            author: brandContext.structured?.author ?? null,
+        };
         // Learning loop: fold past low-rated feedback into the context.
         const guidance = await feedbackService.getGuidance(workspaceId, 'blog');
-        const ctx = brandContext.prompt + guidance;
+        // WS1b — grounded research on the specific topic (pure upside; degrades to
+        // ungrounded). Feeds the outline + draft REAL current facts/examples/PAA, so
+        // anti-fabrication has real material to use instead of forcing vagueness.
+        const research = await groundingService.research(
+            `Research the topic "${contentItem.targetKeyword}" for a ${contentItem.intent || 'informational'}-intent blog post.\nReport what the current top-ranking pages cover and their gaps, real statistics (with year + source), concrete examples and named tools/companies, the questions people also ask, and any recent developments. Real, current facts only.`,
+            { maxTokens: 2000 },
+        );
+        const ctx = brandContext.prompt + guidance + groundedContextBlock(research.brief);
 
         // 1) Outline
         let outline;
@@ -242,7 +240,7 @@ export const blogPipelineService = {
         // 2) Draft → 3) schema + metrics (assembled in runDraft) → humanize polish
         let built;
         try {
-            built = await runDraft(ctx, outline, contentItem, brandName);
+            built = await runDraft(ctx, outline, contentItem, schemaMeta);
             if (!built) return { ok: false, error: 'The draft step returned no content. Please retry.' };
         } catch (err) {
             return { ok: false, error: `Draft step failed: ${err.message}` };
@@ -274,7 +272,7 @@ export const blogPipelineService = {
                     `${ctx}\n\nThe previous draft scored ${review.overall}/100. Fix these issues in this rewrite: ${issues}`,
                     revisedOutline,
                     contentItem,
-                    brandName,
+                    schemaMeta,
                 );
                 if (rebuilt) {
                     built = await applyHumanize(rebuilt, brandVoice);
@@ -314,6 +312,8 @@ export const blogPipelineService = {
                 metrics: built.metrics,
                 humanizeChanges: built.humanizeChanges ?? [],
                 outline,
+                grounded: research.ok,
+                sources: research.sources,
             },
         };
     },

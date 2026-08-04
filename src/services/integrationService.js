@@ -145,6 +145,10 @@ export const integrationService = {
     // outreach sequence into Zoho CRM). The provider's adapter interprets payload.
     pushToCrm: (workspaceId, provider, payload) =>
         callEdgeFunction('connector-proxy', { action: 'push', provider, workspaceId, payload }, { timeoutMs: 45000 }),
+    // Consumption WRITE for API-key publishers (e.g. WordPress) - publish content
+    // to a connected CMS. Same connector-proxy `push` action, named for clarity.
+    publishToCms: (workspaceId, provider, payload) =>
+        callEdgeFunction('connector-proxy', { action: 'push', provider, workspaceId, payload }, { timeoutMs: 45000 }),
     // Consumption READ - list records from a connected provider (e.g. Zoho contacts).
     fetchFromConnector: (workspaceId, provider, params = {}) =>
         callEdgeFunction('connector-proxy', { action: 'fetch', provider, workspaceId, params }, { timeoutMs: 30000 }),

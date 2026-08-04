@@ -1,5 +1,9 @@
 import { callAI, FREE_MODEL_FALLBACKS } from './aiClient';
 import { getBrandContextForGeneration } from './brandContextService';
+import { groundingService, groundedContextBlock } from './groundingService';
+import { classifyMoneyType } from '../lib/buyIntent';
+import { capabilityService } from './capabilityService';
+import { serpMetricsService } from './serpMetricsService';
 
 // Keyword research generation. Ports the methodology from the SEO+GEO full-stack
 // skill (8-phase: discover → expand → classify intent → score → GEO-check →
@@ -51,6 +55,7 @@ Return JSON only:
  "clusters":[{"pillar":"pillar topic","clusterTerms":["supporting keyword","..."]}],
  "contentCalendar":[{"month":"Month 1","contentTitle":"working title","targetKeyword":"primary keyword","type":"blog | comparison | guide | landing"}]}
 
+PRIORITIZE buy-intent decision queries — "[product] alternatives", "[product] vs [competitor]", pricing/cost, reviews, free trial, and "best [category] for [ICP]" — these sit closest to revenue. At least half your suggestions should be buy-intent terms this brand can credibly target; fill the rest with supporting informational/cluster terms.
 Suggest up to ${count} keywords. Group them into 2-5 topic clusters (pillar + supporting terms). Mark GEO candidates (questions, definitions, comparisons, lists, how-tos that AI answer engines cite). Assign tier by opportunity: quick_win (high intent, likely low competition), growth (broader/higher competition), long_term (competitive head terms), research (exploratory). Remember: volume and difficulty stay null.`;
 
 /** Opportunity = (Volume × IntentValue) / Difficulty - only when real metrics exist. */
@@ -73,6 +78,9 @@ const normalizeKeyword = (raw) => {
     const geo = raw?.geo ?? {};
     return {
         term,
+        // Deterministic buy-intent classification (WS2) — reliable regardless of
+        // how the model labels intent; drives the asset router + Money Keywords tier.
+        moneyType: classifyMoneyType(term),
         intent,
         intentValue: INTENT_VALUE[intent] ?? 1,
         tier: oneOf(raw?.tier, VALID_TIERS, 'research'),
@@ -139,9 +147,17 @@ export const keywordResearchService = {
             };
         }
 
+        // WS1b — grounded research on the live search landscape (pure upside;
+        // degrades to ungrounded). Gives the model REAL buyer queries/comparisons
+        // instead of model recall. Volume/difficulty still stay null (that's WS1c).
+        const research = await groundingService.research(
+            `Research the current search and AI-answer landscape for this business so we can pick REAL keywords buyers use.\n\n${brandContext.prompt}\n${seedTopics?.length ? `Focus topics: ${seedTopics.join(', ')}.\n` : ''}Report the actual queries, questions, and comparisons people search in this category, the "alternatives / vs / pricing / reviews / free trial" buy-intent phrases that genuinely exist, terms competitors rank for, and content formats that currently win. Real terms only.`,
+        );
+        const groundedCtx = groundedContextBlock(research.brief);
+
         let response;
         try {
-            response = await callAI(buildKeywordPrompt(brandContext.prompt, { seedTopics, count }), {
+            response = await callAI(buildKeywordPrompt(brandContext.prompt + groundedCtx, { seedTopics, count }), {
                 model: FREE_MODEL_FALLBACKS[0],
                 modelFallbacks: FREE_MODEL_FALLBACKS,
                 json: true,
@@ -159,7 +175,36 @@ export const keywordResearchService = {
             return { ok: false, errorKind: 'empty_content', error: 'The AI returned no usable keywords. Try adding seed topics or enriching the brand profile.' };
         }
 
-        return { ok: true, result, modelUsed: response?.modelUsed ?? null };
+        // WS1c — inject REAL volume/difficulty when a SERP metrics provider is
+        // configured (DataForSEO), activating the opportunity score. getPlatform()
+        // is cached; metrics are pure upside — a failure never sinks generation.
+        let metricsApplied = false;
+        try {
+            const platform = await capabilityService.getPlatform();
+            if (platform.serp_metrics) {
+                const metrics = await serpMetricsService.fetch(result.keywords.map((k) => k.term));
+                if (metrics && Object.keys(metrics).length) {
+                    result.keywords = result.keywords.map((k) => {
+                        const m = metrics[String(k.term).toLowerCase()];
+                        if (!m) return k;
+                        const volume = typeof m.volume === 'number' ? m.volume : k.volume;
+                        const difficulty = typeof m.difficulty === 'number' ? m.difficulty : k.difficulty;
+                        return {
+                            ...k,
+                            volume,
+                            difficulty,
+                            cpc: typeof m.cpc === 'number' ? m.cpc : null,
+                            competition: typeof m.competition === 'number' ? m.competition : null,
+                            metricStatus: volume !== null || difficulty !== null ? 'measured' : k.metricStatus,
+                            opportunityScore: computeOpportunity(volume, difficulty, k.intent),
+                        };
+                    });
+                    metricsApplied = result.keywords.some((k) => k.metricStatus === 'measured');
+                }
+            }
+        } catch { /* metrics are pure upside — never sink keyword generation */ }
+
+        return { ok: true, result, modelUsed: response?.modelUsed ?? null, grounded: research.ok, sources: research.sources, metricsApplied };
     },
 };
 

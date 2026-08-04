@@ -37,6 +37,7 @@ const Measurement = ({ workspaceId }) => {
     const [campaigns, setCampaigns] = useState([]);
     const [snapshots, setSnapshots] = useState({});
     const [visibility, setVisibility] = useState(null);
+    const [gaps, setGaps] = useState([]);
     const [scanning, setScanning] = useState(false);
     const [loading, setLoading] = useState(true);
     const [pulling, setPulling] = useState(false);
@@ -50,7 +51,7 @@ const Measurement = ({ workspaceId }) => {
         let cancelled = false;
         (async () => {
             try {
-                const [ga, zoho, camps, snaps, vis] = await Promise.all([
+                const [ga, zoho, camps, snaps, vis, vgaps] = await Promise.all([
                     integrationService.getStatus(workspaceId, 'ga4'),
                     integrationService.getStatus(workspaceId, 'zoho'),
                     campaignService.listCampaigns(workspaceId),
@@ -58,6 +59,7 @@ const Measurement = ({ workspaceId }) => {
                     // Resilient: a not-yet-migrated visibility_scans table must not
                     // take down the whole Measurement page — degrade to null.
                     visibilityService.getLatestVisibility(workspaceId).catch(() => null),
+                    visibilityService.getVisibilityGaps(workspaceId).catch(() => []),
                 ]);
                 if (cancelled) return;
                 setGaReady(ga?.status === 'connected' && Boolean(ga?.propertyUrl));
@@ -65,6 +67,7 @@ const Measurement = ({ workspaceId }) => {
                 setCampaigns(camps ?? []);
                 setSnapshots(snaps ?? {});
                 setVisibility(vis);
+                setGaps(vgaps ?? []);
             } catch (e) {
                 if (!cancelled) { setError(e?.message || 'Could not load measurement data.'); setGaReady(false); }
             } finally {
@@ -110,6 +113,7 @@ const Measurement = ({ workspaceId }) => {
         try {
             const r = await visibilityService.runScan(workspaceId, { mock });
             setVisibility(await visibilityService.getLatestVisibility(workspaceId));
+            setGaps(await visibilityService.getVisibilityGaps(workspaceId).catch(() => []));
             if (mock) {
                 setNotice(`Sample scan — ${r.promptCount} prompts × ${r.surfaces.length} surfaces (illustrative, not real measurement).`);
             } else if (!r.promptCount) {
@@ -340,6 +344,19 @@ const Measurement = ({ workspaceId }) => {
                                 </li>
                             ))}
                         </ul>
+                    )}
+                    {gaps.length > 0 && (
+                        <div className="measurement-gaps">
+                            <p className="brand-intel-module__source-label">Content opportunities — buyers ask these and a competitor is named, but you are not:</p>
+                            <ul className="measurement-list">
+                                {gaps.slice(0, 8).map((g) => (
+                                    <li key={`${g.surface}:${g.prompt}`} className="measurement-row">
+                                        <span className="measurement-row__title">{g.prompt}</span>
+                                        <span className="measurement-sov__val">{g.competitors.slice(0, 3).join(', ')}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     )}
                 </>
             )}

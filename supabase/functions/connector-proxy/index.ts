@@ -8,6 +8,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ZOHO_DC, zohoAccessToken, zohoToken } from "../_shared/zoho.ts";
+import { dataforseoConfigured, fetchKeywordMetrics } from "../_shared/dataforseo.ts";
+import { apifyConfigured, findMentionThreads } from "../_shared/apify.ts";
+import { marked } from "https://esm.sh/marked@12";
 
 // ─── CORS (mirrors ai-proxy / search-console) ─────────────────────────────────
 const parseOriginList = (raw: string | undefined): string[] =>
@@ -94,7 +97,54 @@ interface Adapter {
 // connector-proxy action — the browser never sends email (§9); only the
 // scheduled send-scheduler dispatches sends after enforcing the invariants.
 
+// ─── WordPress helpers (Application Password / Basic auth) ────────────────────
+const wpBasic = (u: string, p: string) => `Basic ${btoa(`${u}:${p}`)}`;
+const normalizeWp = (creds: Creds) => {
+  let siteUrl = String(creds?.siteUrl ?? "").trim().replace(/\/+$/, "");
+  if (siteUrl && !/^https?:\/\//i.test(siteUrl)) siteUrl = `https://${siteUrl}`;
+  return {
+    siteUrl,
+    username: String(creds?.username ?? "").trim(),
+    appPassword: String(creds?.appPassword ?? "").replace(/\s+/g, ""), // WP shows the key with spaces; strip them
+  };
+};
+
 const PROVIDER_ADAPTERS: Record<string, Adapter> = {
+  wordpress: {
+    validate: async (creds) => {
+      const { siteUrl, username, appPassword } = normalizeWp(creds);
+      if (!siteUrl || !username || !appPassword) return { ok: false, error: "Enter your WordPress site URL, username, and application password." };
+      let res: Response;
+      try {
+        res = await fetch(`${siteUrl}/wp-json/wp/v2/users/me?context=edit`, { headers: { Authorization: wpBasic(username, appPassword) } });
+      } catch { return { ok: false, error: "Could not reach that WordPress site — check the URL." }; }
+      if (res.status === 401 || res.status === 403) return { ok: false, error: "WordPress rejected the credentials — check the username + application password." };
+      if (!res.ok) return { ok: false, error: `WordPress REST API not reachable (${res.status}).` };
+      const me = await res.json().catch(() => ({}));
+      return { ok: true, meta: { siteUrl, user: (me as { name?: string })?.name ?? username } };
+    },
+    // Publish a generated post. Defaults to DRAFT so a human reviews it in WP
+    // before it goes live (approval-gated publishing posture).
+    push: async (creds, payload) => {
+      const { siteUrl, username, appPassword } = normalizeWp(creds);
+      if (!siteUrl || !username || !appPassword) return { ok: false, error: "Not connected." };
+      const title = String(payload?.title ?? "Untitled").slice(0, 300);
+      const html = String(await marked.parse(String(payload?.markdown ?? "")));
+      const status = payload?.status === "publish" ? "publish" : "draft";
+      let res: Response;
+      try {
+        res = await fetch(`${siteUrl}/wp-json/wp/v2/posts`, {
+          method: "POST",
+          headers: { Authorization: wpBasic(username, appPassword), "Content-Type": "application/json" },
+          body: JSON.stringify({ title, content: html, status, excerpt: String(payload?.metaDescription ?? "").slice(0, 300) }),
+        });
+      } catch { return { ok: false, error: "Could not reach that WordPress site." }; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: (data as { message?: string })?.message || `WordPress publish failed (${res.status}).` };
+      const d = data as { id?: number; link?: string; status?: string };
+      return { ok: true, result: { id: d?.id ?? null, url: d?.link ?? "", status: d?.status ?? status } };
+    },
+  },
   hubspot: {
     validate: async (creds) => {
       const key = String(creds?.apiKey ?? "").trim();
@@ -540,6 +590,21 @@ async function verifyEmailFree(email: string, cache: Map<string, boolean>): Prom
   return (await domainHasMx(domain, cache)) ? "ok" : "no_mx";
 }
 
+// ─── Platform capability report ───────────────────────────────────────────────
+// Which platform-global vendor secrets are set (booleans only — the browser never
+// receives a key value). The client (src/services/capabilityService.js) merges
+// this with per-workspace connection status to gate SEO/AEO features behind honest
+// "add a key to enable" states. Set these via `supabase secrets set`. Keys mirror
+// PLATFORM_CAPABILITY_KEYS in src/lib/capabilities.js.
+const hasEnv = (name: string): boolean => Boolean((Deno.env.get(name) ?? "").trim());
+const platformCapabilities = (): Record<string, boolean> => ({
+  serp_metrics: hasEnv("DATAFORSEO_LOGIN") && hasEnv("DATAFORSEO_PASSWORD"),
+  visibility_perplexity: hasEnv("PERPLEXITY_API_KEY"),
+  visibility_openai: hasEnv("OPENAI_API_KEY"),
+  visibility_anthropic: hasEnv("ANTHROPIC_API_KEY"),
+  apify: hasEnv("APIFY_TOKEN"),
+});
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   const base = corsHeaders(req.headers.get("Origin") ?? "");
@@ -556,6 +621,46 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return fail("Invalid JSON body", 400, base); }
 
   const action = String(body.action ?? "");
+
+  // Platform capability report — global (not per-workspace), so it runs before the
+  // provider/workspace requirements. Needs only a valid session (checked above).
+  if (action === "capabilities") {
+    return json({ ok: true, platform: platformCapabilities() }, 200, base);
+  }
+
+  // Real keyword volume + difficulty (WS1c) — platform-global (DataForSEO), no
+  // workspace needed. Degrades to not_configured when the secret is absent.
+  if (action === "keywordMetrics") {
+    if (!dataforseoConfigured()) return json({ ok: false, error: "not_configured", metrics: {} }, 200, base);
+    const keywords = Array.isArray(body.keywords) ? (body.keywords as unknown[]).map(String) : [];
+    try {
+      const metrics = await fetchKeywordMetrics(keywords, {
+        locationName: typeof body.locationName === "string" ? body.locationName : undefined,
+        languageCode: typeof body.languageCode === "string" ? body.languageCode : undefined,
+      });
+      return json({ ok: true, metrics }, 200, base);
+    } catch (e) {
+      return json({ ok: false, error: (e as Error).message, metrics: {} }, 200, base);
+    }
+  }
+
+  // Durable mention finder (WS4-mentions) — platform-global (Apify). Discovers
+  // real community threads; drafting a disclosed answer + posting stay human.
+  if (action === "mentionSearch") {
+    if (!apifyConfigured()) return json({ ok: false, error: "not_configured", threads: [] }, 200, base);
+    const topic = String(body.topic ?? "").trim();
+    if (!topic) return fail("topic is required", 400, base);
+    try {
+      const threads = await findMentionThreads(topic, {
+        sites: Array.isArray(body.sites) ? (body.sites as unknown[]).map(String) : undefined,
+        max: Number(body.max) > 0 ? Number(body.max) : undefined,
+      });
+      return json({ ok: true, threads }, 200, base);
+    } catch (e) {
+      return json({ ok: false, error: (e as Error).message, threads: [] }, 200, base);
+    }
+  }
+
   const provider = String(body.provider ?? "");
   const workspaceId = String(body.workspaceId ?? "");
   if (!provider) return fail("provider is required", 400, base);

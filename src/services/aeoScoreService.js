@@ -1,56 +1,24 @@
 import { callAI, FREE_MODEL_FALLBACKS } from './aiClient';
+import { computeAeoSignals, stripMarkdown } from '../lib/aeoSignals';
 
-// Consolidated AEO / citability scorer. Replaces the four overlapping scorers
-// across the SEO/GEO skills with ONE canonical rubric: cheap, exact mechanical
-// signals computed in code + a single Gemini judgment call for the qualitative
-// dimensions, composited deterministically. Scores any content (blog draft now;
-// any page later). Dimensions follow the citability research (134-167-word
-// self-contained, answer-first, fact-rich passages get cited by AI engines).
+// Consolidated AEO / citability scorer. Deterministic Princeton-grounded signals
+// (src/lib/aeoSignals.js — cheap, exact, reproducible) + ONE Gemini judgment for
+// the qualitative dimensions, composited in code. Rubric weights follow the GEO
+// study levers (KDD 2024): citing real sources is the single biggest driver of
+// AI citation, then statistics, then self-contained/quotable passages; keyword
+// stuffing is penalized. The mechanical signals reduce reliance on model
+// self-grading — the numbers are computed, not guessed.
 
 const DIMENSION_MAX = {
-    answerBlock: 30,     // sections open with a direct ~40-60 word answer
-    selfContainment: 25, // passages stand alone (low pronoun density, named entities)
-    structure: 20,       // headings, lists, scannability
-    statDensity: 15,     // concrete numbers/stats (brand may be low - that's honest)
-    uniqueness: 10,      // original insight vs. generic filler
+    answerBlock: 25,      // sections open with a direct ~40-60 word answer
+    citations: 20,        // cites real sources + quotes authorities (Princeton's biggest lever, +40%)
+    selfContainment: 18,  // passages stand alone (low pronoun density, named entities)
+    statDensity: 15,      // concrete numbers/stats (+37%) — honest, never rewards fabrication
+    structure: 12,        // headings, lists, scannability
+    uniqueness: 10,       // original insight vs. generic filler
 };
 const TOTAL_MAX = Object.values(DIMENSION_MAX).reduce((a, b) => a + b, 0); // 100
-
-const PRONOUNS = new Set(['it', 'they', 'them', 'this', 'that', 'these', 'those', 'he', 'she', 'its', 'their']);
-
-const stripMarkdown = (md) =>
-    String(md ?? '')
-        .replace(/```[\s\S]*?```/g, ' ')
-        .replace(/[#>*_`-]/g, ' ')
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-/** Deterministic, reproducible signals - fed to the model as evidence and shown to the user. */
-const computeSignals = (markdown, { title = '', metaDescription = '' } = {}) => {
-    const text = stripMarkdown(markdown);
-    const words = text.split(/\s+/).filter(Boolean);
-    const sentences = text.split(/[.!?]+/).map((s) => s.trim()).filter(Boolean);
-    const headings = (String(markdown).match(/^#{2,3}\s+/gm) || []).length;
-    const lists = (String(markdown).match(/^\s*[-*]\s+/gm) || []).length;
-    const statMatches = (text.match(/\b\d[\d,.]*%?\b|\$\d[\d,.]*/g) || []).length;
-    const pronounCount = words.filter((w) => PRONOUNS.has(w.toLowerCase())).length;
-    const pronounRatio = words.length ? Number((pronounCount / words.length).toFixed(3)) : 0;
-
-    return {
-        wordCount: words.length,
-        sentenceCount: sentences.length,
-        headingCount: headings,
-        listCount: lists,
-        statCount: statMatches,
-        statDensityPer100Words: words.length ? Number(((statMatches / words.length) * 100).toFixed(2)) : 0,
-        pronounRatio,
-        titleLength: title.length,
-        titleLengthOk: title.length >= 40 && title.length <= 65,
-        metaDescriptionLength: metaDescription.length,
-        metaDescriptionOk: metaDescription.length >= 120 && metaDescription.length <= 165,
-    };
-};
+const STUFFING_PENALTY = 0.9; // Princeton GEO: keyword stuffing ≈ −10% citation likelihood
 
 const clampDim = (v, max) => {
     const n = Number(v);
@@ -63,6 +31,8 @@ const grade = (overall) =>
 
 const buildPrompt = (markdown, signals) => `Score this content for AI-citation readiness (AEO/GEO) - how likely AI answer engines (ChatGPT, Perplexity, AI Overviews) are to extract and cite it.
 
+Proven levers that INCREASE AI citation (Princeton GEO study): citing real sources, including statistics, quoting authorities, and a confident authoritative tone. Keyword stuffing DECREASES it.
+
 Pre-computed signals (already measured - use as evidence, do not recompute):
 ${JSON.stringify(signals, null, 2)}
 
@@ -70,9 +40,9 @@ CONTENT:
 ${stripMarkdown(markdown).slice(0, 10000)}
 
 Score each dimension out of its max and list specific, actionable recommendations. Return JSON only:
-{"dimensions":{"answerBlock":0,"selfContainment":0,"structure":0,"statDensity":0,"uniqueness":0},
+{"dimensions":{"answerBlock":0,"citations":0,"selfContainment":0,"statDensity":0,"structure":0,"uniqueness":0},
  "recommendations":["..."]}
-Maxes: answerBlock 30 (sections open with a direct 40-60 word answer), selfContainment 25 (passages stand alone, few vague pronouns, named entities), structure 20 (clear headings, lists, scannable), statDensity 15 (concrete facts/numbers - score honestly, do not reward fabrication), uniqueness 10 (original insight vs. generic filler).`;
+Maxes: answerBlock 25 (sections open with a direct 40-60 word answer), citations 20 (cites/links real sources and quotes authorities - the biggest AI-citation lever), selfContainment 18 (passages stand alone, few vague pronouns, named entities), statDensity 15 (concrete facts/numbers - score honestly, do not reward fabrication), structure 12 (clear headings, lists, scannable), uniqueness 10 (original insight vs. generic filler).`;
 
 export const aeoScoreService = {
     /**
@@ -82,7 +52,7 @@ export const aeoScoreService = {
     scoreContent: async ({ markdown, title = '', metaDescription = '' }) => {
         if (!String(markdown ?? '').trim()) return { ok: false, error: 'No content to score.' };
 
-        const signals = computeSignals(markdown, { title, metaDescription });
+        const signals = computeAeoSignals(markdown, { title, metaDescription });
 
         let content;
         try {
@@ -101,13 +71,24 @@ export const aeoScoreService = {
         const d = content?.dimensions ?? {};
         const dimensions = {
             answerBlock: clampDim(d.answerBlock, DIMENSION_MAX.answerBlock),
+            citations: clampDim(d.citations, DIMENSION_MAX.citations),
             selfContainment: clampDim(d.selfContainment, DIMENSION_MAX.selfContainment),
-            structure: clampDim(d.structure, DIMENSION_MAX.structure),
             statDensity: clampDim(d.statDensity, DIMENSION_MAX.statDensity),
+            structure: clampDim(d.structure, DIMENSION_MAX.structure),
             uniqueness: clampDim(d.uniqueness, DIMENSION_MAX.uniqueness),
         };
         // Composite computed in code - deterministic given the sub-scores.
-        const overall = Object.values(dimensions).reduce((a, b) => a + b, 0);
+        let overall = Object.values(dimensions).reduce((a, b) => a + b, 0);
+
+        const recommendations = Array.isArray(content?.recommendations)
+            ? content.recommendations.map((r) => String(r).trim()).filter(Boolean)
+            : [];
+
+        // Princeton keyword-stuffing penalty (deterministic, not model-guessed).
+        if (signals.keywordStuffed) {
+            overall = Math.round(overall * STUFFING_PENALTY);
+            recommendations.unshift(`Reduce keyword stuffing — "${signals.topWord}" is over-repeated (${Math.round(signals.topWordRatio * 100)}% of meaningful words); AI engines down-rank stuffed text.`);
+        }
 
         return {
             ok: true,
@@ -117,9 +98,7 @@ export const aeoScoreService = {
             dimensions,
             dimensionMax: DIMENSION_MAX,
             signals,
-            recommendations: Array.isArray(content?.recommendations)
-                ? content.recommendations.map((r) => String(r).trim()).filter(Boolean)
-                : [],
+            recommendations,
         };
     },
 };

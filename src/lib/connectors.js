@@ -171,6 +171,21 @@ export const CONNECTORS = [
         helpUrl: 'https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin',
         description: 'Publish posts straight to your LinkedIn profile - no copy-paste, and each post carries campaign attribution.',
     },
+    {
+        id: 'wordpress',
+        label: 'WordPress',
+        category: 'Publishing',
+        enhances: 'SEO & AEO',
+        status: 'available',
+        authType: 'apiKey',
+        fields: [
+            { key: 'siteUrl', label: 'Site URL', type: 'text', help: 'e.g. https://yourblog.com (self-hosted, or WordPress.com with the REST API enabled)' },
+            { key: 'username', label: 'Username', type: 'text', help: 'Your WordPress username' },
+            { key: 'appPassword', label: 'Application password', type: 'password', help: 'WordPress → Users → Profile → Application Passwords → Add New Application Password' },
+        ],
+        helpUrl: 'https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/',
+        description: 'Publish approved posts straight to your WordPress site as drafts for a final review before they go live.',
+    },
 ];
 
 export const AVAILABLE_CONNECTOR_IDS = CONNECTORS.filter((c) => c.status === 'available').map((c) => c.id);

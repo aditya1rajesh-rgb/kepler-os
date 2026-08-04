@@ -3,6 +3,8 @@ import { isUuid } from '../lib/validation';
 import { getBrandContextForGeneration } from './brandContextService';
 import { mapVisibilityScanRow } from '../lib/mappers';
 import { eventService } from './eventService';
+import { callEdgeFunction } from './edgeClient';
+import { capabilityService } from './capabilityService';
 import {
     SURFACE_IDS,
     buildBuyerPrompts,
@@ -23,21 +25,16 @@ const hostFromUrl = (url) => {
     catch { return ''; }
 };
 
-// Provider registry. Each surface's `ask` will, once keys exist, delegate to the
-// `visibility-scanner` edge function (Phase 1a-live). Until then every provider
-// is `configured: false` — a live scan records honest 'stub' rows (no answer,
-// no fabricated measurement) rather than inventing visibility. Flip `configured`
-// + implement `ask` per surface when the edge function + secrets land.
-// See [[connector-architecture]] and [[aeo-wedge-roadmap]].
-const PROVIDERS = SURFACE_IDS.reduce((acc, id) => {
-    acc[id] = {
-        id,
-        configured: false,
-        // ask: async ({ prompt }) => callEdgeFunction('visibility-scanner', { surface: id, prompt }),
-        ask: async () => { throw new Error('not_configured'); },
-    };
-    return acc;
-}, {});
+// Surface → platform capability key. A surface is "configured" when its secret is
+// present (reported by connector-proxy `capabilities`). Configured surfaces delegate
+// to the `visibility-scanner` edge function; unconfigured ones record honest 'stub'
+// rows (no answer, no fabricated measurement). See [[connector-architecture]].
+const SURFACE_CAP = {
+    perplexity: 'visibility_perplexity',
+    openai: 'visibility_openai',
+    anthropic: 'visibility_anthropic',
+    'google-aio': 'apify',
+};
 
 const EMPTY_DETECTION = (competitors) => ({
     brandMentioned: false,
@@ -78,6 +75,27 @@ export const visibilityService = {
         const inserts = [];
         const normalized = []; // for SoV over real ('ok') rows only
 
+        // Fetch real answers per CONFIGURED surface (one visibility-scanner edge
+        // call per surface, in parallel). Unconfigured surfaces are skipped and
+        // recorded as honest 'stub' rows — never fabricated.
+        let configuredSurfaces = [];
+        const answersBySurface = {};
+        if (!mock) {
+            const platform = await capabilityService.getPlatform();
+            configuredSurfaces = surfaces.filter((s) => platform[SURFACE_CAP[s]]);
+            const promptTexts = prompts.map((p) => p.prompt);
+            await Promise.all(configuredSurfaces.map(async (surface) => {
+                try {
+                    const res = await callEdgeFunction('visibility-scanner', { surface, prompts: promptTexts }, { timeoutMs: 120000 });
+                    const map = {};
+                    for (const r of res?.results ?? []) map[r.prompt] = r;
+                    answersBySurface[surface] = map;
+                } catch {
+                    answersBySurface[surface] = {}; // whole-surface failure → error/stub rows below
+                }
+            }));
+        }
+
         for (const p of prompts) {
             for (const surface of surfaces) {
                 let answer = null;
@@ -87,17 +105,16 @@ export const visibilityService = {
                 if (mock) {
                     answer = synthesizeMockAnswer({ prompt: p.prompt, structured, surface });
                     status = 'mock';
-                } else {
-                    const provider = PROVIDERS[surface];
-                    if (provider?.configured) {
-                        try {
-                            const r = await provider.ask({ prompt: p.prompt });
-                            answer = r?.answer ?? '';
-                            status = 'ok';
-                        } catch (e) {
-                            status = 'error';
-                            error = e?.message || 'provider error';
-                        }
+                } else if (configuredSurfaces.includes(surface)) {
+                    const r = answersBySurface[surface]?.[p.prompt];
+                    if (r?.ok && r.answer) {
+                        // Merge provider citations into the answer so the pure detector
+                        // (detectMentions) picks up brandCited / competitor citations.
+                        answer = r.citations?.length ? `${r.answer}\nSources: ${r.citations.join(' ')}` : r.answer;
+                        status = 'ok';
+                    } else {
+                        status = 'error';
+                        error = r?.error || 'no answer';
                     }
                 }
 
@@ -182,6 +199,33 @@ export const visibilityService = {
             hasReal: rows.some((r) => r.status === 'ok'),
             ...sov,
         };
+    },
+
+    /**
+     * Actionable gaps from the latest scan: prompts where a competitor is
+     * mentioned but the brand is NOT — the "learn" output that feeds new content.
+     * Only over real ('ok') rows, deduped by prompt.
+     */
+    getVisibilityGaps: async (workspaceId, { limit = 20 } = {}) => {
+        assertWorkspaceId(workspaceId);
+        const latest = await visibilityService.getLatestVisibility(workspaceId);
+        if (!latest) return [];
+        const { data, error } = await supabase
+            .from('visibility_scans')
+            .select('*')
+            .eq('workspace_id', workspaceId)
+            .eq('scan_run_id', latest.scanRunId);
+        if (error) throw error;
+        const rows = (data ?? []).map(mapVisibilityScanRow).filter((r) => r.answer && r.status === 'ok');
+        const seen = new Set();
+        const out = [];
+        for (const r of rows) {
+            const competitorsHit = (r.competitorMentions || []).filter((c) => c.mentioned).map((c) => c.name);
+            if (r.brandMentioned || competitorsHit.length === 0 || seen.has(r.prompt)) continue;
+            seen.add(r.prompt);
+            out.push({ prompt: r.prompt, surface: r.surface, competitors: competitorsHit });
+        }
+        return out.slice(0, limit);
     },
 
     /** Recent raw scan rows (newest first) — for a future detail/history view. */

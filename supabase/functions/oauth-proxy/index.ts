@@ -170,25 +170,41 @@ const FAMILIES: Record<string, Family> = {
 
 // ─── Provider registry (family + optional consumption adapter) ────────────────
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-// GSC: 28-day window ending 3 days ago (GSC data lags ~2-3 days).
-const gscQuery = async (accessToken: string, row: { property_url?: string }) => {
+// GSC: search-analytics query. Window ends 3 days ago (GSC lags ~2-3 days).
+// Defaults to a 28-day window by query (back-compat for the keyword-seeding UI),
+// but accepts params for the operator loop (WS1a): `dimensions` (query/page/…),
+// `days` (window length), `offsetDays` (shift the window back for a prior-period
+// comparison → decay), and `rowLimit`. Rows map generically — each requested
+// dimension becomes a named field, plus the four metrics.
+const GSC_LAG_DAYS = 3;
+const GSC_DIMENSIONS = new Set(["query", "page", "country", "device", "date", "searchAppearance"]);
+const gscQuery = async (accessToken: string, row: { property_url?: string }, params: Record<string, unknown> = {}) => {
   if (!row?.property_url) throw new Error("No Search Console property selected");
-  const end = new Date(Date.now() - 3 * 86400000);
-  const start = new Date(end.getTime() - 28 * 86400000);
+  const dims = (Array.isArray(params.dimensions) && params.dimensions.length
+    ? (params.dimensions as string[]).filter((d) => GSC_DIMENSIONS.has(d))
+    : ["query"]);
+  if (!dims.length) dims.push("query");
+  const days = Number(params.days) > 0 ? Math.min(Number(params.days), 180) : 28;
+  const offsetDays = Number(params.offsetDays) > 0 ? Number(params.offsetDays) : 0;
+  const rowLimit = Number(params.rowLimit) > 0 ? Math.min(Number(params.rowLimit), 5000) : 100;
+  const end = new Date(Date.now() - (GSC_LAG_DAYS + offsetDays) * 86400000);
+  const start = new Date(end.getTime() - days * 86400000);
   const res = await fetch(
     `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(row.property_url)}/searchAnalytics/query`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ startDate: isoDate(start), endDate: isoDate(end), dimensions: ["query"], rowLimit: 100 }),
+      body: JSON.stringify({ startDate: isoDate(start), endDate: isoDate(end), dimensions: dims, rowLimit }),
     },
   );
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error?.message || "Search Console query failed");
-  const rows = (data.rows ?? []).map((r: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    query: r.keys?.[0] ?? "", clicks: r.clicks ?? 0, impressions: r.impressions ?? 0, ctr: r.ctr ?? 0, position: r.position ?? 0,
-  }));
-  return { rows };
+  const rows = (data.rows ?? []).map((r: { keys?: string[]; clicks?: number; impressions?: number; ctr?: number; position?: number }) => {
+    const out: Record<string, unknown> = { clicks: r.clicks ?? 0, impressions: r.impressions ?? 0, ctr: r.ctr ?? 0, position: r.position ?? 0 };
+    dims.forEach((d, i) => { out[d] = r.keys?.[i] ?? ""; });
+    return out;
+  });
+  return { rows, dimensions: dims, days, offsetDays };
 };
 
 const gaNum = (v: unknown) => Number(v ?? 0) || 0;

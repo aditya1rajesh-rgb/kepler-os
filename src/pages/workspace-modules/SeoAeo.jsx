@@ -12,12 +12,18 @@ import { campaignService } from '../../services/campaignService';
 import { integrationService } from '../../services/integrationService';
 import { keywordResearchService } from '../../services/keywordResearchService';
 import { blogPipelineService } from '../../services/blogPipelineService';
+import { seoOperatorService } from '../../services/seoOperatorService';
+import { capabilityService } from '../../services/capabilityService';
+import { pageTeardownService } from '../../services/pageTeardownService';
+import { mentionFinderService } from '../../services/mentionFinderService';
+import { OPPORTUNITY_LABELS } from '../../lib/seoOperator';
+import { routeAsset, MONEY_TYPE_LABELS } from '../../lib/buyIntent';
 import { feedbackService } from '../../services/feedbackService';
 import RatingControl from '../../components/ui/RatingControl';
 import FeedbackInsight from '../../components/ui/FeedbackInsight';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { workspacePath } from '../../constants/routes';
-import { slugify, normalizeBaseUrl, buildSitemap, buildRobots } from '../../lib/technicalSeo';
+import { slugify, normalizeBaseUrl, buildSitemap, buildRobots, buildLlmsTxt, generateIndexNowKey, indexNowKeyFile, buildGeoReadiness } from '../../lib/technicalSeo';
 import { toUserMessage } from '../../lib/errors';
 import '../../styles/module-kepler.css';
 import './SeoAeo.css';
@@ -35,6 +41,7 @@ const keywordsToQueueItems = (result, gscByQuery = {}) =>
     (result?.keywords ?? []).map((kw) => {
         // Merge real Search Console metrics when the site already ranks for this term.
         const gsc = gscByQuery[String(kw.term ?? '').toLowerCase().trim()];
+        const routing = routeAsset(kw); // WS2 — asset routing ("what asset, or none")
         return {
             status: 'queue',
             title: kw.term,
@@ -46,6 +53,10 @@ const keywordsToQueueItems = (result, gscByQuery = {}) =>
                 geo: kw.geo,
                 rationale: kw.rationale,
                 opportunityScore: kw.opportunityScore,
+                volume: kw.volume,
+                difficulty: kw.difficulty,
+                moneyType: routing.moneyType,
+                routing: { recommendation: routing.recommendation, assetType: routing.assetType, publish: routing.publish, action: routing.action },
                 metricStatus: gsc ? 'measured' : kw.metricStatus,
                 ...(gsc ? { gscMetrics: gsc } : {}),
             },
@@ -89,6 +100,26 @@ const SeoAeo = ({ workspaceId }) => {
     const [gscRows, setGscRows] = useState([]);
     const [gscBusy, setGscBusy] = useState(false);
     const gscConfigured = Boolean(import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID);
+
+    // Capability map (what's live vs pending a key/connection) + the operator loop.
+    const [caps, setCaps] = useState(null);
+    const [opportunities, setOpportunities] = useState([]);
+    const [opSummary, setOpSummary] = useState(null);
+    const [opBusy, setOpBusy] = useState(false);
+    const [opRan, setOpRan] = useState(false);
+    const [indexNowKey, setIndexNowKey] = useState('');
+    // WS1d — page teardown (competitor / own-page analysis).
+    const [teardownUrl, setTeardownUrl] = useState('');
+    const [teardownBusy, setTeardownBusy] = useState(false);
+    const [teardown, setTeardown] = useState(null);
+    const [publishing, setPublishing] = useState(false);
+    // WS4-mentions — durable mention finder (disclosed, human-in-loop, never posts).
+    const [mentionTopic, setMentionTopic] = useState('');
+    const [mentionBusy, setMentionBusy] = useState(false);
+    const [mentionRan, setMentionRan] = useState(false);
+    const [mentionThreads, setMentionThreads] = useState([]);
+    const [mentionDrafts, setMentionDrafts] = useState({});
+    const [draftingUrl, setDraftingUrl] = useState('');
 
     // Load the pipeline on mount. State is set only after the await (in a
     // microtask), never synchronously in the effect body.
@@ -135,6 +166,20 @@ const SeoAeo = ({ workspaceId }) => {
                 const s = await integrationService.getStatus(workspaceId, 'gsc');
                 if (!cancelled) setGscStatus(s);
             } catch { /* non-fatal */ }
+        })();
+        return () => { cancelled = true; };
+    }, [workspaceId]);
+
+    // Resolve the capability map (GSC operator, SERP metrics, visibility, …) so the
+    // UI shows what's live vs pending a key/connection — honest, never fabricated.
+    useEffect(() => {
+        if (!workspaceId) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const c = await capabilityService.resolve(workspaceId);
+                if (!cancelled) setCaps(c);
+            } catch { /* non-fatal — features fall back to their honest degraded state */ }
         })();
         return () => { cancelled = true; };
     }, [workspaceId]);
@@ -194,6 +239,144 @@ const SeoAeo = ({ workspaceId }) => {
         }
     };
 
+    // WS1a — analyze real Search Console data into a prioritized opportunity list.
+    const findOpportunities = async () => {
+        setOpBusy(true);
+        setError('');
+        setNotice('');
+        try {
+            const res = await seoOperatorService.analyze(workspaceId, { minImpressions: 20 });
+            if (!res.ok) {
+                setError(res.error || 'Could not analyze Search Console data.');
+                return;
+            }
+            setOpportunities(res.opportunities);
+            setOpSummary(res.summary);
+            setOpRan(true);
+            setNotice(res.opportunities.length
+                ? `Found ${res.opportunities.length} opportunities across ${res.scannedQueries} queries.`
+                : 'No opportunities surfaced yet — your site needs more Search Console history.');
+        } catch (e) {
+            setError(toUserMessage(e, 'Could not analyze Search Console data.'));
+        } finally {
+            setOpBusy(false);
+        }
+    };
+
+    const addOpportunityToPipeline = async (op) => {
+        try {
+            const isPageLevel = op.type === 'dead_page';
+            const created = await contentService.createContentItem(workspaceId, 'seo', {
+                status: 'queue',
+                title: op.title,
+                targetKeyword: isPageLevel ? '' : op.title,
+                source: `operator:${op.type}`,
+                payload: {
+                    operator: { type: op.type, action: op.action, detail: op.detail, impact: Math.round(op.impact), metrics: op.metrics },
+                    rationale: `${OPPORTUNITY_LABELS[op.type] ?? op.type} · ${op.detail} ${op.action}`,
+                },
+            });
+            setItems((prev) => [created, ...prev]);
+            setOpportunities((prev) => prev.filter((o) => o.key !== op.key));
+            setNotice('Added to the pipeline.');
+        } catch (e) {
+            setError(toUserMessage(e, 'Could not add to pipeline.'));
+        }
+    };
+
+    // WS1d — read + analyze a live page (competitor or own).
+    const runTeardown = async () => {
+        setTeardownBusy(true);
+        setError('');
+        setTeardown(null);
+        try {
+            const res = await pageTeardownService.analyze(workspaceId, { url: teardownUrl });
+            if (!res.ok) { setError(res.error || 'Could not analyze the page.'); return; }
+            setTeardown(res);
+        } catch (e) {
+            setError(toUserMessage(e, 'Could not analyze the page.'));
+        } finally {
+            setTeardownBusy(false);
+        }
+    };
+
+    const teardownToIdea = async () => {
+        if (!teardown?.teardown) return;
+        try {
+            const t = teardown.teardown;
+            const created = await contentService.createContentItem(workspaceId, 'seo', {
+                status: 'queue',
+                title: `Beat: ${teardown.title || teardown.url}`,
+                source: 'page-teardown',
+                payload: {
+                    rationale: `Out-teach ${teardown.url}. Gaps: ${t.gaps.slice(0, 3).join('; ')}. Angles: ${t.angles.slice(0, 3).join('; ')}.`,
+                    teardown: { url: teardown.url, ...t },
+                },
+            });
+            setItems((prev) => [created, ...prev]);
+            setNotice('Added a content idea from the teardown.');
+        } catch (e) {
+            setError(toUserMessage(e, 'Could not add to pipeline.'));
+        }
+    };
+
+    // WS5 — publish a completed blog to WordPress (as a draft for final review).
+    const publishToWordpress = async (item) => {
+        const blog = item?.payload?.blog;
+        if (!blog) return;
+        setPublishing(true);
+        setError('');
+        setNotice('');
+        try {
+            const res = await integrationService.publishToCms(workspaceId, 'wordpress', {
+                title: blog.title,
+                markdown: blog.markdown,
+                metaDescription: blog.metaDescription,
+                status: 'draft',
+            });
+            if (res?.ok) {
+                setNotice('Published to WordPress as a draft — review and publish it there.');
+            } else {
+                setError('WordPress publish failed.');
+            }
+        } catch (e) {
+            setError(toUserMessage(e, 'Could not publish to WordPress.'));
+        } finally {
+            setPublishing(false);
+        }
+    };
+
+    // WS4-mentions — find real threads, then draft a disclosed answer. Never posts.
+    const findMentions = async () => {
+        setMentionBusy(true);
+        setError('');
+        setNotice('');
+        try {
+            const threads = await mentionFinderService.findThreads(mentionTopic);
+            setMentionThreads(threads);
+            setMentionRan(true);
+            if (!threads.length) setNotice('No threads found — try a more specific topic or question.');
+        } catch (e) {
+            setError(toUserMessage(e, 'Could not search for threads.'));
+        } finally {
+            setMentionBusy(false);
+        }
+    };
+
+    const draftMentionAnswer = async (thread) => {
+        setDraftingUrl(thread.url);
+        setError('');
+        try {
+            const res = await mentionFinderService.draftAnswer(workspaceId, { thread });
+            if (res.ok) setMentionDrafts((prev) => ({ ...prev, [thread.url]: res }));
+            else setError(res.error || 'Could not draft an answer.');
+        } catch (e) {
+            setError(toUserMessage(e, 'Could not draft an answer.'));
+        } finally {
+            setDraftingUrl('');
+        }
+    };
+
     const handleGeneratePackage = async () => {
         setGenerating(true);
         setError('');
@@ -218,7 +401,7 @@ const SeoAeo = ({ workspaceId }) => {
             }
             const created = await contentService.createContentItems(workspaceId, 'seo', queueItems);
             setItems((prev) => [...created, ...prev]);
-            setNotice(`Added ${created.length} keyword-driven content ideas to the queue.`);
+            setNotice(`Added ${created.length} keyword-driven content ideas to the queue${res.grounded ? ' · grounded in live web research' : ''}${res.metricsApplied ? ' · real volume/difficulty' : ''}.`);
         } catch (err) {
             setError(toUserMessage(err, 'Keyword research failed.'));
         } finally {
@@ -333,8 +516,24 @@ const SeoAeo = ({ workspaceId }) => {
                                 actions={actions}
                             >
                                 <div className="card-meta">
+                                    {item.payload?.moneyType && item.payload.moneyType !== 'none' && (
+                                        <span className={`op-money-badge${item.payload?.routing && !item.payload.routing.publish ? ' op-money-badge--offdomain' : ''}`}>
+                                            {MONEY_TYPE_LABELS[item.payload.moneyType] ?? item.payload.moneyType}
+                                            {item.payload?.routing ? ` · ${item.payload.routing.publish ? item.payload.routing.assetType : 'win off-domain'}` : ''}
+                                        </span>
+                                    )}
+                                    {key === 'queue' && item.payload?.routing && !item.payload.routing.publish && (
+                                        <span className="label-text op-offdomain-hint">⚑ {item.payload.routing.action}</span>
+                                    )}
                                     {item.targetKeyword && (
                                         <span className="label-text">Keyword: {item.targetKeyword}</span>
+                                    )}
+                                    {(item.payload?.volume != null || item.payload?.difficulty != null) && (
+                                        <span className="label-text">
+                                            {item.payload.volume != null ? `Vol ${Number(item.payload.volume).toLocaleString()}` : ''}
+                                            {item.payload.difficulty != null ? `${item.payload.volume != null ? ' · ' : ''}KD ${item.payload.difficulty}` : ''}
+                                            {item.payload.opportunityScore != null ? ` · Opp ${item.payload.opportunityScore}` : ''}
+                                        </span>
                                     )}
                                     {key === 'completed' && item.payload?.blog?.review?.overall != null && (
                                         <span className="label-text">Score: {item.payload.blog.review.overall}/100 · {item.payload.blog.metrics?.wordCount ?? 0} words</span>
@@ -400,6 +599,20 @@ const SeoAeo = ({ workspaceId }) => {
     }));
     const sitemapXml = buildSitemap(baseUrl ? [{ loc: baseUrl }, ...blogUrlEntries] : blogUrlEntries);
     const robotsTxt = buildRobots(baseUrl ? `${baseUrl}/sitemap.xml` : '');
+    const gscConnected = gscStatus?.status === 'connected';
+    // Prefer the capability layer; fall back to raw connection status before it resolves.
+    const gscOperatorReady = caps?.gsc_operator?.configured ?? gscConnected;
+    // WS4-tech — AEO machine-readables derived from the completed content set.
+    const llmsTxt = buildLlmsTxt({
+        brandName: brand?.name,
+        baseUrl,
+        summary: [brand?.overview, brand?.valueProposition, brand?.tagline, brand?.description].find(Boolean) || '',
+        pages: [
+            ...(baseUrl ? [{ loc: baseUrl, title: brand?.name || 'Home' }] : []),
+            ...completedBlogs.map((i) => ({ loc: `${baseUrl}/blog/${slugify(i.payload.blog.title || i.title)}`, title: i.payload.blog.title || i.title, description: i.payload.blog.metaDescription })),
+        ],
+    });
+    const geoReadiness = buildGeoReadiness(completedBlogs.map((i) => i.payload.blog));
 
     return (
         <div className="seo-aeo-module module-kepler">
@@ -490,6 +703,169 @@ const SeoAeo = ({ workspaceId }) => {
             {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
             {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
 
+            {(gscConfigured || gscStatus) && (
+                <Panel className="module-panel">
+                    <PanelHeader
+                        title="Opportunities"
+                        meta="Prioritized fixes from your real Search Console data — striking distance, low CTR, cannibalization, dead pages, and decay."
+                        action={gscOperatorReady ? (
+                            <button type="button" className="btn btn-primary" onClick={findOpportunities} disabled={opBusy}>
+                                {opBusy ? 'Analyzing…' : (opRan ? 'Re-analyze' : 'Find opportunities')}
+                            </button>
+                        ) : null}
+                    />
+                    {gscOperatorReady ? (
+                        <>
+                            {opSummary && Object.keys(opSummary).length > 0 && (
+                                <div className="op-summary">
+                                    {Object.entries(opSummary).map(([type, n]) => (
+                                        <span key={type} className="op-chip">{OPPORTUNITY_LABELS[type] ?? type}: {n}</span>
+                                    ))}
+                                </div>
+                            )}
+                            {opportunities.length > 0 ? (
+                                <ul className="op-list">
+                                    {opportunities.map((op) => (
+                                        <li key={op.key} className={`op-item op-item--${op.type}`}>
+                                            <div className="op-item__head">
+                                                <span className="op-badge">{OPPORTUNITY_LABELS[op.type] ?? op.type}</span>
+                                                <span className="op-item__title">{op.title}</span>
+                                                <span className="op-item__impact">≈{Math.round(op.impact)} clicks/mo (est.)</span>
+                                            </div>
+                                            <p className="op-item__detail">{op.detail}</p>
+                                            <p className="op-item__action">{op.action}</p>
+                                            <button type="button" className="btn btn-secondary op-item__add" onClick={() => addOpportunityToPipeline(op)}>
+                                                Add to pipeline
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                opRan
+                                    ? <p className="brand-intel-module__source-label">No opportunities surfaced yet — your site needs more Search Console history.</p>
+                                    : <p className="brand-intel-module__source-label">Analyze your last 28 days for pages one push from page 1, low-CTR winners, cannibalization, dead pages, and decay.</p>
+                            )}
+                        </>
+                    ) : (
+                        <p className="brand-intel-module__source-label">
+                            {caps?.gsc_operator?.degraded || 'Connect Search Console above to surface real ranking opportunities.'}
+                        </p>
+                    )}
+                </Panel>
+            )}
+
+            <Panel className="module-panel">
+                <PanelHeader
+                    title="Page teardown"
+                    meta="Read a live competitor or your own page - what it covers, where it's thin, and how to beat it. No key needed."
+                />
+                <div className="teardown-input">
+                    <input
+                        type="url"
+                        className="teardown-url"
+                        placeholder="https://competitor.com/their-ranking-page"
+                        value={teardownUrl}
+                        onChange={(e) => setTeardownUrl(e.target.value)}
+                    />
+                    <button type="button" className="btn btn-primary" onClick={runTeardown} disabled={teardownBusy || !teardownUrl.trim()}>
+                        {teardownBusy ? 'Reading…' : 'Analyze'}
+                    </button>
+                </div>
+                {teardown?.teardown && (
+                    <div className="teardown-result">
+                        <p className="teardown-summary">{teardown.teardown.summary}</p>
+                        {teardown.teardown.gaps.length > 0 && (
+                            <div className="data-section">
+                                <label className="data-label">Gaps to exploit</label>
+                                <ul className="icp-list">{teardown.teardown.gaps.map((g, i) => <li key={i}>{g}</li>)}</ul>
+                            </div>
+                        )}
+                        {teardown.teardown.angles.length > 0 && (
+                            <div className="data-section">
+                                <label className="data-label">Angles to out-teach it</label>
+                                <ul className="icp-list">{teardown.teardown.angles.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                            </div>
+                        )}
+                        <div className="intel-action-row">
+                            {teardown.teardown.recommendedFormat && (
+                                <span className="brand-intel-module__source-label">Recommended format: {teardown.teardown.recommendedFormat}</span>
+                            )}
+                            <button type="button" className="btn btn-secondary" onClick={teardownToIdea}>Turn into content idea</button>
+                        </div>
+                    </div>
+                )}
+            </Panel>
+
+            <Panel className="module-panel">
+                <PanelHeader
+                    title="Mention finder"
+                    meta="Find real community threads where a disclosed, genuinely-helpful answer belongs. It never posts for you."
+                    action={caps?.mention_finder?.configured ? (
+                        <div className="module-toolbar module-toolbar--inline">
+                            <input
+                                type="text"
+                                className="teardown-url"
+                                placeholder="a topic or question your buyers ask"
+                                value={mentionTopic}
+                                onChange={(e) => setMentionTopic(e.target.value)}
+                            />
+                            <button type="button" className="btn btn-primary" onClick={findMentions} disabled={mentionBusy || !mentionTopic.trim()}>
+                                {mentionBusy ? 'Searching…' : 'Find threads'}
+                            </button>
+                        </div>
+                    ) : null}
+                />
+                {caps?.mention_finder?.configured ? (
+                    <>
+                        {mentionThreads.length > 0 ? (
+                            <ul className="mention-list">
+                                {mentionThreads.map((t) => {
+                                    const draft = mentionDrafts[t.url];
+                                    return (
+                                        <li key={t.url} className="mention-item">
+                                            <a href={t.url} target="_blank" rel="noopener noreferrer" className="mention-item__title">{t.title || t.url}</a>
+                                            {t.source && <span className="mention-item__meta">{t.source}</span>}
+                                            {t.snippet && <p className="mention-item__snippet">{t.snippet}</p>}
+                                            {draft ? (
+                                                <div className="mention-draft">
+                                                    <div className="mention-draft__flags">
+                                                        <span className={`mention-flag${draft.recommendation === 'skip' ? ' mention-flag--skip' : ''}`}>
+                                                            {draft.recommendation === 'skip' ? 'Recommended: skip' : 'Recommended: worth a reply'}
+                                                        </span>
+                                                        {draft.mentionsBrand && (
+                                                            <span className={`mention-flag${draft.disclosed ? ' mention-flag--ok' : ' mention-flag--warn'}`}>
+                                                                {draft.disclosed ? 'Brand mention · disclosed' : 'Brand mention · NOT disclosed'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <pre className="mention-draft__text">{draft.answer}</pre>
+                                                    <button type="button" className="btn btn-secondary" onClick={() => handleCopy(draft.answer, `m-${t.url}`)}>
+                                                        {copied === `m-${t.url}` ? 'Copied!' : 'Copy draft'}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button type="button" className="btn btn-secondary mention-item__draft" onClick={() => draftMentionAnswer(t)} disabled={draftingUrl === t.url}>
+                                                    {draftingUrl === t.url ? 'Drafting…' : 'Draft disclosed answer'}
+                                                </button>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            mentionRan && <p className="brand-intel-module__source-label">No threads found — try a more specific topic or question.</p>
+                        )}
+                        <p className="brand-intel-module__source-label">
+                            This never posts for you. Disclose your affiliation, add real value, and reply manually only where you genuinely help — at most one brand mention in four.
+                        </p>
+                    </>
+                ) : (
+                    <p className="brand-intel-module__source-label">
+                        {caps?.mention_finder?.degraded || 'Add the APIFY_TOKEN platform secret to find real community threads.'}
+                    </p>
+                )}
+            </Panel>
+
             <Panel className="module-panel">
                 <PanelHeader title="Pipeline board" meta="Queue, generate, and complete content packages" />
                 {loadingItems ? (
@@ -521,10 +897,48 @@ const SeoAeo = ({ workspaceId }) => {
                     <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => downloadText('robots.txt', robotsTxt)}>
                         Download robots.txt
                     </button>
+                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => handleCopy(llmsTxt, 'llms')}>
+                        {copied === 'llms' ? 'Copied!' : 'Copy llms.txt'}
+                    </button>
+                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => downloadText('llms.txt', llmsTxt)}>
+                        Download llms.txt
+                    </button>
                 </div>
                 <p className="brand-intel-module__source-label">
-                    Per-post JSON-LD schema (BlogPosting + FAQPage) is available via “Copy schema” in each completed blog’s view.
+                    Per-post JSON-LD schema (Article/HowTo + FAQPage + Breadcrumb, with publisher &amp; author E-E-A-T) is available via “Copy schema” in each completed blog’s view. robots.txt explicitly welcomes AI answer-engine crawlers (GPTBot, PerplexityBot, ClaudeBot, Google-Extended, Bingbot…).
                 </p>
+                <div className="tech-seo-extra">
+                    <div className="tech-seo-block">
+                        <label className="data-label">IndexNow — ping Bing/Yandex when content changes</label>
+                        {indexNowKey ? (
+                            <div className="indexnow-key">
+                                <code className="indexnow-key__val">{indexNowKey}</code>
+                                <button type="button" className="btn btn-secondary" onClick={() => { const f = indexNowKeyFile(indexNowKey); downloadText(f.name, f.content); }}>
+                                    Download key file
+                                </button>
+                                <span className="brand-intel-module__source-label">
+                                    Host this at {baseUrl || 'https://your-domain'}/{indexNowKey}.txt, then POST changed URLs to api.indexnow.org.
+                                </span>
+                            </div>
+                        ) : (
+                            <button type="button" className="btn btn-secondary" onClick={() => setIndexNowKey(generateIndexNowKey())}>
+                                Generate IndexNow key
+                            </button>
+                        )}
+                    </div>
+                    <div className="tech-seo-block">
+                        <label className="data-label">GEO readiness</label>
+                        <ul className="geo-readiness">
+                            {geoReadiness.map((c) => (
+                                <li key={c.label} className={`geo-check${c.done ? ' geo-check--done' : ''}`}>
+                                    <span className="geo-check__mark">{c.done ? '✓' : '○'}</span>
+                                    <span className="geo-check__label">{c.label}</span>
+                                    <span className="geo-check__detail">{c.detail}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
             </Panel>
 
             <Modal
@@ -547,6 +961,16 @@ const SeoAeo = ({ workspaceId }) => {
                         >
                             {copied === 'schema' ? 'Copied!' : 'Copy schema'}
                         </button>
+                        {caps?.cms_publish?.configured && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => publishToWordpress(viewItem)}
+                                disabled={publishing}
+                            >
+                                {publishing ? 'Publishing…' : 'Publish to WordPress'}
+                            </button>
+                        )}
                         <button
                             type="button"
                             className="btn btn-secondary"
