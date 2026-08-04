@@ -10,6 +10,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ZOHO_DC, zohoAccessToken, zohoToken } from "../_shared/zoho.ts";
 import { dataforseoConfigured, fetchKeywordMetrics } from "../_shared/dataforseo.ts";
 import { apifyConfigured, findMentionThreads } from "../_shared/apify.ts";
+import { salesforceAccessToken, sfCreate, sfQuery } from "../_shared/salesforce.ts";
 import { marked } from "https://esm.sh/marked@12";
 
 // ─── CORS (mirrors ai-proxy / search-console) ─────────────────────────────────
@@ -143,6 +144,121 @@ const PROVIDER_ADAPTERS: Record<string, Adapter> = {
       if (!res.ok) return { ok: false, error: (data as { message?: string })?.message || `WordPress publish failed (${res.status}).` };
       const d = data as { id?: number; link?: string; status?: string };
       return { ok: true, result: { id: d?.id ?? null, url: d?.link ?? "", status: d?.status ?? status } };
+    },
+  },
+  salesforce: {
+    // Username-password flow: validate = prove the pasted creds mint a token.
+    // Nothing to transform, so the creds are stored as-is (no onConnect).
+    validate: async (creds) => {
+      const at = await salesforceAccessToken(creds);
+      if (!at.ok || !at.token || !at.instanceUrl) return { ok: false, error: at.error || "Could not authenticate with Salesforce." };
+      const who = await fetch(`${at.instanceUrl}/services/oauth2/userinfo`, { headers: { Authorization: `Bearer ${at.token}` } });
+      const info = await who.json().catch(() => ({}));
+      return { ok: true, meta: { instanceUrl: at.instanceUrl, user: (info as { name?: string })?.name ?? String(creds?.username ?? "") } };
+    },
+    // `push`: create a Contact + one dated Task per sequence step, OR create Leads
+    // from prospects. The campaign's utm (campaignTag) is stamped into Description
+    // so Measurement can attribute records/revenue back per campaign.
+    push: async (creds, payload) => {
+      const at = await salesforceAccessToken(creds);
+      if (!at.ok || !at.token || !at.instanceUrl) return { ok: false, error: at.error || "Could not authenticate with Salesforce." };
+      const s = { token: at.token, instanceUrl: at.instanceUrl };
+      const tag = String((payload as { campaignTag?: unknown })?.campaignTag ?? "").trim().slice(0, 200);
+
+      // Prospecting path: create Leads from prospects (LastName + Company mandatory).
+      if (Array.isArray((payload as { prospects?: unknown })?.prospects)) {
+        const prospects = (payload as { prospects: Array<Record<string, string>> }).prospects.slice(0, 100);
+        let leadsCreated = 0;
+        let firstErr = "";
+        for (const p of prospects) {
+          const rec: Record<string, unknown> = {
+            LastName: (p.lastName || p.firstName || p.email || "Prospect").trim().slice(0, 80),
+            Company: (p.company || "Unknown").trim().slice(0, 255),
+            LeadSource: "Apollo",
+          };
+          if (p.firstName) rec.FirstName = p.firstName.trim().slice(0, 40);
+          if (p.email) rec.Email = p.email.trim();
+          if (p.title) rec.Title = p.title.trim().slice(0, 128);
+          if (tag) rec.Description = tag;
+          const r = await sfCreate(s, "Lead", rec);
+          if (r.ok) leadsCreated += 1; else if (!firstErr) firstErr = r.error ?? "";
+        }
+        if (!leadsCreated) return { ok: false, error: `Salesforce lead creation failed${firstErr ? `: ${firstErr}` : "."}` };
+        return { ok: true, result: { leadsCreated } };
+      }
+
+      const contact = (payload?.contact ?? {}) as Record<string, string>;
+      const email = String(contact.email ?? "").trim();
+      const lastName = String(contact.lastName ?? "").trim() || String(contact.firstName ?? "").trim() || (email ? email.split("@")[0] : "");
+      if (!lastName) return { ok: false, error: "A recipient last name or email is required." };
+      const rec: Record<string, unknown> = { LastName: lastName.slice(0, 80) };
+      if (contact.firstName) rec.FirstName = String(contact.firstName).trim().slice(0, 40);
+      if (email) rec.Email = email;
+      if (tag) rec.Description = tag;
+      const c = await sfCreate(s, "Contact", rec);
+      if (!c.ok || !c.id) return { ok: false, error: c.error || "Salesforce contact create failed." };
+
+      const steps = Array.isArray(payload?.steps) ? (payload.steps as Array<Record<string, unknown>>) : [];
+      const dated = steps.filter((st) => String(st?.dueDate ?? "").trim());
+      let tasksCreated = 0;
+      let taskErr = "";
+      for (const st of dated) {
+        const t: Record<string, unknown> = {
+          Subject: (String(st?.subject ?? "").trim() || "Outreach step").slice(0, 255),
+          ActivityDate: String(st?.dueDate ?? "").trim(),
+          Description: String(st?.description ?? "").slice(0, 32000),
+          Status: "Not Started",
+          WhoId: c.id,
+        };
+        const r = await sfCreate(s, "Task", t);
+        if (r.ok) tasksCreated += 1; else if (!taskErr) taskErr = r.error ?? "";
+      }
+      if (dated.length && !tasksCreated) return { ok: false, error: `Contact saved, but creating tasks failed${taskErr ? `: ${taskErr}` : "."}` };
+      return { ok: true, result: { contactId: c.id, tasksCreated } };
+    },
+    // Read modes: default lists Contacts (to target a sequence); 'attribution'
+    // pulls recent Lead + Contact Descriptions for the CRM-record count; 'deals'
+    // pulls won Opportunities for closed-loop revenue.
+    fetch: async (creds, params) => {
+      const at = await salesforceAccessToken(creds);
+      if (!at.ok || !at.token || !at.instanceUrl) return { ok: false, error: at.error || "Could not authenticate with Salesforce." };
+      const s = { token: at.token, instanceUrl: at.instanceUrl };
+      const resource = String(params?.resource ?? "");
+
+      if (resource === "deals") {
+        const q = await sfQuery(s, "SELECT Id, Amount, StageName, Description FROM Opportunity WHERE IsWon = true ORDER BY CloseDate DESC LIMIT 500");
+        if (!q.ok) return { ok: false, error: q.error };
+        const deals = (q.records ?? []).map((r) => ({
+          amount: Number(r.Amount) || 0,
+          stage: String(r.StageName ?? ""),
+          description: String(r.Description ?? ""),
+          contactId: "", // no reverse-join for Salesforce yet — attribution via the Description tag
+        }));
+        return { ok: true, result: { deals } };
+      }
+
+      if (resource === "attribution") {
+        const [leads, contacts] = await Promise.all([
+          sfQuery(s, "SELECT Description FROM Lead WHERE Description != null ORDER BY LastModifiedDate DESC LIMIT 200"),
+          sfQuery(s, "SELECT Description FROM Contact WHERE Description != null ORDER BY LastModifiedDate DESC LIMIT 200"),
+        ]);
+        const records = [...(leads.records ?? []), ...(contacts.records ?? [])]
+          .map((x) => ({ description: String((x as { Description?: unknown }).Description ?? "") }))
+          .filter((x) => x.description);
+        return { ok: true, result: { records } };
+      }
+
+      const q = await sfQuery(s, "SELECT Id, FirstName, LastName, Email, Title, Account.Name FROM Contact ORDER BY LastModifiedDate DESC LIMIT 25");
+      if (!q.ok) return { ok: false, error: q.error };
+      const items = (q.records ?? []).map((r) => ({
+        id: String(r.Id ?? ""),
+        firstName: String(r.FirstName ?? ""),
+        lastName: String(r.LastName ?? ""),
+        email: String(r.Email ?? ""),
+        title: String(r.Title ?? ""),
+        company: String(((r.Account ?? {}) as { Name?: unknown }).Name ?? ""),
+      }));
+      return { ok: true, result: { items } };
     },
   },
   hubspot: {

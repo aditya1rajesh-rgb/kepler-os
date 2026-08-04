@@ -174,6 +174,56 @@ export const measurementService = {
         }
         return { deals: deals.length, wonDeals: wonTotal, attributed: attributedCount };
     },
+
+    /** Pull Salesforce CRM records, attribute by the campaign tag in Description. */
+    pullSalesforce: async (workspaceId, campaigns = []) => {
+        assertWorkspaceId(workspaceId);
+        const res = await integrationService.fetchFromConnector(workspaceId, 'salesforce', { resource: 'attribution' });
+        const records = res?.result?.records ?? [];
+        const agg = {};
+        for (const r of records) {
+            const c = matchByText(r.description, campaigns);
+            if (!c) continue; // only count records attributable to a KEPLER campaign
+            const a = agg[c.id] || (agg[c.id] = { campaignId: c.id, crmRecords: 0 });
+            a.crmRecords += 1;
+        }
+        const inserts = Object.values(agg).map((a) => ({
+            workspace_id: workspaceId,
+            campaign_id: a.campaignId,
+            provider: 'salesforce',
+            metrics: { crmRecords: a.crmRecords },
+        }));
+        if (inserts.length) {
+            const { error } = await supabase.from('campaign_metrics').insert(inserts);
+            if (error) throw error;
+        }
+        return { records: records.length, attributed: inserts.length };
+    },
+
+    /**
+     * Closed-loop revenue: pull Salesforce won Opportunities and attribute each to
+     * a campaign via the campaign tag in the Opportunity Description (no reverse-
+     * join for Salesforce yet), snapshotting per-campaign won revenue as 'revenue'.
+     */
+    pullSalesforceRevenue: async (workspaceId, campaigns = []) => {
+        assertWorkspaceId(workspaceId);
+        const res = await integrationService.fetchFromConnector(workspaceId, 'salesforce', { resource: 'deals' });
+        const deals = res?.result?.deals ?? [];
+        const { byCampaign, wonTotal, attributedCount } = attributeDeals(deals, { campaigns, wonStages: DEFAULT_WON_STAGES });
+        const inserts = Object.values(byCampaign)
+            .filter((a) => a.campaignId)
+            .map((a) => ({
+                workspace_id: workspaceId,
+                campaign_id: a.campaignId,
+                provider: 'revenue',
+                metrics: { revenue: a.revenue, wonDeals: a.wonDeals },
+            }));
+        if (inserts.length) {
+            const { error } = await supabase.from('campaign_metrics').insert(inserts);
+            if (error) throw error;
+        }
+        return { deals: deals.length, wonDeals: wonTotal, attributed: attributedCount };
+    },
 };
 
 export default measurementService;

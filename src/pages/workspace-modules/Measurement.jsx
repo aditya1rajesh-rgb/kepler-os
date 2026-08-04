@@ -34,6 +34,7 @@ const Measurement = ({ workspaceId }) => {
 
     const [gaReady, setGaReady] = useState(null); // null = loading, then boolean
     const [zohoConnected, setZohoConnected] = useState(false);
+    const [salesforceConnected, setSalesforceConnected] = useState(false);
     const [campaigns, setCampaigns] = useState([]);
     const [snapshots, setSnapshots] = useState({});
     const [visibility, setVisibility] = useState(null);
@@ -51,9 +52,10 @@ const Measurement = ({ workspaceId }) => {
         let cancelled = false;
         (async () => {
             try {
-                const [ga, zoho, camps, snaps, vis, vgaps] = await Promise.all([
+                const [ga, zoho, sf, camps, snaps, vis, vgaps] = await Promise.all([
                     integrationService.getStatus(workspaceId, 'ga4'),
                     integrationService.getStatus(workspaceId, 'zoho'),
+                    integrationService.getStatus(workspaceId, 'salesforce'),
                     campaignService.listCampaigns(workspaceId),
                     measurementService.getSnapshots(workspaceId),
                     // Resilient: a not-yet-migrated visibility_scans table must not
@@ -64,6 +66,7 @@ const Measurement = ({ workspaceId }) => {
                 if (cancelled) return;
                 setGaReady(ga?.status === 'connected' && Boolean(ga?.propertyUrl));
                 setZohoConnected(zoho?.status === 'connected');
+                setSalesforceConnected(sf?.status === 'connected');
                 setCampaigns(camps ?? []);
                 setSnapshots(snaps ?? {});
                 setVisibility(vis);
@@ -92,6 +95,12 @@ const Measurement = ({ workspaceId }) => {
                 notes.push(`Zoho: ${r.attributed} campaign${r.attributed === 1 ? '' : 's'} from ${r.records} record${r.records === 1 ? '' : 's'}`);
                 const rev = await measurementService.pullZohoRevenue(workspaceId, campaigns);
                 if (rev.wonDeals) notes.push(`Revenue: ${money(rev.revenue)} from ${rev.wonDeals} won deal${rev.wonDeals === 1 ? '' : 's'}`);
+            }
+            if (salesforceConnected) {
+                const r = await measurementService.pullSalesforce(workspaceId, campaigns);
+                notes.push(`Salesforce: ${r.attributed} campaign${r.attributed === 1 ? '' : 's'} from ${r.records} record${r.records === 1 ? '' : 's'}`);
+                const rev = await measurementService.pullSalesforceRevenue(workspaceId, campaigns);
+                if (rev.wonDeals) notes.push(`Salesforce revenue: ${rev.attributed} campaign${rev.attributed === 1 ? '' : 's'} from ${rev.wonDeals} won deal${rev.wonDeals === 1 ? '' : 's'}`);
             }
             const outreach = await measurementService.pullOutreach(workspaceId);
             if (outreach.sequences) {

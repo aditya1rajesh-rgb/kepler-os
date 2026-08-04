@@ -186,6 +186,27 @@ export const CONNECTORS = [
         helpUrl: 'https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/',
         description: 'Publish approved posts straight to your WordPress site as drafts for a final review before they go live.',
     },
+    {
+        id: 'salesforce',
+        label: 'Salesforce',
+        category: 'CRM',
+        enhances: 'Outreach',
+        status: 'available',
+        // Self-serve username-password OAuth flow (like Zoho/HubSpot): paste a
+        // Connected App's key/secret + login. The org must enable OAuth
+        // username-password flows for this to authenticate.
+        authType: 'apiKey',
+        fields: [
+            { key: 'loginUrl', label: 'Login URL', type: 'text', help: 'Blank for production (login.salesforce.com), https://test.salesforce.com for a sandbox, or your My Domain URL.' },
+            { key: 'clientId', label: 'Consumer Key', type: 'text', help: 'Setup → App Manager → your Connected App → Manage Consumer Details → Consumer Key' },
+            { key: 'clientSecret', label: 'Consumer Secret', type: 'password', help: 'Same Connected App → Consumer Secret' },
+            { key: 'username', label: 'Username', type: 'text', help: 'Your Salesforce login username (usually an email)' },
+            { key: 'password', label: 'Password', type: 'password', help: 'Your Salesforce password' },
+            { key: 'securityToken', label: 'Security token', type: 'password', help: 'Salesforce → Settings → Reset My Security Token (emailed to you). Leave blank if your org whitelists this IP.' },
+        ],
+        helpUrl: 'https://help.salesforce.com/s/articleView?id=sf.connected_app_create_api_integration.htm',
+        description: 'Push contacts and tasks, read contacts and leads for targeting, and pull closed-won revenue into Measurement.',
+    },
 ];
 
 export const AVAILABLE_CONNECTOR_IDS = CONNECTORS.filter((c) => c.status === 'available').map((c) => c.id);
