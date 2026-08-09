@@ -62,6 +62,41 @@ export const ga4CampaignReport = async (accessToken: string, property: string) =
   return { rows, hasConversions };
 };
 
+/**
+ * GSC rows BY QUERY over a 28-day window, optionally offset backwards — the
+ * pair E7's search detector compares (current window vs the one before it).
+ * Mirrors oauth-proxy's `gscQuery`; keep the two in sync.
+ *
+ * The 3-day lag is not a safety margin, it is Search Console's own reporting
+ * delay: query today and the last three days are simply missing, which a
+ * detector would read as a collapse in impressions.
+ */
+export const gscByQuery = async (
+  accessToken: string,
+  propertyUrl: string,
+  { days = 28, offsetDays = 0, rowLimit = 500 }: { days?: number; offsetDays?: number; rowLimit?: number } = {},
+) => {
+  const end = new Date(Date.now() - (3 + offsetDays) * 86400000);
+  const start = new Date(end.getTime() - days * 86400000);
+  const res = await fetch(
+    `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(propertyUrl)}/searchAnalytics/query`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate: isoDate(start), endDate: isoDate(end), dimensions: ["query"], rowLimit }),
+    },
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || "Search Console query failed");
+  return (data.rows ?? []).map((r: { keys?: string[]; clicks?: number; impressions?: number; ctr?: number; position?: number }) => ({
+    query: r.keys?.[0] ?? "",
+    clicks: gaNum(r.clicks),
+    impressions: gaNum(r.impressions),
+    ctr: Number(r.ctr ?? 0) || 0,
+    position: Number(r.position ?? 0) || 0,
+  }));
+};
+
 /** GSC aggregate totals (no dimensions) over a 28-day window ending 3 days ago. */
 export const gscTotals = async (accessToken: string, propertyUrl: string) => {
   const end = new Date(Date.now() - 3 * 86400000);

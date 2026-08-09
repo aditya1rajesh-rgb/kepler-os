@@ -10,6 +10,7 @@ import FunnelSnapshot from '../../components/cockpit/FunnelSnapshot';
 import ChannelContribution from '../../components/cockpit/ChannelContribution';
 import OtherGoals from '../../components/cockpit/OtherGoals';
 import { cockpitService } from '../../services/cockpitService';
+import { changeEventsService } from '../../services/changeEventsService';
 import { dashboardService } from '../../services/dashboardService';
 import { integrationService } from '../../services/integrationService';
 import { MEASURES } from '../../lib/goalFeasibility';
@@ -43,6 +44,7 @@ const Dashboard = ({ workspaceId, workspace }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [detecting, setDetecting] = useState(false);
     const [error, setError] = useState('');
 
     const load = useCallback(async () => {
@@ -111,14 +113,30 @@ const Dashboard = ({ workspaceId, workspace }) => {
         }
     };
 
-    // "What moved" for the hero: the goal's own measure, from the funnel stage
-    // that shares its metric. Real readings only — no detector is inventing a
-    // cause, and the hero says so.
-    const movement = useMemo(() => {
+    // The sparkline beside "what moved" is the goal's own measure, borrowed from
+    // the funnel stage that shares its metric. The WORDS come from the detectors
+    // (cockpitService.movement); this is only the shape of the line.
+    const trend = useMemo(() => {
         if (!data?.hero || data.hero.kind !== 'measured') return null;
         const metricKey = MEASURES[data.hero.measure]?.metricKey;
         return (data.funnel ?? []).find((s) => s.metricKey === metricKey) ?? null;
     }, [data]);
+
+    // E7's manual path. The scheduled function does this daily; the button exists
+    // because a feature that only works after an ops task is a feature nobody
+    // sees — and because "check now" is what you want the moment you suspect
+    // something moved.
+    const detectNow = async () => {
+        setDetecting(true);
+        try {
+            await changeEventsService.detectNow(workspaceId);
+            await load();
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not check for changes.'));
+        } finally {
+            setDetecting(false);
+        }
+    };
 
     const firstName = (displayName || 'there').split(' ')[0];
 
@@ -170,7 +188,10 @@ const Dashboard = ({ workspaceId, workspace }) => {
                     goal={hero}
                     projection={data.projection}
                     inferred={data.heroInferred}
-                    movement={movement}
+                    movement={data.movement}
+                    trend={trend}
+                    detecting={detecting}
+                    onDetect={detectNow}
                     campaignCount={data.goalCampaigns?.length ?? 0}
                     onOpenGoal={(g) => navigate(`${workspacePath(workspaceId, 'goals')}?goal=${g.id}`)}
                     onSetPrimary={setPrimary}

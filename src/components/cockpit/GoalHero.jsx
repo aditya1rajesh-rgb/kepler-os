@@ -9,13 +9,16 @@ import Sparkline from './Sparkline';
 // is a decision. Every number can be null, and null renders as "we cannot say
 // yet" rather than zero — a zero forecast is a claim about the business.
 //
-// WHAT MOVED. The roadmap puts E7's scheduled detectors here, attached to the
-// goal rather than in a separate activity feed, because movement you cannot act
-// on is filler while the same movement against a target is direction. E7 does
-// not exist yet, so this shows the honest half we already have — the change
-// between the last two readings of the goal's own measure — and says plainly
-// that the reason behind the change is not being computed yet. An empty frame
-// promising insight later would be worse than a small true one.
+// WHAT MOVED (E7). The detectors land here, attached to the goal rather than in
+// a separate activity feed, because movement you cannot act on is filler while
+// the same movement against a target is direction.
+//
+// THE SENTENCE IS THE CAREFUL PART. Kepler observes that three terms climbed and
+// traffic rose in the same window. It has NOT established that one caused the
+// other, and the copy says "alongside", never "because". Correlation stated as
+// correlation is useful; correlation stated as cause is what every analytics
+// vendor does and none of them can defend. `aligned` is the only claim made, and
+// all it means is that the movements point the same way.
 
 const VERDICT = {
     'on-track': { label: 'On track', tone: 'ok' },
@@ -30,15 +33,44 @@ const fmt = (n, unit) => {
     return unit === '%' ? `${s}%` : s;
 };
 
+/** "7 days earlier" — a change with no window attached cannot be argued with. */
+const describeGap = (from, to) => {
+    if (!from || !to) return 'before it';
+    const days = Math.round((new Date(to) - new Date(from)) / 86400000);
+    if (days <= 0) return 'before it';
+    return `${days} day${days === 1 ? '' : 's'} earlier`;
+};
+
+/** One contributor, in its own units — positions for search, engines for AEO. */
+const describeContributor = (e) => {
+    if (e.kind === 'search') {
+        const where = e.evidence?.enteredPageOne ? ' onto page one' : e.evidence?.leftPageOne ? ' off page one' : '';
+        return `“${e.subject}” ${e.direction === 'up' ? 'climbed' : 'slipped'} ${fmt(e.magnitude)} position${e.magnitude === 1 ? '' : 's'}${where}`;
+    }
+    if (e.kind === 'visibility') {
+        const engine = e.evidence?.surface ? ` on ${e.evidence.surface}` : '';
+        return `${e.direction === 'up' ? 'newly' : 'no longer'} ${e.evidence?.what ?? 'mentioned'}${engine} for “${e.subject}”`;
+    }
+    if (e.kind === 'outreach') {
+        return `${e.subject.toLowerCase()} ${e.direction === 'up' ? 'up' : 'down'} ${fmt(e.magnitude)}`;
+    }
+    return `${e.subject} ${e.direction === 'up' ? 'up' : 'down'} ${fmt(e.magnitude)}`;
+};
+
 const GoalHero = ({
     goal,
     projection,
     inferred = false,
+    /** summariseMovement() output — the detected changes, or null. */
     movement = null,
+    /** The funnel stage for this goal's measure, purely for the sparkline. */
+    trend = null,
+    detecting = false,
     campaignCount = 0,
     onOpenGoal,
     onSetPrimary,
     onAddCampaign,
+    onDetect,
 }) => {
     if (!goal) return null;
 
@@ -125,22 +157,46 @@ const GoalHero = ({
             )}
 
             {/* What moved — attached to the goal, never a standalone feed. */}
-            {movement?.hasData && (
-                <div className="cockpit-hero__moved">
+            <div className="cockpit-hero__moved">
+                {movement ? (
                     <div className="cockpit-hero__moved-text">
-                        <span className={`cockpit-hero__moved-delta is-${movement.delta?.direction ?? 'flat'}`}>
-                            {movement.delta?.pct === null || movement.delta?.pct === undefined
-                                ? 'New reading'
-                                : `${movement.delta.pct > 0 ? '+' : ''}${movement.delta.pct}%`}
-                        </span>
-                        <span>
-                            {measure?.label ?? 'This measure'} is at {fmt(movement.value, unit)} — against the previous reading.
-                            {' '}Kepler is not yet computing what caused the change.
-                        </span>
+                        {movement.headline && (
+                            <>
+                                <span className={`cockpit-hero__moved-delta is-${movement.headline.direction}`}>
+                                    {movement.headline.pct === null
+                                        ? `${movement.headline.direction === 'up' ? '+' : '−'}${fmt(movement.headline.magnitude)}`
+                                        : `${movement.headline.pct > 0 ? '+' : ''}${movement.headline.pct}%`}
+                                </span>
+                                <span>
+                                    {movement.headline.subject} {movement.headline.direction === 'up' ? 'rose' : 'fell'} to{' '}
+                                    {fmt(movement.headline.to)}, against the reading{' '}
+                                    {describeGap(movement.headline.comparedTo, movement.headline.observedAt)}.
+                                </span>
+                            </>
+                        )}
+                        {movement.contributors.length > 0 && (
+                            <span className="cockpit-hero__moved-with">
+                                {/* "Alongside", not "because". */}
+                                {movement.headline ? 'Alongside it: ' : 'Also moved: '}
+                                {movement.contributors.map(describeContributor).join('; ')}.
+                            </span>
+                        )}
                     </div>
-                    <Sparkline points={movement.points} className="cockpit-hero__spark" />
-                </div>
-            )}
+                ) : (
+                    <div className="cockpit-hero__moved-text">
+                        <span>
+                            Nothing has moved enough to report since the last check — small wobbles are
+                            deliberately not raised.
+                        </span>
+                        {onDetect && (
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={onDetect} disabled={detecting}>
+                                {detecting ? 'Checking…' : 'Check for changes'}
+                            </button>
+                        )}
+                    </div>
+                )}
+                {trend?.points?.length > 0 && <Sparkline points={trend.points} className="cockpit-hero__spark" />}
+            </div>
 
             <div className="cockpit-hero__actions">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenGoal?.(goal)}>

@@ -1,9 +1,11 @@
 import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
 import { buildNeedsYou } from '../lib/needsYou';
+import { summariseMovement } from '../lib/detectors';
 import { buildFunnel } from '../lib/funnelSnapshot';
 import { contributionCaveats } from '../lib/channelContribution';
 import { campaignService } from './campaignService';
+import { changeEventsService } from './changeEventsService';
 import { enrollmentsService } from './enrollmentsService';
 import { goalsService } from './goalsService';
 import { integrationService } from './integrationService';
@@ -122,7 +124,7 @@ export const cockpitService = {
             ? await settle(goalsService.campaignsFor(workspaceId, hero.id), [], failures, 'goal-campaigns')
             : [];
 
-        const [projection, contribution] = await Promise.all([
+        const [projection, contribution, changes] = await Promise.all([
             hero?.kind === 'measured'
                 ? settle(goalsService.projectionFor(workspaceId, hero, { now }), null, failures, 'forecast')
                 : Promise.resolve(null),
@@ -133,6 +135,19 @@ export const cockpitService = {
                 null,
                 failures,
                 'contribution',
+            ),
+            // E7 — what moved. Scoped to the goal's campaigns, but workspace-level
+            // signals (search, answer engines) are kept: they have no campaign,
+            // and dropping them would leave a goal looking becalmed while the
+            // account around it moved.
+            settle(
+                changeEventsService.list(workspaceId, {
+                    limit: 12,
+                    campaignIds: hero ? goalCampaigns.map((c) => c.id) : null,
+                }),
+                [],
+                failures,
+                'changes',
             ),
         ]);
 
@@ -149,6 +164,12 @@ export const cockpitService = {
             // traffic into the unattributed bucket.
             campaigns,
             goalCampaigns,
+            changes,
+            // The hero's "what moved": the headline change on the goal's own
+            // measure, plus what moved alongside it. `aligned` says whether the
+            // supporting movement points the same way — it is correlation, and
+            // the wording on screen must not upgrade it to cause.
+            movement: summariseMovement(changes, { measure: hero?.measure ?? 'sessions' }),
             needsYou: buildNeedsYou({ sequences, enrollments, campaigns, sendingDomains, idleDrafts }, { now }),
             funnel: buildFunnel(history, { granularity: 'weekly', count: 8, now }),
             contribution,

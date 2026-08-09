@@ -34,3 +34,8 @@ verify_jwt = false
 # auth as the schedulers above.
 [functions.metrics-snapshot]
 verify_jwt = false
+
+# detector-run is invoked daily by pg_cron (migration 034), one hour after
+# metrics-snapshot so it compares the fresh reading; same shared-secret auth.
+[functions.detector-run]
+verify_jwt = false

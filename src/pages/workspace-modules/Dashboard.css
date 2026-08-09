@@ -173,6 +173,12 @@
     font-variant-numeric: tabular-nums;
     color: var(--text-muted);
 }
+/* The contributors line: what moved alongside, never "because". */
+.cockpit-hero__moved-with {
+    flex-basis: 100%;
+    color: var(--text-muted);
+}
+
 .cockpit-hero__moved-delta.is-up { color: var(--positive); }
 .cockpit-hero__moved-delta.is-down { color: var(--negative); }
 

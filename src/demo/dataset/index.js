@@ -27,6 +27,10 @@ export const DEMO_TABLES = [
     'workspace_events',
     // E2 · the goals spine.
     'goals', 'goal_checkpoints', 'goal_target_history', 'goal_links',
+    // E7 · detected changes. Seeded empty on purpose — the demo's own metric
+    // history is what "Check for changes" runs against, so the harness exercises
+    // real detection rather than pre-baked events.
+    'change_events',
     // E4: write-only in the demo — nothing reads it back, but the inserts must
     // land somewhere rather than warn on every screen the demo opens.
     'usage_events',
