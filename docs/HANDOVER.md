@@ -1,6 +1,6 @@
 # Handover — Kepler roadmap execution
 
-**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `6b691a3`
+**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `4c0919e`
 
 Written so a fresh session can pick this up without replaying the conversation.
 Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
@@ -11,24 +11,27 @@ Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
 
 **Everything is committed and pushed.** `origin/staging` == `staging`.
 
-- `329 tests pass` · production build clean · **lint 57 errors — that is the
-  accepted baseline**, not a regression. CI runs `npm test` + `npm run build`
-  deliberately, never lint.
-- **The staging database is deployed and current.** All 13 pending migrations
-  (020–032) were applied manually on 2026-08-09 and all 9 edge functions
-  deployed. `supabase migration list` shows local == remote == 032.
+- `370 tests pass` · production build clean · **lint 56 errors — that is the
+  accepted baseline** (it was 57; deleting the old dashboard components took one
+  with them). CI runs `npm test` + `npm run build` deliberately, never lint.
+- **The staging database is current, but two edge functions are AHEAD of it.**
+  All 13 migrations (020–032) were applied manually on 2026-08-09 and all 9
+  functions deployed — then **E5 changed `oauth-proxy` and `metrics-snapshot`**
+  and they have not been redeployed (CI is still broken, see §5). No migration is
+  pending: E5 needed none. Until those two land, GA4 snapshots carry no
+  `bySource` key and the cockpit's channel table honestly reports that.
 - **The email sender is NOT armed.** The Vault secrets for 023/028 were
   deliberately skipped, so `kepler-send-scheduler` and `kepler-inbox-monitor`
   are scheduled but no-op (401). See §5.
 
 ---
 
-## 2. What shipped — the whole NOW tier, plus E3
+## 2. What shipped — the whole NOW tier, plus E3 and E5
 
 Roadmap NOW tier is **complete** (E27 excluded — the user owns the approvals),
-and the first NEXT-tier epic, **E3**, is done. **E3 needs no migration and no
-edge-function change** — it is client-side only, so nothing is pending on the
-database from it.
+and two NEXT-tier epics are done: **E3** and **E5**. Neither needed a migration.
+E3 is client-side only; **E5 changed two edge functions** and those are the only
+undeployed code in the repo.
 
 | Epic | What |
 |---|---|
@@ -40,6 +43,7 @@ database from it.
 | **E22** | ICP targeting block |
 | **E2** | Goals + feasibility engine — the spine |
 | **E3** | Goal-grounded generation — the spine, read (see §2b) |
+| **E5** | Goal cockpit — the return surface, replaces the Dashboard (see §2c) |
 
 **E2 is the important one.** Migration 032 adds `goals`, `goal_checkpoints`,
 `goal_target_history`, `goal_links` and `campaigns.goal_id`. The feasibility
@@ -112,6 +116,99 @@ only — it is ICP work, not copy, and the goal has no bearing on a job-title li
 
 ---
 
+## 2c. E5 — the goal cockpit
+
+**This screen replaces the Dashboard.** Same route, same registry entry; the old
+`.db-*` screen and its five components are deleted.
+
+**The admission filter is the design.** Every card answers one of three
+questions — what changed since I last looked, what needs me now, what should I
+do next — and a card that only reports current state does not belong. That is
+what deleted the KPI strip, the campaign table and the activity feed: they
+reported, and reporting does not create return. The feed's actionable half is
+now the queue; its notable half hangs off the goal, where movement becomes
+direction instead of noise.
+
+### The zones
+
+| Zone | State |
+|---|---|
+| **1 · Goal hero** | Built. Progress, forecast, **gap in real units**, days remaining, what moved |
+| **2 · Needs you** | Built. Five row types, all from state production already writes |
+| **3 · Recommended next** | **Deliberately not built** — that is E10 |
+| **4 · Funnel** | Built. Five stages, sparklines, honest empty stages |
+| **5 · Channel contribution** | Built, incl. the `production—source` dimension |
+| **6 · Other goals** | Built — a quiet strip, plus "make primary" |
+
+**Zone 3 is the interesting omission.** E10 is what scores which work would close
+the gap. Until it exists the card states the gap's *size* from the goal's own
+math and stops there: it will not rank work it has not measured. A card that
+guessed would be indistinguishable on screen from one that knew.
+
+**The hero closes E3's exposed gap.** `goalsService.setPrimary` had no caller, so
+the primary-goal fallback standalone generation relies on was unreachable through
+the app. The hero offers it, and the other-goals strip does too. An inferred hero
+(no primary set → soonest-ending active goal) says so, exactly as E3's provenance
+does.
+
+**What moved, without E7.** The roadmap puts E7's detectors on the hero. They do
+not exist, so the hero shows the honest half we have — the change between two
+real readings of the goal's own measure — and states plainly that nothing is
+computing the cause yet.
+
+### Zone 5 — the `production—source` key
+
+`production` is what Kepler made (**known**, because our tagged links carry a
+campaign-scoped utm whose id8 survives renaming). `source` is where the outcome
+came from (**reported** by GA4). One compound key rather than a toggle between
+two axes, so there is only ever one number per row.
+
+- GA4's by-campaign report gained `sessionSource` + `sessionMedium` in **both**
+  copies — `oauth-proxy` (browser) and `_shared/googleData.ts` (cron). They must
+  stay in sync; the file says so and now it matters.
+- Both writers store the split as `metrics.bySource`, keyed by **raw GA4
+  spellings**, so display rules can change without a re-pull. No migration.
+- `src/lib/channelContribution.js` is pure and holds the rules;
+  `measurementService.getContribution` reads it back from snapshots.
+
+**The refusals, which are what `tests/channel-contribution.test.js` pins:**
+
+- **share is over the WHOLE picture**, never the attributed slice — 400/2000
+  reads 20%, where dividing Kepler's work by Kepler's work reads 44%;
+- **`Other—` rows stay in the table**, so the unattributed remainder is
+  comparable rather than a footnote under a chart;
+- an ambiguous multi-wing campaign resolves to **`Campaign`**, not a guessed
+  wing;
+- drilling from a goal **folds sibling campaigns into `Other`** rather than
+  widening the goal's claim;
+- pre-source snapshots are kept as one `Unknown` row — dropping them would shrink
+  the denominator and inflate every other row;
+- **no cross-channel efficiency, ever.** Nothing assigns a production cost to
+  organic, so "your Meta CPA is 3× your SEO CPA" is not a sentence Kepler can
+  honestly say. Contribution comparison works; efficiency comparison does not.
+
+### L1 — the drill target
+
+`cockpit (L0) → Measurement channel detail (L1) → campaign (L2) → asset (L3)`.
+L2 and L3 already existed; **L1 was the missing level** and it lives in
+Measurement, which is what gives that screen its job in the new model: the
+cockpit summarises, Measurement is where you drill. It is **goal-scoped** (the
+goal travels in the URL) and **channel-shaped** — SEO shows impressions and
+position, outreach shows sends and replies, paid says plainly that spend is not
+measured. A single table with columns for all three would be mostly blank for
+each, which reads as missing data rather than as a different kind of thing.
+
+### Two bugs only running it could find
+
+- `linkedin` (our own utm) and `linkedin.com` (the referrer) normalised to
+  **"Linkedin" and "LinkedIn" — two rows for one channel**, on a table whose
+  entire job is comparing channels.
+- The paid caveat said paid was "missing entirely" **while paid rows were on
+  screen**. Paid rows appear whenever our tagged links used a paid medium; what
+  is missing is the money. Now it says that.
+
+---
+
 ## 3. E30 — the audit finding, and why it exists
 
 An audit of all 10 screen specs found that **screen-structure decisions were
@@ -161,6 +258,19 @@ content), Settings' three children (E9).
 - **`replies.raw_snippet` holds the email SUBJECT, not the body**, despite the
   name. The Replies screen labels it honestly; fixing it properly means
   `inbox-monitor` storing a body excerpt (a real gap, not yet built).
+- **`campaign_metrics` has no `source` column and does not need one.** E5's
+  source split lives in `metrics.bySource` (JSONB). Two writers produce it —
+  `measurementService.pullGa4` and the `metrics-snapshot` cron — and they must
+  agree, or the cockpit reads a different shape depending on who took the
+  snapshot.
+- **`latestPerPeriod` returns 0, not null, when no snapshot exists.** That is
+  correct for the KPI reads it was built for and wrong for anything that DRAWS a
+  series: a period with no reading plotted at the floor is a cliff that never
+  happened. Pass `nullWhenMissing: true` when charting.
+- **A period value and a reading are not the same thing.** A period carries the
+  latest level at or before its end, so a week nobody pulled data repeats last
+  week's number. Deltas taken across periods report "flat" where the truth is
+  "no new reading" — take them from `readingSeries` instead.
 - **Injected context must not end a line with a field label the surrounding
   prompt parses.** Found in E3: `blogDraft` reads the title with
   `/Title:\s*(.+)/i` and takes the FIRST match in the whole prompt, so a context
@@ -173,6 +283,10 @@ content), Settings' three children (E9).
 
 ## 5. Blocked / needs the user
 
+0. **Two edge functions are undeployed.** E5 changed `oauth-proxy` (the browser's
+   GA4 report) and `metrics-snapshot` (the cron's). Until both ship, no snapshot
+   carries `metrics.bySource` and the cockpit's channel table falls back to a
+   single `Other—Unknown` row and says why. Deploying needs the token in (1).
 1. **CI `staging-backend` is broken.** It fails at `supabase link` with
    `{"message":"Unauthorized"}` — `SUPABASE_ACCESS_TOKEN` is expired or wrong.
    Deploys are manual until it is rotated. Full instructions in
@@ -194,28 +308,32 @@ content), Settings' three children (E9).
 
 ## 6. Suggested next
 
-NOW is done and E3 closed the loop **downward** — a goal now reaches the assets
-made under it. Three candidates, in the order I would take them:
+The goal spine is now closed in both directions: E3 pushed the goal **down** into
+generation, E5 brought the outcome **back up** into a surface worth returning to.
+Two things E5 left as named holes, and they are the strongest candidates:
 
-1. **E5 · Goal cockpit (7.3).** The return surface. E2 and E3 both assume
-   someone comes back to a goal and sees what moved; nothing renders that yet.
-   It also unblocks `setPrimary`, which E3 leans on for standalone generation —
-   right now the only way to set a primary goal is the service, so the
-   "grounded in your primary goal" fallback is unreachable through the UI.
-   That is the sharpest gap E3 exposed.
-2. **E28 · Library as corpus (7.3).** E3's PRIOR leg reads `content_items` by
-   campaign. E28 makes the corpus first-class, which is what turns "do not
-   repeat these" into "build on these."
-3. **E7 · Scheduled detectors (7.7 — highest ICE, no dependencies).** Take it if
-   a self-contained epic suits the session better; it feeds E5 later either way.
+1. **E7 · Scheduled detectors (7.7 — highest ICE, no dependencies).** E5 built
+   the surface its output lands on. The hero's "what moved" currently shows a
+   level change and admits nothing is computing the cause; E7 is the cause. This
+   is the smallest change that makes the cockpit worth opening daily.
+2. **E10 · Continuous goal recommendation (7.3).** Zone 3. The cockpit sizes the
+   gap and then deliberately stops, because it will not rank work it has not
+   measured. E10 is the ranking, and the zone is already framed for it.
 
-**E6 · closed loop is still gated on E4 evidence** — E3 grounds generation in
-the goal, but nothing yet reads performance back into the next asset, and the
-roadmap is explicit that the loop should be validated on ads, not content.
+Then **E28 · Library as corpus (7.3)** — E3's PRIOR leg reads `content_items` by
+campaign; E28 makes the corpus first-class, which turns "do not repeat these"
+into "build on these."
 
-Other E2 leftovers, all deliberately deferred: `goal_links` (built, unused —
-wants a second goal to link to), Activity (blocked on E9's `actor_id`),
-`setPrimary` (service exists, no UI — wants E5's cockpit).
+**E6 · closed loop is still gated on E4 evidence.** Nothing yet reads performance
+back into the next asset, and the roadmap is explicit that the loop should be
+validated on ads, not content.
+
+**What zone 5 will want next, when the paid leg lands:** spend, and with it CPA
+and ROAS *within* paid. Not across channels — that refusal is permanent.
+
+Other E2 leftovers: `goal_links` (built, unused — wants a second goal to link
+to) and Activity (blocked on E9's `actor_id`). `setPrimary` is **done** — E5's
+hero and other-goals strip both call it.
 
 ---
 
@@ -238,3 +356,16 @@ Three things about the harness that cost time in the E3 session:
 - **Vite serves the real modules**, so `await import('/src/services/…')` in the
   console runs the actual service against the demo store. That is the fastest
   way to inspect an assembled prompt without clicking through a whole flow.
+
+E5 added one more, and set the demo up so the cockpit has something to show:
+
+- **The ga4 demo snapshots now carry `bySource`** (`src/demo/dataset/campaigns.js`,
+  `sources:` per series), using the mediums `lib/tracking.js` actually mints — so
+  the harness exercises the real keying rules rather than a convenient fiction.
+  `GA4_BY_CAMPAIGN` in `dataset/crm.js` gained the same two dimensions.
+- **The cockpit's cold start is the default demo state**, because the dataset
+  ships no goals. Create one to see the hero; the queue, funnel and channel table
+  are populated either way.
+- If another session is already on `5176`, add a second launch config on a spare
+  port rather than fighting for it — a page reload there would reset the store
+  you just set up.
