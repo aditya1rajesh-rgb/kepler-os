@@ -78,10 +78,28 @@ interface Family {
   redirectUri: () => string | undefined;
   // Exchange an auth code for a durable token. Google → refresh_token; Meta has
   // no refresh token, so we store a long-lived (~60-day) access token in its place.
-  exchange: (fam: Family, code: string) => Promise<{ token: string; expiresIn?: number }>;
+  //
+  // `scopes` are the scopes the provider ACTUALLY granted, which can be a subset
+  // of what was requested — a user can untick permissions on the consent screen.
+  // Recording them is what lets the Integrations screen say "connected, but
+  // publishing was not authorised" instead of failing later at push time (E29).
+  exchange: (fam: Family, code: string) => Promise<{ token: string; expiresIn?: number; scopes?: string[] }>;
   // Mint a usable access token from the stored durable token.
   accessToken: (fam: Family, stored: string) => Promise<string>;
 }
+/**
+ * Normalise a provider's granted-scope field. Google and LinkedIn send a
+ * space-delimited string, Meta a comma-delimited one; some responses omit it.
+ * Returns undefined (not []) when absent, so "unknown" stays distinguishable
+ * from "nothing granted" — treating unknown as empty would mark every
+ * connection degraded.
+ */
+const parseScopes = (raw: unknown): string[] | undefined => {
+  if (typeof raw !== "string" || !raw.trim()) return undefined;
+  const parts = raw.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);
+  return parts.length ? parts : undefined;
+};
+
 const FAMILIES: Record<string, Family> = {
   google: {
     clientId: () => Deno.env.get("GOOGLE_OAUTH_CLIENT_ID") ?? Deno.env.get("GSC_CLIENT_ID"),
@@ -101,7 +119,7 @@ const FAMILIES: Record<string, Family> = {
       if (!data.refresh_token) {
         throw new Error("Google did not return a refresh token - remove KEPLER from your Google account's third-party access and reconnect.");
       }
-      return { token: data.refresh_token as string };
+      return { token: data.refresh_token as string, scopes: parseScopes(data.scope) };
     },
     accessToken: async (fam, refreshToken) => {
       const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -139,7 +157,13 @@ const FAMILIES: Record<string, Family> = {
       }).toString());
       const longData = await longRes.json();
       if (!longRes.ok) throw new Error(longData?.error?.message || "Meta long-lived token exchange failed");
-      return { token: longData.access_token as string, expiresIn: Number(longData.expires_in) || undefined };
+      // Meta returns granted scopes on the SHORT-lived response; the long-lived
+      // exchange omits them, so carry them across.
+      return {
+        token: longData.access_token as string,
+        expiresIn: Number(longData.expires_in) || undefined,
+        scopes: parseScopes(longData.scope ?? shortData.scope),
+      };
     },
     // The stored long-lived token IS the access token - use it directly.
     accessToken: async (_fam, stored) => stored,
@@ -162,7 +186,7 @@ const FAMILIES: Record<string, Family> = {
       if (!res.ok) throw new Error(data?.error_description || data?.error || "LinkedIn code exchange failed");
       // Member access tokens last ~60 days and aren't refreshable by default,
       // so we store the access token directly (like Meta) with its expiry.
-      return { token: data.access_token as string, expiresIn: Number(data.expires_in) || undefined };
+      return { token: data.access_token as string, expiresIn: Number(data.expires_in) || undefined, scopes: parseScopes(data.scope) };
     },
     accessToken: async (_fam, stored) => stored,
   },
@@ -551,7 +575,7 @@ Deno.serve(async (req: Request) => {
       if (!fam.clientId() || !fam.clientSecret() || !fam.redirectUri()) {
         return fail(`${provider.family} OAuth is not configured on the server.`, 500, base);
       }
-      const { token, expiresIn } = await fam.exchange(fam, String(body.code ?? ""));
+      const { token, expiresIn, scopes: grantedScopes } = await fam.exchange(fam, String(body.code ?? ""));
 
       // GSC convenience: discover properties + auto-select a lone one.
       let sites: string[] = [];
@@ -578,6 +602,7 @@ Deno.serve(async (req: Request) => {
         authorUrn = `urn:li:person:${ui.sub}`;
       }
       const meta: Record<string, unknown> = { family: provider.family };
+      if (grantedScopes?.length) meta.scopes = grantedScopes;
       if (sites.length) meta.sites = sites;
       if (authorUrn) meta.authorUrn = authorUrn;
       if (expiresIn) meta.expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();

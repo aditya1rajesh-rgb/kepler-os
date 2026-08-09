@@ -5,8 +5,20 @@
 // workspace connects one, that module's output gets grounded in real data.
 //
 // `status`:
-//   'available' - backend is built + wired (real connect/status/use).
-//   'planned'   - UI placeholder; backend not built yet (shows "Coming soon").
+//   'available'         - backend is built + wired (real connect/status/use).
+//   'approval_pending'  - backend built, but the PLATFORM has not approved our
+//                         app for the scopes it needs (E27). Nothing the user
+//                         can do; the card names the gate instead of offering a
+//                         Connect button that would fail at consent.
+//   'platform_managed'  - configured by Kepler centrally (a server-side secret),
+//                         not connectable per workspace. The workspace still
+//                         needs to know, because it decides what a scan covers.
+//   'planned'           - UI placeholder; backend not built yet ("Coming soon").
+//
+// `capabilities` + `capabilityScopes` (E29): what this connector can DO, and
+// which requested scopes deliver each. A provider may grant a subset at consent
+// time; comparing granted scopes against these is what lets a card say "read
+// works, publishing was not authorised" instead of failing later at push time.
 // `authType`:
 //   'oauth'  - click Connect → provider consent (platform registers the app once).
 //   'apiKey' - user pastes a key/token in a modal (`fields`); fully self-serve.
@@ -22,10 +34,13 @@ export const CONNECTORS = [
         authType: 'oauth',
         family: 'google',
         oauth: { scopes: ['https://www.googleapis.com/auth/webmasters.readonly'] },
+        capabilities: ['read'],
+        capabilityScopes: { read: ['https://www.googleapis.com/auth/webmasters.readonly'] },
         description: 'Real search performance - queries, impressions, clicks, and positions - so keyword picks use live demand, not estimates.',
     },
     {
         id: 'hubspot',
+        capabilities: ['read'],
         label: 'HubSpot',
         category: 'CRM',
         enhances: 'Outreach',
@@ -46,6 +61,8 @@ export const CONNECTORS = [
         authType: 'oauth',
         family: 'meta',
         oauth: { scopes: ['ads_read'] },
+        capabilities: ['read'],
+        capabilityScopes: { read: ['ads_read'] },
         helpUrl: 'https://developers.facebook.com/docs/graph-api/reference/ads_archive/',
         description: "Competitors' live ads, so generated creative is grounded in what rivals actually run.",
     },
@@ -58,6 +75,8 @@ export const CONNECTORS = [
         authType: 'oauth',
         family: 'google',
         oauth: { scopes: ['https://www.googleapis.com/auth/analytics.readonly'] },
+        capabilities: ['read'],
+        capabilityScopes: { read: ['https://www.googleapis.com/auth/analytics.readonly'] },
         helpUrl: 'https://developers.google.com/analytics/devguides/reporting/data/v1',
         description: 'Site + funnel analytics to measure which content and campaigns actually convert.',
     },
@@ -70,6 +89,15 @@ export const CONNECTORS = [
         authType: 'oauth',
         family: 'google',
         oauth: { scopes: ['https://www.googleapis.com/auth/adwords'] },
+        // One Google scope covers read and write, but the developer token tier
+        // decides which actually work — hence write/targeting stay ungranted until
+        // E27 lands the production token. See [[app-review-requirements]].
+        capabilities: ['read', 'write', 'targeting'],
+        capabilityScopes: {
+            read: ['https://www.googleapis.com/auth/adwords'],
+            write: ['https://www.googleapis.com/auth/adwords', 'kepler:google-ads-write'],
+            targeting: ['https://www.googleapis.com/auth/adwords', 'kepler:google-ads-targeting'],
+        },
         helpUrl: 'https://developers.google.com/google-ads/api/docs/get-started/dev-token',
         // NOTE: querying the Google Ads API also needs a Google-approved developer
         // token (GOOGLE_ADS_DEVELOPER_TOKEN secret) - connecting works without it,
@@ -85,6 +113,14 @@ export const CONNECTORS = [
         authType: 'oauth',
         family: 'meta',
         oauth: { scopes: ['ads_read'] },
+        // ads_management + business verification are E27 work; until then this
+        // reads spend and reports honestly that it cannot push.
+        capabilities: ['read', 'write', 'targeting'],
+        capabilityScopes: {
+            read: ['ads_read'],
+            write: ['ads_management'],
+            targeting: ['ads_management'],
+        },
         helpUrl: 'https://developers.facebook.com/docs/marketing-api/insights',
         // NOTE: ads_read in production needs Meta App Review - connecting works in
         // dev mode / for your own ad account before review.
@@ -92,6 +128,7 @@ export const CONNECTORS = [
     },
     {
         id: 'zoho',
+        capabilities: ['read', 'write'],
         label: 'Zoho CRM',
         category: 'CRM',
         enhances: 'Outreach',
@@ -129,6 +166,7 @@ export const CONNECTORS = [
     },
     {
         id: 'apollo',
+        capabilities: ['read'],
         label: 'Apollo',
         category: 'Prospecting',
         enhances: 'Outreach',
@@ -153,6 +191,11 @@ export const CONNECTORS = [
         // memory [[app-review-requirements]]. IG needs a Business/Creator
         // account linked to the Page.
         oauth: { scopes: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'instagram_basic', 'instagram_content_publish'] },
+        capabilities: ['read', 'write'],
+        capabilityScopes: {
+            read: ['pages_show_list', 'pages_read_engagement'],
+            write: ['pages_manage_posts', 'instagram_content_publish'],
+        },
         helpUrl: 'https://developers.facebook.com/docs/pages-api/posts/',
         description: 'Publish to your Facebook Page and Instagram, and pull past posts with their engagement.',
     },
@@ -168,11 +211,17 @@ export const CONNECTORS = [
         // → publish on their behalf. Personal-profile posting is self-serve (no
         // LinkedIn app review); company-Page posting is a later, gated tier.
         oauth: { scopes: ['openid', 'profile', 'w_member_social'] },
+        capabilities: ['read', 'write'],
+        capabilityScopes: {
+            read: ['openid', 'profile'],
+            write: ['w_member_social'],
+        },
         helpUrl: 'https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin',
         description: 'Publish posts straight to your LinkedIn profile - no copy-paste, and each post carries campaign attribution.',
     },
     {
         id: 'wordpress',
+        capabilities: ['write'],
         label: 'WordPress',
         category: 'Publishing',
         enhances: 'SEO & AEO',
@@ -188,6 +237,7 @@ export const CONNECTORS = [
     },
     {
         id: 'salesforce',
+        capabilities: ['read', 'write'],
         label: 'Salesforce',
         category: 'CRM',
         enhances: 'Outreach',
@@ -206,6 +256,56 @@ export const CONNECTORS = [
         ],
         helpUrl: 'https://help.salesforce.com/s/articleView?id=sf.connected_app_create_api_integration.htm',
         description: 'Push contacts and tasks, read contacts and leads for targeting, and pull closed-won revenue into Measurement.',
+    },
+    // ── AI visibility (E13) — the eighth category. These are NOT per-workspace
+    // connections: the scanner reads platform secrets, so a workspace cannot
+    // connect or disconnect them. It still needs to see them, because which
+    // surfaces are configured decides what a visibility scan actually covers —
+    // a scan reporting 12% share of voice means something different when it
+    // asked one engine rather than four.
+    {
+        id: 'perplexity',
+        label: 'Perplexity',
+        category: 'AI visibility',
+        enhances: 'SEO & AEO',
+        status: 'platform_managed',
+        authType: 'platform',
+        capabilities: ['read'],
+        platformCapability: 'visibility_perplexity',
+        description: 'Asks Perplexity your buyers\u2019 questions and records whether you are mentioned and cited.',
+    },
+    {
+        id: 'openai',
+        label: 'ChatGPT',
+        category: 'AI visibility',
+        enhances: 'SEO & AEO',
+        status: 'platform_managed',
+        authType: 'platform',
+        capabilities: ['read'],
+        platformCapability: 'visibility_openai',
+        description: 'Measures whether ChatGPT names your brand when buyers ask category questions.',
+    },
+    {
+        id: 'anthropic',
+        label: 'Claude',
+        category: 'AI visibility',
+        enhances: 'SEO & AEO',
+        status: 'platform_managed',
+        authType: 'platform',
+        capabilities: ['read'],
+        platformCapability: 'visibility_anthropic',
+        description: 'Measures whether Claude names your brand when buyers ask category questions.',
+    },
+    {
+        id: 'google-aio',
+        label: 'Google AI Overviews',
+        category: 'AI visibility',
+        enhances: 'SEO & AEO',
+        status: 'platform_managed',
+        authType: 'platform',
+        capabilities: ['read'],
+        platformCapability: 'apify',
+        description: 'Reads the AI Overview on your category searches to see who it cites.',
     },
 ];
 

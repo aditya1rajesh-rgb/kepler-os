@@ -29,36 +29,39 @@ const integration = (provider, { propertyUrl = '', meta = {}, syncHoursAgo = 3, 
 export const workspace_integrations = [
     integration('gsc', {
         propertyUrl: 'sc-domain:ken42.com',
-        meta: { account: 'priya@ken42.com', properties: ['sc-domain:ken42.com', 'https://ken42.com/'], rowsLastSync: 1284 },
+        meta: { account: 'priya@ken42.com', properties: ['sc-domain:ken42.com', 'https://ken42.com/'], rowsLastSync: 1284, scopes: ['https://www.googleapis.com/auth/webmasters.readonly'] },
         syncHoursAgo: 2, createdDaysAgo: 74,
     }),
     integration('ga4', {
         propertyUrl: 'properties/412889301',
-        meta: { account: 'priya@ken42.com', propertyName: 'Ken42 — Website', measurementId: 'G-K42WEB2026' },
+        meta: { account: 'priya@ken42.com', propertyName: 'Ken42 — Website', measurementId: 'G-K42WEB2026', scopes: ['https://www.googleapis.com/auth/analytics.readonly'] },
         syncHoursAgo: 2, createdDaysAgo: 74,
     }),
     integration('google-ads', {
         propertyUrl: 'customers/8842019377',
-        meta: { account: 'Ken42 India', currency: 'INR', activeCampaigns: 2 },
+        // E29: the developer token is read-tier, so pushing would fail. The card
+        // says so instead of letting a push discover it.
+        meta: { account: 'Ken42 India', currency: 'INR', activeCampaigns: 2, scopes: ['https://www.googleapis.com/auth/adwords'] },
         syncHoursAgo: 4, createdDaysAgo: 41,
     }),
     integration('linkedin', {
         propertyUrl: 'urn:li:organization:74829104',
-        meta: { pageName: 'Ken42', followers: 6842, adAccount: 'Ken42 — India (INR)' },
+        // E29: the operator unticked posting on LinkedIn's consent screen.
+        meta: { pageName: 'Ken42', followers: 6842, adAccount: 'Ken42 — India (INR)', scopes: ['openid', 'profile'] },
         syncHoursAgo: 5, createdDaysAgo: 52,
     }),
     integration('meta-ads', {
         propertyUrl: 'act_882910447',
-        meta: { account: 'Ken42 — Brand', currency: 'INR', activeCampaigns: 1 },
+        meta: { account: 'Ken42 — Brand', currency: 'INR', activeCampaigns: 1, scopes: ['ads_read'] },
         syncHoursAgo: 6, createdDaysAgo: 38,
     }),
     integration('meta-pages', {
         propertyUrl: '104882910447',
-        meta: { pageName: 'Ken42', followers: 3120 },
+        meta: { pageName: 'Ken42', followers: 3120, scopes: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'instagram_basic', 'instagram_content_publish'] },
         syncHoursAgo: 6, createdDaysAgo: 38,
     }),
     integration('meta-ad-library', {
-        meta: { trackedPages: ['Meritto', 'Camu Digital Campus', 'LeadSquared', 'ExtraaEdge'], adsLastSync: 47 },
+        meta: { trackedPages: ['Meritto', 'Camu Digital Campus', 'LeadSquared', 'ExtraaEdge'], adsLastSync: 47, scopes: ['ads_read'] },
         syncHoursAgo: 12, createdDaysAgo: 33,
     }),
     integration('zoho', {

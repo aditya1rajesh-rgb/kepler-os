@@ -181,6 +181,110 @@
     color: var(--text-dim);
 }
 
+/* ── E29 · connection state + scope visibility ────────────────────────────────
+   The card used to say only connected/disconnected. It now carries the state
+   (including the two the UI could not express — waiting on a platform approval,
+   and connected-but-not-for-everything) and which capabilities actually work. */
+
+.connector-cat {
+    margin-top: var(--sp-6);
+}
+
+.connector-cat__title {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 var(--sp-2);
+}
+
+.connector-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.connector-state--ok {
+    color: var(--positive);
+    border-color: rgba(var(--positive-rgb), 0.35);
+    background: var(--positive-soft);
+}
+
+.connector-state--warn {
+    color: var(--warning);
+    border-color: rgba(var(--warning-rgb), 0.35);
+    background: var(--warning-soft);
+}
+
+.connector-state--info {
+    color: var(--accent-text);
+    border-color: rgba(var(--accent-rgb), 0.32);
+    background: var(--accent-soft);
+}
+
+/* A degraded connection earns a visible edge — it is the one state on this
+   screen that wants acting on. */
+.connector-card--degraded {
+    border-color: rgba(var(--warning-rgb), 0.28);
+}
+
+.connector-card--planned,
+.connector-card--setup_required {
+    opacity: 0.72;
+}
+
+.connector-caps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    list-style: none;
+    padding: 0;
+    margin: 2px 0 0;
+}
+
+.connector-cap {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 2px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-dim);
+}
+
+.connector-cap--on {
+    color: var(--positive);
+    border-color: rgba(var(--positive-rgb), 0.3);
+}
+
+/* Struck through rather than merely dim: the point is that this capability is
+   claimed by the connector and NOT available on this connection. */
+.connector-cap--off {
+    color: var(--text-dim);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+}
+
+.connector-card__detail {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.connector-card--degraded .connector-card__detail {
+    color: var(--warning);
+}
+
 .connector-card__name {
     font-size: 15px;
     font-weight: 600;
