@@ -26,6 +26,16 @@ jobs:
         with:
           version: latest
       - run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-      - run: supabase db push
+
+      # Functions BEFORE migrations. Migration 028 schedules a pg_cron job that
+      # calls metrics-snapshot, and its own header says "deploy the function
+      # first" — applying the schedule while the function is missing gives a
+      # window of failing cron invocations. Nothing here depends on the reverse
+      # order: a function calling a not-yet-created table fails the same way it
+      # already does before deploy.
+      #
       # NB: explicit list — a new function must be added here or it won't deploy.
-      - run: supabase functions deploy ai-proxy connector-proxy oauth-proxy meta-callbacks send-scheduler inbox-monitor visibility-scanner
+      # metrics-snapshot and search-console were missing from this list, which is
+      # why metrics-snapshot has been "code-complete but undeployed" since 028.
+      - run: supabase functions deploy ai-proxy connector-proxy oauth-proxy meta-callbacks send-scheduler inbox-monitor visibility-scanner metrics-snapshot search-console
+      - run: supabase db push
