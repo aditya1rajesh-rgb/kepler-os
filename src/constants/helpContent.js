@@ -21,9 +21,9 @@ export const GETTING_STARTED = [
     {
         id: 'generate',
         title: 'Generate your first asset',
-        body: 'Turn your brand intelligence into a content pipeline in Studio.',
+        body: 'Turn your brand intelligence into a content pipeline in SEO & AEO.',
         module: 'seo-aeo',
-        child: null,
+        child: 'pipeline',
         cta: 'Open SEO & AEO',
     },
     {

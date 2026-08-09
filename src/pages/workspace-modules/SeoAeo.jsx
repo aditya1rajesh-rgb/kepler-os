@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import ContentCard from '../../components/ui/ContentCard';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import ModuleScreen from '../../components/layout/ModuleScreen';
@@ -7,6 +8,7 @@ import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import SetupRequired from '../../components/workspace/SetupRequired';
 import CampaignStepBanner from '../../components/campaigns/CampaignStepBanner';
+import AiVisibilityPanel from '../../components/seo-aeo/AiVisibilityPanel';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { contentService } from '../../services/contentService';
 import { campaignService } from '../../services/campaignService';
@@ -75,7 +77,14 @@ const downloadText = (filename, text, type = 'text/plain') => {
     URL.revokeObjectURL(url);
 };
 
+const SEO_CHILDREN = ['pipeline', 'opportunities', 'ai-visibility'];
+
 const SeoAeo = ({ workspaceId }) => {
+    // E30 · which of S4's three children is active. The resolver guarantees a
+    // valid child before this renders; the fallback is belt-and-braces.
+    const { subModuleId } = useParams();
+    const child = SEO_CHILDREN.includes(subModuleId) ? subModuleId : 'pipeline';
+
     const { loading: configLoading, readiness, brand } = useWorkspaceConfig(workspaceId);
     const navigate = useNavigate();
 
@@ -916,10 +925,13 @@ const SeoAeo = ({ workspaceId }) => {
 
     return (
         <ModuleScreen
-            moduleKey="seo-aeo"
+            moduleKey={`seo-aeo-${child}`}
             className="seo-aeo-module module-kepler"
             railLabel="SEO tools"
-            rail={rail}
+            /* The rail is the Pipeline's toolbox (Search Console, teardown,
+               mention finder). Opportunities and AI Visibility have their own
+               primary actions and would only inherit clutter. */
+            rail={child === 'pipeline' ? rail : null}
             banner={
                 <>
                     {campaignCtx.campaignId && (
@@ -941,37 +953,53 @@ const SeoAeo = ({ workspaceId }) => {
                ~200px above the board they describe. As a status line they say the
                same thing in one row and stay pinned while you scroll. */
             status={
-                <>
-                    <span><strong>{counts.queue}</strong> queued</span>
-                    <span><strong>{counts.generating}</strong> generating</span>
-                    <span><strong>{counts.completed}</strong> completed</span>
-                    {gscStatus?.status === 'connected' && (
-                        <span className="text-mint">Search Console{gscSyncedLabel ? ` · ${gscSyncedLabel}` : ''}</span>
-                    )}
-                </>
+                child === 'pipeline' ? (
+                    <>
+                        <span><strong>{counts.queue}</strong> queued</span>
+                        <span><strong>{counts.generating}</strong> generating</span>
+                        <span><strong>{counts.completed}</strong> completed</span>
+                        {gscStatus?.status === 'connected' && (
+                            <span className="text-mint">Search Console{gscSyncedLabel ? ` · ${gscSyncedLabel}` : ''}</span>
+                        )}
+                    </>
+                ) : null
             }
+            /* One primary per screen, and it differs per child — generate on the
+               Pipeline, scan on AI Visibility. Opportunities' action lives on the
+               section itself, which is where the inputs are. */
             primary={
-                <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleGeneratePackage}
-                    disabled={generating}
-                >
-                    {generating ? 'Researching keywords…' : 'Generate keyword ideas'}
-                </button>
+                child === 'pipeline' ? (
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handleGeneratePackage}
+                        disabled={generating}
+                    >
+                        {generating ? 'Researching keywords…' : 'Generate keyword ideas'}
+                    </button>
+                ) : null
             }
         >
             {/* The canvas: the board itself, with no panel chrome wrapped around
                 it. In v3 this was the 7th of 8 stacked panels, 1,800px below the
                 fold, behind five setup and utility panels. */}
-            {opportunitiesSection}
-            {loadingItems ? (
+            {/* E30 · S4's three children. Each is a genuinely different job — work
+                in flight, what to work on next, and where AI assistants stand —
+                and they now have their own routes rather than stacking on one
+                canvas. Kept in one component: the three share loaded state
+                (items, GSC rows, capabilities), and splitting the file would mean
+                three copies of the same fetch. */}
+            {child === 'opportunities' && opportunitiesSection}
+
+            {child === 'pipeline' && (loadingItems ? (
                 <EmptyState loading message="Loading pipeline…" />
             ) : (
                 <div className="pipeline-container">
                     {COLUMN_STATUSES.map(renderColumn)}
                 </div>
-            )}
+            ))}
+
+            {child === 'ai-visibility' && <AiVisibilityPanel workspaceId={workspaceId} />}
 
             <Modal
                 isOpen={!!viewItem}

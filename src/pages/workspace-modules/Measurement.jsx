@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Check } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import ModuleScreen from '../../components/layout/ModuleScreen';
 import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail';
 import EmptyState from '../../components/ui/EmptyState';
 import Ga4Panel from '../../components/measurement/Ga4Panel';
-import { getModule } from '../../constants/moduleRegistry';
-import { workspacePath } from '../../constants/routes';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { campaignService } from '../../services/campaignService';
 import { measurementService } from '../../services/measurementService';
-import { visibilityService } from '../../services/visibilityService';
 import { integrationService } from '../../services/integrationService';
 import { buildTrackedUrl, campaignUtm, TRACKING_SOURCES } from '../../lib/tracking';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
@@ -20,17 +16,13 @@ import './Measurement.css';
 
 const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
 const dash = (v) => (v === null || v === undefined ? '—' : fmt(v));
-const pct = (x) => `${Math.round((Number(x) || 0) * 100)}%`;
 const money = (n) => `$${new Intl.NumberFormat().format(Math.round(Number(n) || 0))}`;
 
-const MEASUREMENT = getModule('measurement');
 
 // Measurement is a two-screen parent: Performance (traffic → conversions → revenue,
 // attributed by UTM) and AI Visibility (AEO share of voice). State loads once at the
 // parent so the Performance strip can still surface the AI-share fact and link across.
 const Measurement = ({ workspaceId }) => {
-    const { subModuleId } = useParams();
-    const navigate = useNavigate();
     const { brand } = useWorkspaceConfig(workspaceId);
     const baseUrl = brand?.url || '';
 
@@ -39,9 +31,6 @@ const Measurement = ({ workspaceId }) => {
     const [salesforceConnected, setSalesforceConnected] = useState(false);
     const [campaigns, setCampaigns] = useState([]);
     const [snapshots, setSnapshots] = useState({});
-    const [visibility, setVisibility] = useState(null);
-    const [gaps, setGaps] = useState([]);
-    const [scanning, setScanning] = useState(false);
     const [loading, setLoading] = useState(true);
     const [pulling, setPulling] = useState(false);
     const [error, setError] = useState('');
@@ -54,16 +43,12 @@ const Measurement = ({ workspaceId }) => {
         let cancelled = false;
         (async () => {
             try {
-                const [ga, zoho, sf, camps, snaps, vis, vgaps] = await Promise.all([
+                const [ga, zoho, sf, camps, snaps] = await Promise.all([
                     integrationService.getStatus(workspaceId, 'ga4'),
                     integrationService.getStatus(workspaceId, 'zoho'),
                     integrationService.getStatus(workspaceId, 'salesforce'),
                     campaignService.listCampaigns(workspaceId),
                     measurementService.getSnapshots(workspaceId),
-                    // Resilient: a not-yet-migrated visibility_scans table must not
-                    // take down the whole Measurement page — degrade to null.
-                    visibilityService.getLatestVisibility(workspaceId).catch(() => null),
-                    visibilityService.getVisibilityGaps(workspaceId).catch(() => []),
                 ]);
                 if (cancelled) return;
                 setGaReady(ga?.status === 'connected' && Boolean(ga?.propertyUrl));
@@ -71,8 +56,6 @@ const Measurement = ({ workspaceId }) => {
                 setSalesforceConnected(sf?.status === 'connected');
                 setCampaigns(camps ?? []);
                 setSnapshots(snaps ?? {});
-                setVisibility(vis);
-                setGaps(vgaps ?? []);
             } catch (e) {
                 if (!cancelled) { setError(e?.message || 'Could not load measurement data.'); setGaReady(false); }
             } finally {
@@ -117,30 +100,6 @@ const Measurement = ({ workspaceId }) => {
         }
     };
 
-    const runScan = async (mock = false) => {
-        setScanning(true);
-        setError('');
-        setNotice('');
-        try {
-            const r = await visibilityService.runScan(workspaceId, { mock });
-            setVisibility(await visibilityService.getLatestVisibility(workspaceId));
-            setGaps(await visibilityService.getVisibilityGaps(workspaceId).catch(() => []));
-            if (mock) {
-                setNotice(`Sample scan — ${r.promptCount} prompts × ${r.surfaces.length} surfaces (illustrative, not real measurement).`);
-            } else if (!r.promptCount) {
-                setNotice(r.message || 'No buyer prompts could be generated yet.');
-            } else if (!r.counts.ok) {
-                setNotice('No AI surfaces are connected yet — connect Perplexity/OpenAI/Anthropic to measure live, or run a sample.');
-            } else {
-                setNotice(`Scan complete — share of voice ${pct(r.shareOfVoice)} across ${r.surfaces.length} surfaces.`);
-            }
-        } catch (e) {
-            setError(e?.message || 'Could not run the visibility scan.');
-        } finally {
-            setScanning(false);
-        }
-    };
-
     const copyLink = (key, url) => {
         navigator.clipboard.writeText(url).then(
             () => { setCopied(key); setTimeout(() => setCopied(''), 1500); },
@@ -166,8 +125,6 @@ const Measurement = ({ workspaceId }) => {
     );
     const lastPulled = Object.values(snapshots).map((s) => s.capturedAt).filter(Boolean).sort().pop();
 
-    const active = MEASUREMENT.children.some((c) => c.id === subModuleId) ? subModuleId : MEASUREMENT.defaultChild;
-    const go = (id) => navigate(workspacePath(workspaceId, 'measurement', id));
 
     /* The three "connect X for the Y rail" hints were the entire body of v3's
        near-empty Performance panel. They are setup guidance, so they belong with
@@ -271,123 +228,27 @@ const Measurement = ({ workspaceId }) => {
         </>
     );
 
-    const renderAiVisibility = () => (
-        <Panel variant="quiet">
-            {!visibility ? (
-                <EmptyState message="No visibility scans yet. Run a scan to see whether AI assistants mention your brand when buyers ask category questions — connect providers for live data, or run a sample to preview the loop." />
-            ) : (
-                <>
-                    {!visibility.hasReal && (
-                        <p className="brand-intel-module__source-label">
-                            Sample data — providers not connected yet. Connect Perplexity / ChatGPT / Claude for live measurement.
-                        </p>
-                    )}
-                    <div className="cockpit__intel-facts">
-                        <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value">{pct(visibility.shareOfVoice)}</span>
-                            <span className="cockpit__intel-label">Share of voice</span>
-                        </div>
-                        <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value">{pct(visibility.brandPresenceRate)}</span>
-                            <span className="cockpit__intel-label">Answer presence</span>
-                        </div>
-                        <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value">{fmt(visibility.promptCount)}</span>
-                            <span className="cockpit__intel-label">Prompts tracked</span>
-                        </div>
-                        <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value">{visibility.surfaces.length}</span>
-                            <span className="cockpit__intel-label">Surfaces</span>
-                        </div>
-                    </div>
-                    {visibility.perCompetitor?.length > 0 && (
-                        <ul className="measurement-list measurement-sov">
-                            <li className="measurement-row measurement-sov__row">
-                                <span className="measurement-row__title">{brand?.name || 'Your brand'}</span>
-                                <span className="measurement-sov__bar"><span className="measurement-sov__fill" style={{ width: pct(visibility.shareOfVoice) }} /></span>
-                                <span className="measurement-sov__val">{pct(visibility.shareOfVoice)}</span>
-                            </li>
-                            {visibility.perCompetitor.map((c) => (
-                                <li key={c.name} className="measurement-row measurement-sov__row">
-                                    <span className="measurement-row__title">{c.name}</span>
-                                    <span className="measurement-sov__bar"><span className="measurement-sov__fill measurement-sov__fill--comp" style={{ width: pct(c.share) }} /></span>
-                                    <span className="measurement-sov__val">{pct(c.share)}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    {gaps.length > 0 && (
-                        <div className="measurement-gaps">
-                            <p className="brand-intel-module__source-label">Content opportunities — buyers ask these and a competitor is named, but you are not:</p>
-                            <ul className="measurement-list">
-                                {gaps.slice(0, 8).map((g) => (
-                                    <li key={`${g.surface}:${g.prompt}`} className="measurement-row">
-                                        <span className="measurement-row__title">{g.prompt}</span>
-                                        <span className="measurement-sov__val">{g.competitors.slice(0, 3).join(', ')}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </>
-            )}
-        </Panel>
-    );
-
-    const isVisibility = active === 'ai-visibility';
 
     return (
         <ModuleScreen
             className="measurement-module module-kepler"
-            moduleKey={`measurement-${active}`}
+            moduleKey="measurement"
             banner={
                 <>
                     {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                     {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                 </>
             }
-            /* v3 had NO in-screen way to move between Performance and AI
-               Visibility — only the sidebar, plus one stat tile that was
-               secretly a link. These are the screen's two modes, so they get
-               one honest switch. */
-            status={
-                <>
-                    <div className="measurement-modes" role="tablist" aria-label="Measurement view">
-                        {MEASUREMENT.children.map((c) => (
-                            <button
-                                key={c.id}
-                                type="button"
-                                role="tab"
-                                aria-selected={active === c.id}
-                                className={`measurement-modes__opt ${active === c.id ? 'is-active' : ''}`}
-                                onClick={() => go(c.id)}
-                            >
-                                {c.label}
-                            </button>
-                        ))}
-                    </div>
-                    {!isVisibility && lastPulled && <span>Last pulled {formatRelativeTime(lastPulled)}</span>}
-                    {isVisibility && visibility?.capturedAt && (
-                        <span>Last scan {formatRelativeTime(visibility.capturedAt)}</span>
-                    )}
-                </>
-            }
-            actions={isVisibility ? (
-                <button type="button" className="btn btn-ghost" onClick={() => runScan(true)} disabled={scanning}>
-                    Run sample
-                </button>
-            ) : null}
-            primary={isVisibility ? (
-                <button type="button" className="btn btn-primary" onClick={() => runScan(false)} disabled={scanning}>
-                    <RefreshCw size={15} strokeWidth={1.8} /> {scanning ? 'Scanning…' : 'Run visibility scan'}
-                </button>
-            ) : (
+            /* E30 · the mode switch is gone with AI Visibility. Measurement is
+               one screen again until E14/E15 give Channels and Pages content. */
+            status={lastPulled ? <span>Last pulled {formatRelativeTime(lastPulled)}</span> : null}
+            primary={
                 <button type="button" className="btn btn-primary" onClick={pull} disabled={pulling}>
                     <RefreshCw size={15} strokeWidth={1.8} /> {pulling ? 'Pulling…' : 'Pull latest'}
                 </button>
-            )}
+            }
             railLabel="Sources"
-            rail={!isVisibility ? (
+            rail={(
                 <ToolRail>
                     <ToolGroup label="Data sources">
                         <ToolCard title="Google Analytics 4" state={gaReady ? 'Connected' : 'Not connected'} tone={gaReady ? 'ok' : 'warn'}>
@@ -404,9 +265,9 @@ const Measurement = ({ workspaceId }) => {
                         </ToolGroup>
                     )}
                 </ToolRail>
-            ) : null}
+            )}
         >
-            {isVisibility ? renderAiVisibility() : renderPerformance()}
+            {renderPerformance()}
         </ModuleScreen>
     );
 };

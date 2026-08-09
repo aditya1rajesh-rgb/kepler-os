@@ -10,7 +10,9 @@ import Dashboard from './workspace-modules/Dashboard';
 import Campaigns from './workspace-modules/Campaigns';
 import Library from './workspace-modules/Library';
 import BrandIntelligence from './workspace-modules/BrandIntelligence';
-import Studio from './workspace-modules/Studio';
+import SeoAeo from './workspace-modules/SeoAeo';
+import SocialMedia from './workspace-modules/SocialMedia';
+import AdCampaigns from './workspace-modules/AdCampaigns';
 import Outreach from './workspace-modules/Outreach';
 import Measurement from './workspace-modules/Measurement';
 import Integrations from './workspace-modules/Integrations';
@@ -67,8 +69,12 @@ const Workspace = () => {
                 return <Campaigns workspaceId={workspaceId} />;
             case 'brand-intelligence':
                 return <BrandIntelligence workspaceId={workspaceId} workspace={workspaceData} />;
-            case 'studio':
-                return <Studio workspaceId={workspaceId} />;
+            case 'seo-aeo':
+                return <SeoAeo workspaceId={workspaceId} />;
+            case 'social-media':
+                return <SocialMedia workspaceId={workspaceId} />;
+            case 'ad-campaigns':
+                return <AdCampaigns workspaceId={workspaceId} />;
             case 'outreach':
                 return <Outreach workspaceId={workspaceId} />;
             case 'integrations':

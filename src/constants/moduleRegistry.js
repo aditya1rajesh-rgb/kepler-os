@@ -12,7 +12,9 @@
 import {
     LayoutDashboard,
     Target,
-    Layers,
+    Search,
+    AtSign,
+    Megaphone,
     Send,
     FolderOpen,
     TrendingUp,
@@ -34,19 +36,30 @@ export const NAV_SECTIONS = [
 export const MODULES = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, section: 'main', scope: 'workspace' },
     { id: 'campaigns', label: 'Campaigns', icon: Target, section: 'main', scope: 'workspace' },
+    // E30 · Studio is dissolved. It was an umbrella with no job of its own, and
+    // it cost a nav level these three screens needed back: S4 gives SEO & AEO
+    // three children, and a child cannot have children when the router is
+    // /workspace/:id/:moduleId/:subModuleId. Undoing the earlier re-parenting is
+    // cheaper than adding a third route segment, and removes a legacy layer
+    // rather than adding one.
     {
-        id: 'studio',
-        label: 'Studio',
-        icon: Layers,
+        id: 'seo-aeo',
+        label: 'SEO & AEO',
+        icon: Search,
         section: 'main',
         scope: 'workspace',
-        defaultChild: 'seo-aeo',
+        defaultChild: 'pipeline',
         children: [
-            { id: 'seo-aeo', label: 'SEO & AEO' },
-            { id: 'social-media', label: 'Social Media' },
-            { id: 'ad-campaigns', label: 'Ad Creative' },
+            { id: 'pipeline', label: 'Pipeline' },
+            { id: 'opportunities', label: 'Opportunities' },
+            // Moved OUT of Measurement (S5): modules are where you work,
+            // Measurement is where you see contribution. AEO share of voice is
+            // work you do, so it belongs beside the pipeline that acts on it.
+            { id: 'ai-visibility', label: 'AI Visibility' },
         ],
     },
+    { id: 'social-media', label: 'Social Media', icon: AtSign, section: 'main', scope: 'workspace' },
+    { id: 'ad-campaigns', label: 'Ad Creative', icon: Megaphone, section: 'main', scope: 'workspace' },
     {
         id: 'outreach',
         label: 'Outreach',
@@ -75,11 +88,16 @@ export const MODULES = [
         icon: TrendingUp,
         section: 'analytics',
         scope: 'workspace',
-        defaultChild: 'performance',
-        children: [
-            { id: 'performance', label: 'Performance' },
-            { id: 'ai-visibility', label: 'AI Visibility' },
-        ],
+        // E30 · AI Visibility moved to SEO & AEO (S5: "AI Visibility moves out…
+        // Measurement retains AI share-of-voice only as a measure a goal can be
+        // set against"). That leaves one screen, so Measurement is flat again.
+        //
+        // S5 also specifies Overview / Channels / Pages. Those are NOT built here:
+        // Channels is the L1 drill that needs E14's paid ingestion and E15's
+        // revenue picture, and Pages needs the URL-level table neither exists yet.
+        // Adding the nav now would ship two empty screens. The rule applied across
+        // E30: build nav where the functionality exists, and leave the rest to the
+        // epic that creates the content.
     },
     {
         id: 'brand-intelligence',
@@ -116,9 +134,9 @@ export const MODULE_GATES = {
 // from children (BI's child ids `overview`/`details` must NOT be treated as legacy
 // top-level ids, since top-level `overview` is the Dashboard).
 export const LEGACY_TOP_LEVEL = {
-    'seo-aeo': ['studio', 'seo-aeo'],
-    'social-media': ['studio', 'social-media'],
-    'ad-campaigns': ['studio', 'ad-campaigns'],
+    // seo-aeo / social-media / ad-campaigns are top-level again (E30 dissolved
+    // Studio), so their entries are gone rather than pointing at a parent that
+    // no longer exists. `studio` itself now redirects — see RETIRED_PARENTS.
     // Prospecting was top-level, then an Outreach child, and is now folded into
     // Audiences. This entry stays pointed at the child it became; RETIRED_CHILDREN
     // is the single source of truth for the merge, and the resolver composes the
@@ -131,6 +149,12 @@ export const LEGACY_TOP_LEVEL = {
 // Falling through to the parent's default child would be wrong here: a bookmark
 // to "Lists" landing on "Replies" reads as data loss. It must land on the screen
 // that absorbed it, so the user sees their lists where they now live.
+// E30 · a whole parent that dissolved. Its children became top-level modules, so
+// /studio/seo-aeo → /seo-aeo, and a bare /studio goes to what led it.
+export const RETIRED_PARENTS = {
+    studio: { fallback: 'seo-aeo' },
+};
+
 export const RETIRED_CHILDREN = {
     outreach: {
         lists: { child: 'audiences', view: 'lists' },
@@ -283,6 +307,16 @@ export const resolveWorkspaceLocation = ({ moduleId, subModuleId = null, search 
             };
         }
         return { redirect: { moduleId: parent, subModuleId: child, search } };
+    }
+
+    // 1b. A dissolved parent: its children are top-level modules now. Resolve
+    // straight through to the child's own default so it costs one redirect, not two.
+    if (RETIRED_PARENTS[moduleId]) {
+        const target = subModuleId && MODULE_BY_ID.has(subModuleId)
+            ? subModuleId
+            : RETIRED_PARENTS[moduleId].fallback;
+        const targetMod = MODULE_BY_ID.get(target);
+        return { redirect: { moduleId: target, subModuleId: targetMod?.defaultChild ?? null, search } };
     }
 
     const mod = MODULE_BY_ID.get(moduleId);

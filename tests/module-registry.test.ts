@@ -10,13 +10,25 @@ import {
 } from '../src/constants/moduleRegistry.js';
 
 describe('resolveWorkspaceLocation — legacy top-level redirects', () => {
-    it('re-parents Studio tools', () => {
+    // E30 · Studio dissolved; its children are top-level modules again. The
+    // three ids never changed, so these URLs resolve directly now.
+    it('renders the ex-Studio tools as top-level modules', () => {
         expect(resolveWorkspaceLocation({ moduleId: 'seo-aeo' }).redirect)
-            .toMatchObject({ moduleId: 'studio', subModuleId: 'seo-aeo' });
-        expect(resolveWorkspaceLocation({ moduleId: 'social-media' }).redirect)
-            .toMatchObject({ moduleId: 'studio', subModuleId: 'social-media' });
-        expect(resolveWorkspaceLocation({ moduleId: 'ad-campaigns' }).redirect)
-            .toMatchObject({ moduleId: 'studio', subModuleId: 'ad-campaigns' });
+            .toMatchObject({ moduleId: 'seo-aeo', subModuleId: 'pipeline' });
+        expect(resolveWorkspaceLocation({ moduleId: 'social-media' }))
+            .toEqual({ moduleId: 'social-media', subModuleId: null });
+        expect(resolveWorkspaceLocation({ moduleId: 'ad-campaigns' }))
+            .toEqual({ moduleId: 'ad-campaigns', subModuleId: null });
+    });
+
+    it('redirects the dissolved Studio parent to its former children', () => {
+        expect(resolveWorkspaceLocation({ moduleId: 'studio', subModuleId: 'social-media' }).redirect)
+            .toMatchObject({ moduleId: 'social-media', subModuleId: null });
+        expect(resolveWorkspaceLocation({ moduleId: 'studio', subModuleId: 'seo-aeo' }).redirect)
+            .toMatchObject({ moduleId: 'seo-aeo', subModuleId: 'pipeline' });
+        // A bare /studio goes to what led it.
+        expect(resolveWorkspaceLocation({ moduleId: 'studio' }).redirect)
+            .toMatchObject({ moduleId: 'seo-aeo', subModuleId: 'pipeline' });
     });
 
     // E30 · Prospecting made two hops: top-level → Outreach child → folded into
@@ -27,8 +39,8 @@ describe('resolveWorkspaceLocation — legacy top-level redirects', () => {
         expect(r.search).toContain('view=find');
     });
 
-    it('preserves query on legacy redirects (campaign step deep-links)', () => {
-        const r = resolveWorkspaceLocation({ moduleId: 'seo-aeo', search: '?campaign=c1&step=s1&brief=b' });
+    it('preserves query through the Studio redirect (campaign step deep-links)', () => {
+        const r = resolveWorkspaceLocation({ moduleId: 'studio', subModuleId: 'seo-aeo', search: '?campaign=c1&step=s1&brief=b' });
         expect(r.redirect.search).toBe('?campaign=c1&step=s1&brief=b');
     });
 });
@@ -100,8 +112,9 @@ describe('resolveWorkspaceLocation — retired Outreach children', () => {
 
 describe('resolveWorkspaceLocation — parents, flats, unknowns', () => {
     it('bare Studio / Measurement go to their default child', () => {
-        expect(resolveWorkspaceLocation({ moduleId: 'studio' }).redirect.subModuleId).toBe('seo-aeo');
-        expect(resolveWorkspaceLocation({ moduleId: 'measurement' }).redirect.subModuleId).toBe('performance');
+        expect(resolveWorkspaceLocation({ moduleId: 'seo-aeo' }).redirect.subModuleId).toBe('pipeline');
+        // Measurement is flat again — AI Visibility moved to SEO & AEO (E30).
+        expect(resolveWorkspaceLocation({ moduleId: 'measurement' })).toEqual({ moduleId: 'measurement', subModuleId: null });
     });
     it('unknown module falls to Dashboard', () => {
         expect(resolveWorkspaceLocation({ moduleId: 'nonsense' }).redirect)
@@ -113,7 +126,7 @@ describe('resolveWorkspaceLocation — parents, flats, unknowns', () => {
             .toMatchObject({ moduleId: 'campaigns', subModuleId: null });
     });
     it('an invalid child under a parent redirects to the default child', () => {
-        expect(resolveWorkspaceLocation({ moduleId: 'measurement', subModuleId: 'junk' }).redirect.subModuleId).toBe('performance');
+        expect(resolveWorkspaceLocation({ moduleId: 'seo-aeo', subModuleId: 'junk' }).redirect.subModuleId).toBe('pipeline');
     });
 });
 
@@ -122,15 +135,14 @@ describe('titleFor', () => {
         expect(titleFor('overview')).toEqual({ crumb: null, title: 'Dashboard' });
     });
     it('returns parent crumb + child title on a child screen', () => {
-        expect(titleFor('studio', 'social-media')).toEqual({ crumb: 'Studio', title: 'Social Media' });
+        expect(titleFor('seo-aeo', 'ai-visibility')).toEqual({ crumb: 'SEO & AEO', title: 'AI Visibility' });
     });
 });
 
 describe('getParentOf — next-step dot bubbling (with overview collision)', () => {
     it('maps re-parented children to their parents', () => {
-        expect(getParentOf('seo-aeo')?.id).toBe('studio');
+        expect(getParentOf('ai-visibility')?.id).toBe('seo-aeo');
         expect(getParentOf('audiences')?.id).toBe('outreach');
-        expect(getParentOf('performance')?.id).toBe('measurement');
     });
     it('does NOT treat overview as a child (top-level Dashboard wins)', () => {
         expect(getParentOf('overview')).toBeNull();
@@ -145,9 +157,10 @@ describe('isNavNodeLocked', () => {
         expect(isNavNodeLocked('seo-aeo', noneReady)).toBe(true);
         expect(isNavNodeLocked('seo-aeo', someReady)).toBe(false);
     });
-    it('locks Studio only when ALL its children are locked', () => {
-        expect(isNavNodeLocked('studio', noneReady)).toBe(true);
-        expect(isNavNodeLocked('studio', someReady)).toBe(false); // seo unlocked
+    it('locks SEO & AEO by its own gate and cascades to children', () => {
+        expect(isNavNodeLocked('seo-aeo', noneReady)).toBe(true);
+        expect(isNavNodeLocked('ai-visibility', noneReady)).toBe(true); // inherits seoReady
+        expect(isNavNodeLocked('ai-visibility', { seoReady: true })).toBe(false);
     });
     it('locks Outreach by its own gate and cascades to children', () => {
         expect(isNavNodeLocked('outreach', noneReady)).toBe(true);
