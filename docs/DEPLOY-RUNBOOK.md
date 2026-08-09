@@ -7,6 +7,10 @@ run it (e.g. an expired `SUPABASE_ACCESS_TOKEN`).
 **Frontend:** already handled — Vercel rebuilds from the `staging` push. Nothing
 to run here.
 
+**Verified state (2026-08-09):** remote is at migration **019**. Everything from
+020 onward is unapplied — including the entire outreach engine. Do not trust the
+project notes on this; run `supabase migration list`.
+
 ---
 
 ## 0. Before you start
@@ -58,40 +62,68 @@ manual run is the first time they actually ship.
 supabase db push
 ```
 
-Applies, in order:
+**Thirteen are pending — 020 through 032.** Remote is at 019 (016 is
+intentionally absent; see docs/STAGING-DEPLOYMENT.md). This was verified with
+`supabase migration list`, not inferred.
 
 | | | Notes |
 |---|---|---|
-| 027 | `workspace_events` | 030 writes to this — must land first |
-| 028 | metrics-snapshot cron | needs Vault secrets, see §3 |
-| 029 | prospect enrichment | Apollo email/phone reveal |
-| 030 | sequence hold signal (E1) | **replaces `sequences_guard_approval`** |
-| 031 | usage events (E4) | new table |
+| 020 | data deletion requests | |
+| 021 | channel posts | |
+| **022** | **outreach engine** | sequences, enrollments, messages, replies, suppression_list, sending_domains — the whole R1a schema, never deployed |
+| **023** | send-scheduler cron | **needs Vault setup — see §3** |
+| 024 | ABM research | |
+| 025 | prospect lists | |
+| 026 | outreach attribution | |
+| 027 | workspace_events | |
+| **028** | metrics-snapshot cron | **needs the same Vault setup** |
+| 029 | prospect enrichment | |
+| 030 | sequence hold signal (E1) | alters `sequences` — depends on 022 |
+| 031 | usage events (E4) | |
 | 032 | goals (E2) | 4 tables + `campaigns.goal_id` + 2 triggers |
 
-All additive — new tables and columns, no drops, no destructive DDL.
+All additive. `db push` applies them in order, so a failure at 022 stops
+everything after it rather than half-applying.
 
-**The one to be deliberate about is 030.** It replaces a trigger function on the
-live send path (`sequences_guard_approval`). Behaviour is a superset of the old
-one: same demotion rules, plus recording what the sequence fell from. If any
-workspace is actively running sequences, that's the change worth watching.
+**030 is not the risky one after all.** It replaces `sequences_guard_approval`,
+but 022 creates that function three migrations earlier in the same run — on this
+database there is no live send path to disturb, because there are no sequences
+yet.
 
 ---
 
-## 3. Prerequisites — only 028 needs anything
+## 3. Prerequisites — 023 and 028 both need Vault, and it is NOT already there
 
-It reuses the send-scheduler Vault entries from migration 023, so if the
-scheduler already runs there is **nothing new to provision**. If it doesn't:
+The scheduler has **never run on this project** (023 is unapplied), so the
+one-time setup almost certainly does not exist. Do this BEFORE `db push`:
 
-```sql
--- Vault secrets (Supabase Dashboard → Project Settings → Vault)
-project_url       = https://risoupsjfwnpawjltywh.supabase.co
-scheduler_secret  = <the SCHEDULER_SECRET edge secret>
+```bash
+# 1. a random 64-hex secret, shared between the edge functions and Vault
+openssl rand -hex 32
+supabase secrets set SCHEDULER_SECRET=<that-value>
 ```
 
-028 creates the `pg_cron` and `pg_net` extensions itself.
+```sql
+-- 2. in the SQL editor, the SAME value
+select vault.create_secret('https://risoupsjfwnpawjltywh.supabase.co', 'project_url');
+select vault.create_secret('<that-value>', 'scheduler_secret');
+```
 
----
+Skipping this is safe but inert: the jobs no-op (the edge function returns
+401/500) and enrollments simply stay due until a successful run. Nothing is
+dropped. You can provision the secrets later and the next tick picks up.
+
+### ⚠️ What 022 + 023 together switch on
+
+Once both land **and** the secrets are set, `kepler-send-scheduler` runs **every
+5 minutes** and will send real email to real people — for any sequence that is
+approved with active enrollments. On this database there are none yet (022 is
+what creates the tables), so the first run has nothing to do. But this is the
+deploy that arms the sender: after it, approving a sequence in the UI means mail
+goes out on a 5-minute tick.
+
+`kepler-inbox-monitor` also starts, every 10 minutes — read-only, it polls for
+replies.
 
 ## 4. Verify
 
