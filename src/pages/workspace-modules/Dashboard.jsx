@@ -84,6 +84,7 @@ const Dashboard = ({ workspaceId, workspace }) => {
 
     return (
         <ModuleScreen
+            moduleKey="dashboard"
             className="db"
             /* The greeting is the screen's context, not a second page title —
                v3 rendered it as a 28px <h1> directly under the app header's own

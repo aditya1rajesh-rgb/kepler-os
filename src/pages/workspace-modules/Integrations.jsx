@@ -24,6 +24,7 @@ const Integrations = ({ workspaceId }) => {
 
     return (
         <ModuleScreen
+            moduleKey="integrations"
             className="integrations-module module-kepler"
             status={
                 connected === null

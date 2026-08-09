@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Sliders, X } from '../../lib/icons';
 import { clientState } from '../../lib/clientState';
+import { useActiveWorkspaceId } from '../../hooks/useActiveWorkspaceId';
+import { usageService } from '../../services/usageService';
 import './ModuleScreen.css';
 
 /**
@@ -56,6 +58,21 @@ const ModuleScreen = ({
         setLastModuleKey(moduleKey);
         setRailOpen(moduleKey ? clientState.getRailOpen(moduleKey) : false);
     }
+
+    // E4 · usage instrumentation, wired once for the whole app.
+    //
+    // The v4 rework put every workspace screen through this component, which
+    // makes this the only place surface views need to be recorded — no
+    // per-module tracking calls to add, forget, or let drift. moduleKey already
+    // distinguishes sub-tabs ('measurement-paid', 'sequences-engine'), which is
+    // exactly the granularity the open questions are asked at.
+    //
+    // Fire-and-forget and throttled per surface; see usageService.
+    const activeWorkspaceId = useActiveWorkspaceId();
+    useEffect(() => {
+        if (!activeWorkspaceId || !moduleKey) return;
+        usageService.view(activeWorkspaceId, moduleKey);
+    }, [activeWorkspaceId, moduleKey]);
 
     const toggleRail = useCallback(() => {
         setRailOpen((open) => {

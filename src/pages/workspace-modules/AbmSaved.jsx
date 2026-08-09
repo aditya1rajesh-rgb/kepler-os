@@ -157,6 +157,7 @@ const AbmSaved = ({ workspaceId }) => {
 
     return (
         <ModuleScreen
+            moduleKey="abm-saved"
             className="abm-saved-module module-kepler"
             banner={error ? <p className="brand-intel-module__error" role="alert">{error}</p> : null}
             /* The three segments already carry their own counts, so the panel

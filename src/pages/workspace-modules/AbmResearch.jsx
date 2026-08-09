@@ -18,6 +18,7 @@ import { buildCrmIndex, crmMatch } from '../../lib/crmDedupe';
 import { contactMatchKey, toProspectInsert } from '../../lib/abmContact';
 import { buildBatchReportHtml, openReport } from '../../lib/abmReport';
 import { toUserMessage } from '../../lib/errors';
+import { usageService } from '../../services/usageService';
 import '../../styles/module-kepler.css';
 import './AbmResearch.css';
 
@@ -125,6 +126,9 @@ const AbmResearch = ({ workspaceId }) => {
     // rate limit, cancellable. autoPersist=true saves each result immediately.
     const runCompanies = async (companies, autoPersist) => {
         if (pending || !companies.length) return;
+        // E4: batch size distinguishes the analyst chat (one company at a time)
+        // from bulk research, which the roadmap treats as two different jobs.
+        usageService.run(workspaceId, 'abm', 'account_research', { companies: companies.length });
         cancelRef.current = false;
         const items = companies.map((c) => ({
             id: ++turnCounter, query: c.name, website: c.website || '', status: 'queued',

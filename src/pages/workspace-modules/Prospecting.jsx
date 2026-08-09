@@ -9,6 +9,7 @@ import { integrationService } from '../../services/integrationService';
 import { prospectsService } from '../../services/prospectsService';
 import { toUserMessage } from '../../lib/errors';
 import AddToListModal from '../../components/outreach/AddToListModal';
+import { usageService } from '../../services/usageService';
 import '../../styles/module-kepler.css';
 import './Prospecting.css';
 
@@ -84,6 +85,7 @@ const Prospecting = ({ workspaceId }) => {
     );
 
     const search = async () => {
+        usageService.run(workspaceId, 'prospecting', 'apollo_search');
         // Selected ICPs seed the Apollo filters (titles from persona titles/role,
         // locations from persona geography); typed values are merged in on top.
         const icpPersonas = personas.filter((p) => selectedIcps.has(p.id));
@@ -318,6 +320,7 @@ const Prospecting = ({ workspaceId }) => {
 
     return (
         <ModuleScreen
+            moduleKey="prospecting"
             className="prospecting-module module-kepler"
             banner={
                 <>

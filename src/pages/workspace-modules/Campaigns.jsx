@@ -703,6 +703,7 @@ const Campaigns = ({ workspaceId }) => {
     if (showIntake) {
         return (
             <ModuleScreen
+                moduleKey="campaign-intake"
                 className="campaigns module-kepler"
                 status={
                     <button type="button" className="campaigns__back" onClick={() => setShowIntake(false)}>
@@ -733,6 +734,7 @@ const Campaigns = ({ workspaceId }) => {
     // ---- List view ----
     return (
         <ModuleScreen
+            moduleKey="campaigns"
             className="campaigns module-kepler"
             /* The tab strip is the screen's own filter, so it sits in the bar
                rather than as a third stacked chrome row. v3 also rendered an

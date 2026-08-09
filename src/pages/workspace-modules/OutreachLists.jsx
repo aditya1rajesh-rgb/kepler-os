@@ -54,6 +54,7 @@ const OutreachLists = ({ workspaceId }) => {
 
     return (
         <ModuleScreen
+            moduleKey="outreach-lists"
             className="module-kepler"
             banner={error ? <p className="brand-intel-module__error" role="alert">{error}</p> : null}
             status={lists.length ? (

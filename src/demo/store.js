@@ -58,7 +58,14 @@ let instance = null;
  * a non-demo build tree-shakes this entire directory out of the bundle.
  */
 export const getStore = () => {
-    if (!instance) instance = new DemoStore();
+    if (!instance) {
+        instance = new DemoStore();
+        // Inspection hook for the demo build only. Write-only tables (usage_events)
+        // have no screen to check them against, so without this there is no way to
+        // confirm a write actually happened. Never present in a normal build —
+        // this whole module is aliased out (see vite.config.js).
+        globalThis.__keplerDemo = instance;
+    }
     return instance;
 };
 

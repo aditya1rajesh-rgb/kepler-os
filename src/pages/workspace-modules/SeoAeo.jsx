@@ -26,6 +26,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { workspacePath } from '../../constants/routes';
 import { slugify, normalizeBaseUrl, buildSitemap, buildRobots, buildLlmsTxt, generateIndexNowKey, indexNowKeyFile, buildGeoReadiness } from '../../lib/technicalSeo';
 import { toUserMessage } from '../../lib/errors';
+import { usageService } from '../../services/usageService';
 import '../../styles/module-kepler.css';
 import './SeoAeo.css';
 
@@ -242,6 +243,7 @@ const SeoAeo = ({ workspaceId }) => {
 
     // WS1a — analyze real Search Console data into a prioritized opportunity list.
     const findOpportunities = async () => {
+        usageService.run(workspaceId, 'seo-aeo', 'seo_opportunities');
         setOpBusy(true);
         setError('');
         setNotice('');
@@ -287,6 +289,10 @@ const SeoAeo = ({ workspaceId }) => {
 
     // WS1d — read + analyze a live page (competitor or own).
     const runTeardown = async () => {
+        // E4: the repeat is the signal — RETENTION-MODEL §7 cannot say whether a
+        // teardown is one-and-done, and that decides whether giving these jobs
+        // history is worth building at all.
+        usageService.run(workspaceId, 'seo-aeo', 'teardown');
         setTeardownBusy(true);
         setError('');
         setTeardown(null);
@@ -349,6 +355,7 @@ const SeoAeo = ({ workspaceId }) => {
 
     // WS4-mentions — find real threads, then draft a disclosed answer. Never posts.
     const findMentions = async () => {
+        usageService.run(workspaceId, 'seo-aeo', 'mention_finder');
         setMentionBusy(true);
         setError('');
         setNotice('');

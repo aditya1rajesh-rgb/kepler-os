@@ -73,6 +73,7 @@ const Library = ({ workspaceId }) => {
 
     return (
         <ModuleScreen
+            moduleKey="library"
             className="library module-kepler"
             /* Library is a browse surface: there is nothing to generate here, so
                it has no primary action. The filter row IS the screen's control,
