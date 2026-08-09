@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Panel, { PanelHeader } from '../ui/Panel';
 import EmptyState from '../ui/EmptyState';
 import Modal from '../ui/Modal';
@@ -9,6 +10,7 @@ import { repliesService, suppressionService } from '../../services/repliesServic
 import { prospectsService } from '../../services/prospectsService';
 import { prospectListsService } from '../../services/prospectListsService';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
+import { needsResponse } from '../../lib/replyTriage';
 import { toUserMessage } from '../../lib/errors';
 
 // The send engine (R1a): approve → enroll → KEPLER sends on schedule via the
@@ -27,8 +29,6 @@ const ENROLLMENT_STATUS_LABEL = {
     suppressed: 'Suppressed',
     meeting: 'Meeting booked',
 };
-
-const REPLY_KIND_LABEL = { reply: 'Reply', ooo: 'Out of office', bounce: 'Bounce', unsub: 'Unsubscribe' };
 
 const prospectName = (p) =>
     [p?.firstName, p?.lastName].filter(Boolean).join(' ') || p?.email || 'Unknown';
@@ -61,6 +61,7 @@ const heldSince = (seq, enrollments) =>
         .sort()[0] ?? seq.heldAt;
 
 const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
@@ -122,6 +123,16 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
         [sequences],
     );
     const stoppedCount = heldSequences.filter(wasSending).length;
+
+    // E16: the engine already holds both halves, so the pointer can carry a real
+    // number rather than sending the operator to another screen to find out.
+    const pendingReplies = useMemo(() => {
+        const statusById = new Map(enrollments.map((e) => [e.id, e.status]));
+        return replies.filter((r) => needsResponse({
+            ...r,
+            enrollment: r.enrollmentId ? { status: statusById.get(r.enrollmentId) ?? '' } : null,
+        })).length;
+    }, [replies, enrollments]);
 
     const openReview = (seq) => {
         setReviewSeq(seq);
@@ -451,27 +462,23 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                 )}
             </Panel>
 
-            <Panel className="module-panel">
-                <PanelHeader title="Inbox" meta="Replies, out-of-office, and bounces detected on your sends" />
-                {replies.length === 0 ? (
-                    <EmptyState message="No replies yet. Detected replies stop their sequence instantly and land here." />
-                ) : (
-                    <div className="engine-table" role="table">
-                        {replies.map((r) => (
-                            <div key={r.id} className="engine-row" role="row">
-                                <div className="engine-row__main">
-                                    <span className="engine-row__title">{prospectName(r.prospect)}</span>
-                                    <span className="label-text">
-                                        {r.snippet || '(no subject)'} · {formatRelativeTime(r.receivedAt)}
-                                        {r.source === 'manual' ? ' · logged manually' : ''}
-                                    </span>
-                                </div>
-                                <StatusPill status={REPLY_KIND_LABEL[r.kind] ?? r.kind} variant={r.kind} />
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </Panel>
+            {/* E16 moved replies to their own screen. What lived here was a
+                read-only list with no sequence context and no actions, three
+                panels down a sub-tab. Two homes for the same object is worse
+                than one good one, so this is now a pointer, not a duplicate. */}
+            {replies.length > 0 && (
+                <Panel className="module-panel">
+                    <PanelHeader title="Inbox" meta="Replies, out-of-office, and bounces detected on your sends" />
+                    <p className="brand-intel-module__source-label">
+                        {pendingReplies > 0
+                            ? `${pendingReplies} ${pendingReplies === 1 ? 'reply is' : 'replies are'} waiting on you.`
+                            : `${replies.length} detected — none currently waiting on you.`}
+                    </p>
+                    <button type="button" className="btn btn-secondary" onClick={() => navigate('../replies', { relative: 'path' })}>
+                        Open Replies
+                    </button>
+                </Panel>
+            )}
 
             <Modal
                 isOpen={Boolean(reviewSeq)}

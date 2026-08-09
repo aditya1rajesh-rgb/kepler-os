@@ -4,6 +4,7 @@ import Prospecting from './Prospecting';
 import AbmResearch from './AbmResearch';
 import AbmSaved from './AbmSaved';
 import OutreachLists from './OutreachLists';
+import OutreachReplies from './OutreachReplies';
 import { getModule } from '../../constants/moduleRegistry';
 import '../../styles/module-kepler.css';
 import './Outreach.css';
@@ -21,6 +22,7 @@ const Outreach = ({ workspaceId }) => {
     return (
         <div className="outreach-shell">
             <div className="outreach-shell__screen">
+                {active === 'replies' && <OutreachReplies workspaceId={workspaceId} />}
                 {active === 'abm' && <AbmResearch workspaceId={workspaceId} />}
                 {active === 'prospecting' && <Prospecting workspaceId={workspaceId} />}
                 {active === 'lists' && <OutreachLists workspaceId={workspaceId} />}

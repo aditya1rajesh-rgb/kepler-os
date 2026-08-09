@@ -55,6 +55,10 @@ export const MODULES = [
         scope: 'workspace',
         defaultChild: 'abm',
         children: [
+            // Replies leads: it is the highest-value recurring event in the
+            // product (E16). defaultChild stays ABM — changing where a plain
+            // "Outreach" click lands is a separate decision from adding a screen.
+            { id: 'replies', label: 'Replies' },
             { id: 'abm', label: 'ABM Research' },
             { id: 'prospecting', label: 'Prospecting' },
             { id: 'lists', label: 'Lists' },
