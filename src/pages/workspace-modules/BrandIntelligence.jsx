@@ -33,6 +33,8 @@ import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail'
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import IcpSuggestionCard from '../../components/brand-intelligence/IcpSuggestionCard';
 import { EMPTY_ICP_DRAFT, icpDraftToPayload, icpPayloadToPersona } from '../../lib/icpContracts';
+import IcpTargetingFields from '../../components/brand-intelligence/IcpTargetingFields';
+import { describeTargeting, hasTargeting } from '../../lib/icpTargeting';
 import '../../styles/module-kepler.css';
 import './BrandIntelligence.css';
 
@@ -925,6 +927,19 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                             <input className="intel-input" value={icpDraft.channels} placeholder="LinkedIn, Email"
                                 onChange={(e) => setIcpDraft({ ...icpDraft, channels: e.target.value })} />
                         </div>
+                        {/* E22 · the fields above describe a buyer for COPY; these
+                            describe one an ad platform can actually select. */}
+                        <div className="data-section">
+                            <label className="data-label">Targeting</label>
+                            <p className="brand-intel-module__source-label">
+                                Platform-agnostic firmographics. Ad renditions translate these into each platform’s own vocabulary.
+                            </p>
+                            <IcpTargetingFields
+                                idPrefix="icp-add"
+                                value={icpDraft.targeting}
+                                onChange={(targeting) => setIcpDraft({ ...icpDraft, targeting })}
+                            />
+                        </div>
                         <button type="button" className="btn btn-primary" onClick={handleAddIcp}>Save ICP</button>
                     </div>
                 )}
@@ -992,6 +1007,19 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                                     {icp.channels.length === 0 ? <p className="brand-intel-module__empty">None</p> :
                                         icp.channels.map((c, i) => <span key={i} className="intel-chip">{c}</span>)}
                                 </div>
+                            </div>
+                            {/* E22 · what an ad platform can actually select. Absent
+                                targeting is stated, not hidden — "Create ads" below
+                                needs it, and a blank space would not say so. */}
+                            <div className="data-section">
+                                <label className="data-label">Targeting</label>
+                                {hasTargeting(icp.targeting) ? (
+                                    <p className="icp-pain-text">{describeTargeting(icp.targeting)}</p>
+                                ) : (
+                                    <p className="brand-intel-module__empty">
+                                        Not set — ad targeting falls back to keywords and audiences.
+                                    </p>
+                                )}
                             </div>
                             <div className="intel-action-row icp-card__actions">
                                 <button type="button" className="btn btn-secondary" onClick={() => navigate(`${workspacePath(workspaceId, 'outreach')}?icp=${icp.id}`)}>Draft outreach</button>

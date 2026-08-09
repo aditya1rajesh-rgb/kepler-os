@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ORIGIN_LABELS } from '../../lib/brandContracts';
 import { icpPayloadToDraft, icpDraftToPayload } from '../../lib/icpContracts';
+import IcpTargetingFields from './IcpTargetingFields';
 import './SuggestionCard.css';
 
 const confidenceLabel = (confidence) => {
@@ -61,6 +62,12 @@ const IcpSuggestionCard = ({ suggestion, onAccept, onDismiss, onSaveEdit, accept
                 <textarea className="intel-textarea icp-suggestion__edit" placeholder="Buying context" value={draft.buyingContext} onChange={setField('buyingContext')} />
                 <input className="intel-input" placeholder="Messaging hooks (comma-separated)" value={draft.messagingHooks} onChange={setField('messagingHooks')} />
                 <input className="intel-input" placeholder="Preferred channels (comma-separated)" value={draft.channels} onChange={setField('channels')} />
+                {/* E22 · same block as the add form, one implementation. */}
+                <IcpTargetingFields
+                    idPrefix={`icp-sugg-${payload?.segment || payload?.role || 'new'}`}
+                    value={draft.targeting}
+                    onChange={(targeting) => setDraft({ ...draft, targeting })}
+                />
                 <div className="suggestion-card__actions">
                     <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={saving}>
                         {saving ? 'Saving…' : 'Save'}

@@ -165,6 +165,14 @@ export const personas = [
         source_origin: 'ai',
         details: {
             segment: 'Private and deemed universities, 3,000-40,000 students',
+            // E22 · what an ad platform can actually select, as opposed to
+            // the prose above it which is what a message needs.
+            targeting: {
+                companySizeBand: '501-1000',
+                industry: 'education',
+                revenueBand: '10m-50m',
+                geographyTargets: ['India', 'Bengaluru', 'Pune', 'Hyderabad'],
+            },
             companyType: 'Standalone university or autonomous college',
             geography: 'India — Bengaluru, Pune, Hyderabad, Delhi NCR, Chennai, Coimbatore',
             triggers:
@@ -193,6 +201,12 @@ export const personas = [
         channels: ['LinkedIn', 'Email', 'Technical webinars', 'Analyst reports', 'CIO peer groups'],
         source_origin: 'ai',
         details: {
+            targeting: {
+                companySizeBand: '1001-5000',
+                industry: 'education',
+                revenueBand: '50m-250m',
+                geographyTargets: ['India'],
+            },
             segment: 'Multi-campus education groups, 10,000-60,000 students across campuses',
             companyType: 'Education group / multi-institution trust',
             geography: 'India (multi-city groups), GCC',
@@ -222,6 +236,12 @@ export const personas = [
         channels: ['Peer referral', 'Industry conferences', 'Email', 'Analyst and ranking reports', 'LinkedIn'],
         source_origin: 'manual',
         details: {
+            targeting: {
+                companySizeBand: '501-1000',
+                industry: 'education',
+                revenueBand: '10m-50m',
+                geographyTargets: ['India'],
+            },
             segment: 'Ambitious private universities and deemed universities',
             companyType: 'Standalone university with a growth or ranking mandate',
             geography: 'India, GCC',

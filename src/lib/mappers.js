@@ -1,4 +1,5 @@
 import { canParseFileClientSide } from '../services/fileParseService';
+import { normalizeTargeting } from './icpTargeting';
 
 export const mapWorkspaceRow = (row) => ({
     id: row.id,
@@ -139,6 +140,9 @@ export const mapPersonaRow = (row) => {
         buyingContext: details.buyingContext ?? '',
         messagingHooks: details.messagingHooks ?? [],
         useCases: details.useCases ?? '',
+        // E22 · normalized on read so a stale or hand-edited details blob cannot
+        // put a value into the UI that no ad platform could select.
+        targeting: normalizeTargeting(details.targeting),
     };
 };
 

@@ -1,4 +1,5 @@
 import { FIELD_ORIGINS } from './brandContracts';
+import { EMPTY_ICP_TARGETING, normalizeTargeting } from './icpTargeting';
 
 const cleanString = (value, max = 600) => String(value ?? '').trim().slice(0, max);
 
@@ -43,6 +44,10 @@ export const EMPTY_ICP_DETAILS = {
     buyingContext: '',
     messagingHooks: [],
     useCases: '',
+    // E22 · platform-agnostic firmographics. Kept inside details rather than as
+    // new persona columns: it is one cohesive block that only S8's renditions
+    // read, and personas.details is already the extension point (migration 005).
+    targeting: EMPTY_ICP_TARGETING,
 };
 
 export const EMPTY_ICP_DRAFT = {
@@ -57,6 +62,7 @@ export const EMPTY_ICP_DRAFT = {
     buyingContext: '',
     messagingHooks: '',
     channels: '',
+    targeting: EMPTY_ICP_TARGETING,
 };
 
 /**
@@ -107,6 +113,9 @@ export const normalizeIcpSuggestion = (raw, { sourcesUsed = [], populationMode =
         sourceOrigin: resolveIcpSourceOrigin(sourcesUsed, raw?.sourceOrigin),
         confidence,
         useCases: cleanString(raw?.useCases, 800),
+        // Unknown taxonomy ids are dropped by normalizeTargeting, so an AI
+        // suggestion cannot invent a company size band that no platform sells.
+        targeting: normalizeTargeting(raw?.targeting),
     };
 };
 
@@ -134,6 +143,7 @@ export const icpPayloadToPersona = (payload = {}) => ({
         buyingContext: cleanString(payload.buyingContext, 600),
         messagingHooks: cleanList(payload.messagingHooks, 8),
         useCases: cleanString(payload.useCases, 800),
+        targeting: normalizeTargeting(payload.targeting),
     },
 });
 
@@ -150,6 +160,7 @@ export const icpPayloadToDraft = (payload = {}) => ({
     buyingContext: payload.buyingContext ?? '',
     messagingHooks: (payload.messagingHooks ?? []).join(', '),
     channels: (payload.channels ?? []).join(', '),
+    targeting: normalizeTargeting(payload.targeting),
 });
 
 /** Build a normalized payload from a form draft (manual add or suggestion edit). */
@@ -167,6 +178,7 @@ export const icpDraftToPayload = (draft = {}, options = {}) =>
             buyingContext: draft.buyingContext,
             messagingHooks: draft.messagingHooks,
             channels: draft.channels,
+            targeting: draft.targeting,
             confidence: 'high',
             sourceOrigin: FIELD_ORIGINS.MANUAL,
         },
