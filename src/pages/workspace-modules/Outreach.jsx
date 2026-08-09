@@ -1,10 +1,8 @@
 import { useParams } from 'react-router-dom';
 import OutreachSequences from '../../components/outreach/OutreachSequences';
-import Prospecting from './Prospecting';
 import AbmResearch from './AbmResearch';
-import AbmSaved from './AbmSaved';
-import OutreachLists from './OutreachLists';
 import OutreachReplies from './OutreachReplies';
+import OutreachAudiences from './OutreachAudiences';
 import { getModule } from '../../constants/moduleRegistry';
 import '../../styles/module-kepler.css';
 import './Outreach.css';
@@ -22,12 +20,13 @@ const Outreach = ({ workspaceId }) => {
     return (
         <div className="outreach-shell">
             <div className="outreach-shell__screen">
+                {/* E30 · S6's four children. Lists, Saved and Prospecting are not
+                    gone — they live inside Audiences, which is the screen that
+                    absorbed them. */}
                 {active === 'replies' && <OutreachReplies workspaceId={workspaceId} />}
-                {active === 'abm' && <AbmResearch workspaceId={workspaceId} />}
-                {active === 'prospecting' && <Prospecting workspaceId={workspaceId} />}
-                {active === 'lists' && <OutreachLists workspaceId={workspaceId} />}
-                {active === 'saved' && <AbmSaved workspaceId={workspaceId} />}
                 {active === 'sequences' && <OutreachSequences workspaceId={workspaceId} />}
+                {active === 'audiences' && <OutreachAudiences workspaceId={workspaceId} />}
+                {active === 'abm' && <AbmResearch workspaceId={workspaceId} />}
             </div>
         </div>
     );

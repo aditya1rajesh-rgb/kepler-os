@@ -19,9 +19,12 @@ describe('resolveWorkspaceLocation — legacy top-level redirects', () => {
             .toMatchObject({ moduleId: 'studio', subModuleId: 'ad-campaigns' });
     });
 
-    it('re-parents legacy top-level prospecting under Outreach', () => {
-        expect(resolveWorkspaceLocation({ moduleId: 'prospecting' }).redirect)
-            .toMatchObject({ moduleId: 'outreach', subModuleId: 'prospecting' });
+    // E30 · Prospecting made two hops: top-level → Outreach child → folded into
+    // Audiences. The oldest URL must still resolve all the way through.
+    it('resolves legacy top-level prospecting through to Audiences', () => {
+        const r = resolveWorkspaceLocation({ moduleId: 'prospecting' }).redirect;
+        expect(r).toMatchObject({ moduleId: 'outreach', subModuleId: 'audiences' });
+        expect(r.search).toContain('view=find');
     });
 
     it('preserves query on legacy redirects (campaign step deep-links)', () => {
@@ -52,13 +55,46 @@ describe('resolveWorkspaceLocation — Brand Intelligence ?tab=', () => {
 });
 
 describe('resolveWorkspaceLocation — Outreach context-aware default', () => {
-    it('lands on ABM for a plain click', () => {
-        expect(resolveWorkspaceLocation({ moduleId: 'outreach' }).redirect.subModuleId).toBe('abm');
+    it('lands on Replies for a plain click (E30 — what needs answering)', () => {
+        expect(resolveWorkspaceLocation({ moduleId: 'outreach' }).redirect.subModuleId).toBe('replies');
     });
     it('lands on Sequences when a campaign/brand deep-link param is present', () => {
         expect(resolveWorkspaceLocation({ moduleId: 'outreach', search: '?campaign=c1' }).redirect.subModuleId).toBe('sequences');
         expect(resolveWorkspaceLocation({ moduleId: 'outreach', search: '?list=l1' }).redirect.subModuleId).toBe('sequences');
         expect(resolveWorkspaceLocation({ moduleId: 'outreach', search: '?icp=i1' }).redirect.subModuleId).toBe('sequences');
+    });
+});
+
+// E30 · S6 merged Lists + Saved + Prospecting into Audiences. A retired child
+// must land on the screen that ABSORBED it, on the right view — falling through
+// to the parent default would put a "Lists" bookmark on Replies, which reads as
+// data loss.
+describe('resolveWorkspaceLocation — retired Outreach children', () => {
+    const cases = [
+        ['lists', 'lists'],
+        ['saved', 'saved'],
+        ['prospecting', 'find'],
+    ] as const;
+
+    for (const [retired, view] of cases) {
+        it(`sends /outreach/${retired} to Audiences on the ${view} view`, () => {
+            const r = resolveWorkspaceLocation({ moduleId: 'outreach', subModuleId: retired }).redirect;
+            expect(r).toMatchObject({ moduleId: 'outreach', subModuleId: 'audiences' });
+            expect(r.search).toContain(`view=${view}`);
+        });
+    }
+
+    it('keeps existing query params while adding the view', () => {
+        const r = resolveWorkspaceLocation({ moduleId: 'outreach', subModuleId: 'lists', search: '?list=l1' }).redirect;
+        expect(r.search).toContain('list=l1');
+        expect(r.search).toContain('view=lists');
+    });
+
+    it('still renders the four live children directly', () => {
+        for (const child of ['replies', 'sequences', 'audiences', 'abm']) {
+            expect(resolveWorkspaceLocation({ moduleId: 'outreach', subModuleId: child }))
+                .toEqual({ moduleId: 'outreach', subModuleId: child });
+        }
     });
 });
 
@@ -93,7 +129,7 @@ describe('titleFor', () => {
 describe('getParentOf — next-step dot bubbling (with overview collision)', () => {
     it('maps re-parented children to their parents', () => {
         expect(getParentOf('seo-aeo')?.id).toBe('studio');
-        expect(getParentOf('prospecting')?.id).toBe('outreach');
+        expect(getParentOf('audiences')?.id).toBe('outreach');
         expect(getParentOf('performance')?.id).toBe('measurement');
     });
     it('does NOT treat overview as a child (top-level Dashboard wins)', () => {
@@ -125,7 +161,7 @@ describe('isNavNodeLocked', () => {
     });
     it('exposes an unlock hint for gated nodes', () => {
         expect(lockHintFor('seo-aeo')).toMatch(/unlock/i);
-        expect(lockHintFor('prospecting')).toMatch(/unlock/i); // inherited from outreach
+        expect(lockHintFor('audiences')).toMatch(/unlock/i); // inherited from outreach
         expect(lockHintFor('overview')).toBeUndefined();
     });
 });

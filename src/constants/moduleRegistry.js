@@ -53,17 +53,19 @@ export const MODULES = [
         icon: Send,
         section: 'main',
         scope: 'workspace',
-        defaultChild: 'abm',
+        // E30 · S6's four children. Replies leads and is the default: it is the
+        // highest-value recurring event in the product, and a plain "Outreach"
+        // click should land on the thing that needs answering.
+        //
+        // `abm` keeps its id and gains the label "Research" — the id is load-
+        // bearing (routes, gates, saved deep links) and the label is what a user
+        // reads, so renaming only the label costs nothing and breaks nothing.
+        defaultChild: 'replies',
         children: [
-            // Replies leads: it is the highest-value recurring event in the
-            // product (E16). defaultChild stays ABM — changing where a plain
-            // "Outreach" click lands is a separate decision from adding a screen.
             { id: 'replies', label: 'Replies' },
-            { id: 'abm', label: 'ABM Research' },
-            { id: 'prospecting', label: 'Prospecting' },
-            { id: 'lists', label: 'Lists' },
-            { id: 'saved', label: 'Saved' },
             { id: 'sequences', label: 'Sequences' },
+            { id: 'audiences', label: 'Audiences' },
+            { id: 'abm', label: 'Research' },
         ],
     },
     { id: 'library', label: 'Library', icon: FolderOpen, section: 'main', scope: 'workspace' },
@@ -117,7 +119,24 @@ export const LEGACY_TOP_LEVEL = {
     'seo-aeo': ['studio', 'seo-aeo'],
     'social-media': ['studio', 'social-media'],
     'ad-campaigns': ['studio', 'ad-campaigns'],
+    // Prospecting was top-level, then an Outreach child, and is now folded into
+    // Audiences. This entry stays pointed at the child it became; RETIRED_CHILDREN
+    // is the single source of truth for the merge, and the resolver composes the
+    // two hops into one redirect.
     prospecting: ['outreach', 'prospecting'],
+};
+
+// E30 · children that MERGED into a sibling rather than disappearing.
+//
+// Falling through to the parent's default child would be wrong here: a bookmark
+// to "Lists" landing on "Replies" reads as data loss. It must land on the screen
+// that absorbed it, so the user sees their lists where they now live.
+export const RETIRED_CHILDREN = {
+    outreach: {
+        lists: { child: 'audiences', view: 'lists' },
+        saved: { child: 'audiences', view: 'saved' },
+        prospecting: { child: 'audiences', view: 'find' },
+    },
 };
 
 // A plain "Outreach" click leads with ABM, but campaign/brand deep-links (which carry
@@ -232,6 +251,12 @@ const stripParam = (search, key) => {
     return next ? `?${next}` : '';
 };
 
+const withParam = (search, key, value) => {
+    const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+    params.set(key, value);
+    return `?${params.toString()}`;
+};
+
 const hasAnyParam = (search, keys) => {
     if (!search) return false;
     const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
@@ -249,6 +274,14 @@ export const resolveWorkspaceLocation = ({ moduleId, subModuleId = null, search 
     // 1. Legacy top-level id → canonical [parent, child].
     if (LEGACY_TOP_LEVEL[moduleId]) {
         const [parent, child] = LEGACY_TOP_LEVEL[moduleId];
+        // Compose both hops: a child that has since been retired resolves all the
+        // way through, so an old top-level URL never lands on a screen that is gone.
+        const absorbed = RETIRED_CHILDREN[parent]?.[child];
+        if (absorbed) {
+            return {
+                redirect: { moduleId: parent, subModuleId: absorbed.child, search: withParam(search, 'view', absorbed.view) },
+            };
+        }
         return { redirect: { moduleId: parent, subModuleId: child, search } };
     }
 
@@ -264,6 +297,20 @@ export const resolveWorkspaceLocation = ({ moduleId, subModuleId = null, search 
         const validChild = mod.children.some((c) => c.id === subModuleId);
         if (validChild) return { moduleId, subModuleId };
 
+        // A retired child goes to whatever absorbed it — landing on the right
+        // view inside it, so a Saved bookmark opens Saved and not the host's
+        // first tab. Runs before any default kicks in.
+        const absorbed = RETIRED_CHILDREN[moduleId]?.[subModuleId];
+        if (absorbed) {
+            return {
+                redirect: {
+                    moduleId,
+                    subModuleId: absorbed.child,
+                    search: withParam(search, 'view', absorbed.view),
+                },
+            };
+        }
+
         // Brand Intelligence: honor legacy ?tab=<child>, stripping the param.
         if (moduleId === 'brand-intelligence') {
             const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
@@ -273,7 +320,8 @@ export const resolveWorkspaceLocation = ({ moduleId, subModuleId = null, search 
             }
         }
 
-        // Outreach: campaign/brand deep-links land on Sequences; plain click → ABM.
+        // Outreach: campaign/brand deep-links land on Sequences (the builder that
+        // consumes them); a plain click lands on Replies (E30 — what needs answering).
         if (moduleId === 'outreach') {
             const target = hasAnyParam(search, SEQ_CONTEXT_PARAMS) ? 'sequences' : mod.defaultChild;
             return { redirect: { moduleId, subModuleId: target, search } };

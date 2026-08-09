@@ -261,7 +261,10 @@ const AbmSaved = ({ workspaceId }) => {
                 ) : (
                     <ul className="prospect-list">
                         {lists.map((l) => {
-                            const openList = () => navigate(`${workspacePath(workspaceId, 'outreach', 'lists')}?listId=${l.id}`);
+                            // E30: Lists is a view inside Audiences now. The retired
+                            // /outreach/lists route still redirects here, but link to
+                            // the canonical target rather than lean on the hop.
+                            const openList = () => navigate(`${workspacePath(workspaceId, 'outreach', 'audiences')}?view=lists&listId=${l.id}`);
                             return (
                                 <li
                                     key={l.id}
