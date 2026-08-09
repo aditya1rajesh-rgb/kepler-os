@@ -1,6 +1,6 @@
 # Handover — Kepler roadmap execution
 
-**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `e5bbcde`
+**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `6b691a3`
 
 Written so a fresh session can pick this up without replaying the conversation.
 Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
@@ -9,9 +9,9 @@ Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
 
 ## 1. State
 
-**Everything is committed. 2 commits unpushed** (`git push origin staging`).
+**Everything is committed and pushed.** `origin/staging` == `staging`.
 
-- `302 tests pass` · production build clean · **lint 57 errors — that is the
+- `329 tests pass` · production build clean · **lint 57 errors — that is the
   accepted baseline**, not a regression. CI runs `npm test` + `npm run build`
   deliberately, never lint.
 - **The staging database is deployed and current.** All 13 pending migrations
@@ -23,9 +23,12 @@ Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
 
 ---
 
-## 2. What shipped — the whole NOW tier
+## 2. What shipped — the whole NOW tier, plus E3
 
-Roadmap NOW tier is **complete** (E27 excluded — the user owns the approvals).
+Roadmap NOW tier is **complete** (E27 excluded — the user owns the approvals),
+and the first NEXT-tier epic, **E3**, is done. **E3 needs no migration and no
+edge-function change** — it is client-side only, so nothing is pending on the
+database from it.
 
 | Epic | What |
 |---|---|
@@ -36,6 +39,7 @@ Roadmap NOW tier is **complete** (E27 excluded — the user owns the approvals).
 | **E29** | Integrations states + scope visibility |
 | **E22** | ICP targeting block |
 | **E2** | Goals + feasibility engine — the spine |
+| **E3** | Goal-grounded generation — the spine, read (see §2b) |
 
 **E2 is the important one.** Migration 032 adds `goals`, `goal_checkpoints`,
 `goal_target_history`, `goal_links` and `campaigns.goal_id`. The feasibility
@@ -46,6 +50,65 @@ range** (±50% at one snapshot, ±15% at four over two weeks).
 
 Verified end to end: laddering two campaigns with metric history turned a goal
 from "Not enough data" into "On track — 62%, 5,544 of 9,000".
+
+---
+
+## 2b. E3 — goal-grounded generation
+
+Generation read the brand profile and nothing else, so every asset was an
+orphan: correct about who the company is, ignorant of what it is currently
+trying to achieve. E2 built the rung above; **E3 makes generation read it.**
+
+**One call replaces `getBrandContextForGeneration`** in blog, ads and social:
+`getGenerationContext()` (`src/services/generationContextService.js`). It
+returns the old shape (`prompt` / `structured` / `meta`) plus four legs, in
+descending order of authority over the output:
+
+| Leg | Source | Decides |
+|---|---|---|
+| GOAL | explicit → `campaign.goal_id` → primary goal | what a win means |
+| CAMPAIGN | `campaigns` + the step, when there is one | the angle |
+| PRIOR | completed `content_items` beneath the goal | what not to repeat |
+| SIGNALS | `seoOperatorService` (GSC) + `visibilityService` gaps | the language demand uses |
+
+The system prompts state that precedence explicitly, so a conflict resolves the
+same way every time.
+
+**The honesty rules live in the pure module** (`src/lib/generationContext.js`,
+27 tests in `tests/generation-context.test.js`). The risky part of grounding is
+not assembling context, it is what the prompt may SAY about it — a model handed
+a target and no standing will write "we're well on our way," and that sentence
+looks exactly as grounded as a true one.
+
+- **No goal → no GOAL block.** Never a "grow the business" stand-in; an invented
+  goal grounds the copy in a fiction and reads as grounded.
+- **`verdict: 'unknown'` → the block says so and forbids progress claims.**
+- **A target is an INTENT and may always be stated. `achieved`/`forecast` are
+  CLAIMS** and appear only when the projection produced them — and even then the
+  prompt marks them internal framing, never copy.
+- **Budget:** the ladder gets ~6K chars and drops whole sections in authority
+  order rather than truncating mid-bullet. GOAL survives the squeeze.
+
+**Every leg but the brand degrades soft.** A missing goal, an unreachable Search
+Console, an empty visibility scan each remove a paragraph and nothing else.
+Grounding that can sink a generation is worse than none, because it fails on the
+days the user most wants output. Signals are per-module (`MODULE_WANTS_SIGNALS`)
+— on for blog/seo, off for social and ads, where three GSC pulls buy material
+those surfaces cannot act on.
+
+**Provenance is returned from the call that builds the prompt**, stored on the
+asset, and rendered by `src/components/ui/GroundedIn.jsx` in all three screens.
+A grounding claim nobody can inspect is a marketing sentence. When the goal was
+INFERRED (asset generated outside any campaign), the strip says so in a full
+sentence rather than hiding it behind a chip.
+
+Verified in the demo harness end to end: a laddered campaign produced all four
+legs (goal via campaign, 3 prior assets, 6 search signals, 1 answer-engine gap)
+and the strip rendering them; an ad generated outside a campaign fell back to
+the primary goal and showed the caveat.
+
+**Not done, deliberately:** `generateLinkedInTargeting` still reads brand context
+only — it is ICP work, not copy, and the goal has no bearing on a job-title list.
 
 ---
 
@@ -98,6 +161,13 @@ content), Settings' three children (E9).
 - **`replies.raw_snippet` holds the email SUBJECT, not the body**, despite the
   name. The Replies screen labels it honestly; fixing it properly means
   `inbox-monitor` storing a body excerpt (a real gap, not yet built).
+- **Injected context must not end a line with a field label the surrounding
+  prompt parses.** Found in E3: `blogDraft` reads the title with
+  `/Title:\s*(.+)/i` and takes the FIRST match in the whole prompt, so a context
+  line ending `reference them by title:` retitled the blog with a prior asset —
+  silently, and only visible because the demo harness renders the title. The
+  wording is now "by name" and a test locks it, but the class of bug applies to
+  anything added to a prompt from now on.
 
 ---
 
@@ -124,13 +194,24 @@ content), Settings' three children (E9).
 
 ## 6. Suggested next
 
-The NOW tier is done. By ICE the next is **E7 · scheduled detectors (7.7)**, but
-the better move is **E3 · goal-grounded generation (8.0)**:
+NOW is done and E3 closed the loop **downward** — a goal now reaches the assets
+made under it. Three candidates, in the order I would take them:
 
-> E3 is the reason E2 exists. Generation currently reads brand voice only
-> (`blogPipelineService` → `getBrandContextForGeneration`). E3 makes it consume
-> the goal, the campaign, prior assets and live search data — closing the loop
-> downward so assets stop being orphans. That is the roadmap's stated thesis.
+1. **E5 · Goal cockpit (7.3).** The return surface. E2 and E3 both assume
+   someone comes back to a goal and sees what moved; nothing renders that yet.
+   It also unblocks `setPrimary`, which E3 leans on for standalone generation —
+   right now the only way to set a primary goal is the service, so the
+   "grounded in your primary goal" fallback is unreachable through the UI.
+   That is the sharpest gap E3 exposed.
+2. **E28 · Library as corpus (7.3).** E3's PRIOR leg reads `content_items` by
+   campaign. E28 makes the corpus first-class, which is what turns "do not
+   repeat these" into "build on these."
+3. **E7 · Scheduled detectors (7.7 — highest ICE, no dependencies).** Take it if
+   a self-contained epic suits the session better; it feeds E5 later either way.
+
+**E6 · closed loop is still gated on E4 evidence** — E3 grounds generation in
+the goal, but nothing yet reads performance back into the next asset, and the
+roadmap is explicit that the loop should be validated on ads, not content.
 
 Other E2 leftovers, all deliberately deferred: `goal_links` (built, unused —
 wants a second goal to link to), Activity (blocked on E9's `actor_id`),
@@ -146,3 +227,14 @@ screens — not the old CSS harness.
 
 New demo tables must be registered in `src/demo/dataset/index.js` `DEMO_TABLES`
 or reads warn and return empty.
+
+Three things about the harness that cost time in the E3 session:
+
+- **The demo dataset ships no `goals` rows and no `campaigns.goal_id`.** To
+  exercise anything goal-shaped you have to create a goal and ladder a campaign
+  first — through the Goals screen, or `goalsService` from the browser console.
+- **A page reload re-seeds the store**, so anything you set up is lost. Navigate
+  by clicking the sidebar (in-app routing), not by loading a URL.
+- **Vite serves the real modules**, so `await import('/src/services/…')` in the
+  console runs the actual service against the demo store. That is the fastest
+  way to inspect an assembled prompt without clicking through a whole flow.
