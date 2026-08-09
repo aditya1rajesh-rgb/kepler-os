@@ -15,15 +15,10 @@
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.12);
     border-top-color: var(--kepler-accent);
-    animation: auth-loading-spin 0.8s linear infinite;
+    animation: kepler-spin 0.8s linear infinite;
 }
 
 .auth-loading__text {
     font-size: 13px;
 }
 
-@keyframes auth-loading-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}

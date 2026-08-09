@@ -26,7 +26,9 @@ const LeadConversionCard = ({ series, granularity, onGranularityChange, connecte
                         value={granularity}
                         onChange={onGranularityChange}
                     />
-                    <button type="button" className="btn btn-primary db-chart__dl" onClick={onDownload} disabled={!hasAny}>
+                    {/* Ghost, not primary: this is a per-card utility. The screen's
+                        one primary action lives in the ModuleScreen bar. */}
+                    <button type="button" className="btn btn-ghost btn-sm db-chart__dl" onClick={onDownload} disabled={!hasAny}>
                         <Download size={14} strokeWidth={1.8} /> Download
                     </button>
                 </div>

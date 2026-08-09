@@ -117,10 +117,27 @@
     gap: 24px;
 }
 
+/* A config section's heading and the field labels inside it both used
+   `.label-text`, so "Targets & Goals" (a section) and "Target ICP" (a field
+   within it) rendered identically — two levels of hierarchy with one style.
+   The section heading is now clearly the parent. */
 .config-section {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--sp-3);
+}
+
+.config-section + .config-section {
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.config-section > .label-text:first-child {
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tr-2xs);
+    text-transform: uppercase;
+    color: var(--text-secondary);
 }
 
 .input-field {

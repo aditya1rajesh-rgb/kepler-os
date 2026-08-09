@@ -40,7 +40,10 @@
 .content-area {
     flex: 1;
     overflow-y: auto;
-    padding: 32px;
+    /* Less top padding than sides: the header already supplies optical space
+       above, and ModuleScreen's sticky bar needs to reach the top edge to blur
+       content passing under it. */
+    padding: var(--sp-5) var(--gutter) var(--sp-12);
 }
 
 .layout-container__scrim {
@@ -70,6 +73,6 @@
     }
 
     .content-area {
-        padding: 20px;
+        padding: var(--sp-4) var(--sp-4) var(--sp-10);
     }
 }

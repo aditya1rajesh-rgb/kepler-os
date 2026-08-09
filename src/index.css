@@ -1,122 +1,297 @@
-/* Type system: Inter everywhere — single family, hierarchy by weight
-   (H1/.font-display 700, H2/.font-heading/.font-section 700, body 400).
-   Font loaded via <link> in index.html (not @import — avoids serial fetch). */
+/* ═══════════════════════════════════════════════════════════════════════════
+   KEPLER OS DESIGN SYSTEM v4
+
+   v3 grouped content with outlines: every box was `--card` (#121317) on `--bg`
+   (#0a0b0d) — a ~4% luminance step — so a 1px hairline did all the grouping
+   work. Eight of those on one screen reads as loose rectangles floating on
+   black, which is exactly the "cluttered and disconnected" tester feedback.
+
+   v4 groups with TONE instead. There is one surface ladder; a container earns
+   its place on the ladder by what it *is*, not by drawing a line around
+   itself. Weight signals (shadow, blur, gradient ring) are reserved for things
+   that genuinely float — popovers, modals, the tool rail — so when something
+   does lift, it means something.
+
+   Type is Inter throughout; hierarchy comes from weight + size + leading +
+   tracking as matched sets (see the --type-* groups), never size alone.
+   Font loaded via <link> in index.html (not @import — avoids serial fetch).
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* === KEPLER OS DESIGN SYSTEM v3 — reference-blue === */
+  /* ── Surface ladder ──────────────────────────────────────────────────────
+     One ordered ramp. Each rung is a perceptible step (~4 L*) so adjacent
+     surfaces separate without a border. Pick by role, never by taste:
+       canvas  — the app background, the floor
+       chrome  — persistent shell (sidebar, header) sitting on the floor
+       raised  — content containers (cards, panels)
+       inset   — wells recessed INTO a raised surface (inputs, tiles, tracks)
+       overlay — things that genuinely float (popovers, menus, modals, rail)  */
+  --layer-canvas: #0a0b0f;
+  --layer-chrome: #0e0f14;
+  --layer-raised: #16181f;
+  --layer-raised-hover: #1c1f27;
+  --layer-inset: #0c0d12;
+  --layer-overlay: #1a1d26;
 
-  /* Surfaces - neutral near-black canvas; depth lives on cards only */
-  --bg: #0a0b0d;
-  --surface: #0e0f12;
-  --card: #121317;
-  --card-hover: #16171c;
-  --elevated: #1a1b21;
+  /* Translucent variants — for surfaces that let content show through.
+     Pair with --blur-*; never stack two of these on each other. */
+  --layer-chrome-thin: rgba(14, 15, 20, 0.72);
+  --layer-raised-thin: rgba(22, 24, 31, 0.66);
+  --layer-overlay-thin: rgba(26, 29, 38, 0.86);
+  --blur-thin: blur(12px) saturate(140%);
+  --blur-thick: blur(28px) saturate(160%);
 
-  /* Borders - hairline white per reference */
-  --border: rgba(255, 255, 255, 0.07);
-  --border-light: rgba(255, 255, 255, 0.12);
+  /* ── Borders ─────────────────────────────────────────────────────────────
+     Hairlines DEFINE an edge; they no longer carry grouping. Default to
+     --border-subtle and let the surface ladder do the work.               */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-accent: rgba(var(--accent-rgb), 0.42);
 
-  /* Text */
-  --text: #f2f3f5;
-  --text-secondary: #d5d7dd;
-  --text-muted: #9aa0ab;
-  --text-dim: #6c7280;
+  /* ── Elevation ───────────────────────────────────────────────────────────
+     v3 had zero shadow tokens and ~40 hand-written literals. Four rungs, and
+     rungs 2+ are reserved for surfaces that float above the page.          */
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 14px -4px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 14px 36px -10px rgba(0, 0, 0, 0.62);
+  --shadow-xl: 0 28px 68px -14px rgba(0, 0, 0, 0.72);
+  --shadow-accent: 0 6px 20px -8px rgba(var(--accent-rgb), 0.62);
 
-  /* Accent - indigo-blue system (reference north star) */
+  /* ── Text ────────────────────────────────────────────────────────────────
+     Four rungs, used strictly: primary content, supporting content, metadata,
+     and disabled/placeholder. If a fifth is wanted, the hierarchy is wrong.  */
+  --text: #f3f4f7;
+  --text-secondary: #c8cbd4;
+  --text-muted: #8d93a1;
+  --text-dim: #63697a;
+
+  /* ── Accent ──────────────────────────────────────────────────────────────
+     Indigo stays — it is the Kepler identity. --accent-soft/-border give
+     tinted surfaces a defined pair instead of ad-hoc rgba() at call sites.  */
   --accent: #4a6cf7;
-  --accent-rgb: 74, 108, 247;          /* enables rgba(var(--accent-rgb), x) */
+  --accent-rgb: 74, 108, 247;
   --accent-hover: #5f7df8;
   --accent-deep: #2436a8;
-  --accent-text: #9db1fb;
-  --accent-glow: rgba(74, 108, 247, 0.5);
-  --highlight-grad: linear-gradient(140deg, #6d8bff 0%, #4a6cf7 44%, #1f2e86 100%);
-  --card-grad: linear-gradient(160deg, #1b1c22 0%, #131418 52%, #0b0c0e 100%);
+  --accent-text: #a3b6fc;
+  --accent-soft: rgba(var(--accent-rgb), 0.12);
+  --accent-soft-hover: rgba(var(--accent-rgb), 0.18);
+  --accent-glow: rgba(var(--accent-rgb), 0.5);
+  --highlight-grad: linear-gradient(140deg, #6d8bff 0%, #4a6cf7 44%, #2c3fb5 100%);
 
-  /* Semantic */
+  /* ── Semantic ────────────────────────────────────────────────────────────  */
   --positive: #34d399;
   --positive-rgb: 52, 211, 153;
+  --positive-soft: rgba(var(--positive-rgb), 0.13);
   --negative: #f65a5a;
   --negative-rgb: 246, 90, 90;
-  --mint: var(--positive);             /* compat alias */
-  --error: var(--negative);            /* compat alias */
+  --negative-soft: rgba(var(--negative-rgb), 0.13);
+  --warning: #fcd34d;
+  --warning-rgb: 252, 211, 77;
+  --warning-soft: rgba(var(--warning-rgb), 0.13);
 
-  /* KEPLER glass tokens — COLLAPSED to aliases of the core set.
-     Deprecated as an independent namespace: keep translucency for glass
-     materials, but all colors resolve through the tokens above. */
-  --kepler-base: var(--bg);
-  --kepler-surface: var(--surface);
-  --kepler-panel: rgba(18, 19, 23, 0.72);
-  --kepler-elevated: rgba(26, 27, 33, 0.82);
-  --kepler-border: var(--border);
-  --kepler-border-strong: var(--border-light);
-  --kepler-text: var(--text);
-  --kepler-muted: var(--text-muted);
-  --kepler-accent: var(--accent);
-  --kepler-accent-2: var(--accent-text);
-  --kepler-accent-3: var(--positive);
-  --kepler-accent-deep: var(--accent-deep);
+  /* ── Typography: families ────────────────────────────────────────────────
+     One family. The four v3 aliases were identical strings, so they expressed
+     intent that never rendered; --font-sans is now the single truth and the
+     others alias it purely so existing call sites keep resolving.          */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
 
-  /* Typography - font stacks (Inter single family) */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;      /* body + H3 (400) */
-  --font-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
-  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;   /* H1 hero (700) */
-  --font-section: 'Inter', ui-sans-serif, system-ui, sans-serif;   /* H2 / section (700) */
-  --font-mono: ui-monospace, 'SF Mono', monospace;
+  /* ── Typography: scale ───────────────────────────────────────────────────
+     v3 had 38 distinct sizes with 12/12.5/13/13.5px coexisting. Nine rungs.
+     Tracking is size-specific (large text tightens, small text opens up) and
+     leading moves inversely to size — per Apple's optical-sizing discipline. */
+  --fs-2xs: 11px;   --lh-2xs: 1.36;  --tr-2xs: 0.02em;
+  --fs-xs: 12px;    --lh-xs: 1.4;    --tr-xs: 0.01em;
+  --fs-sm: 13px;    --lh-sm: 1.46;   --tr-sm: 0;
+  --fs-md: 14px;    --lh-md: 1.5;    --tr-md: 0;
+  --fs-lg: 16px;    --lh-lg: 1.44;   --tr-lg: -0.005em;
+  --fs-xl: 20px;    --lh-xl: 1.3;    --tr-xl: -0.012em;
+  --fs-2xl: 26px;   --lh-2xl: 1.22;  --tr-2xl: -0.018em;
+  --fs-3xl: 34px;   --lh-3xl: 1.14;  --tr-3xl: -0.022em;
+  --fs-4xl: 44px;   --lh-4xl: 1.06;  --tr-4xl: -0.028em;
 
-  /* Spacing */
+  /* Weights — 600 was the most-used weight in v3 yet had no name. */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ── Spacing: 4pt scale ──────────────────────────────────────────────────
+     The v3 scale existed but was referenced 19 times against ~340 raw pixel
+     values, which is why nothing shares a rhythm. Use these.              */
+  --sp-0: 0;
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
   --sp-5: 20px;
   --sp-6: 24px;
+  --sp-7: 28px;
   --sp-8: 32px;
   --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
 
-  /* Radius */
-  --r-sm: 4px;
-  --r-md: 6px;
-  --r-lg: 8px;
-  --r-card: 16px;
+  /* Composition rhythm — the few gaps that set the page's tempo. */
+  --gutter: var(--sp-8);          /* content-area side padding */
+  --stack-tight: var(--sp-3);     /* between rows inside a group */
+  --stack: var(--sp-5);           /* between groups inside a section */
+  --stack-loose: var(--sp-8);     /* between sections on a screen */
+  --pad-card: var(--sp-5);
+  --pad-section: var(--sp-6);
 
-  /* Sidebar widths */
+  /* ── Radius ──────────────────────────────────────────────────────────────
+     v3 shipped six unrelated card radii (6/8/12/16/18px/1rem). Five rungs,
+     nested consistently: a control inside a card is one rung smaller.      */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 9px;
+  --r-lg: 13px;
+  --r-xl: 18px;
+  --r-full: 999px;
+  --r-card: var(--r-lg);
+
+  /* ── Motion ──────────────────────────────────────────────────────────────
+     Durations are graded by how far a thing travels. --ease-spring and
+     --ease-spring-soft are CSS linear() approximations of the springs Apple
+     ships (critically damped, and ~0.8 damping for momentum) so ordinary
+     transitions get spring feel without a JS animation loop. Gesture-driven
+     motion still belongs in framer-motion, which can be interrupted.       */
+  --dur-instant: 90ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 340ms;
+  --dur-slower: 480ms;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* damping 1.0, response ~0.4 — settles without overshoot */
+  --ease-spring: linear(
+    0, 0.0064, 0.0248, 0.0538, 0.0921, 0.1382, 0.1909, 0.2492, 0.312, 0.3784,
+    0.4477, 0.519, 0.5916, 0.6649, 0.7382, 0.8107, 0.8815, 0.9497, 1.0139,
+    1.0729, 1.1253, 1.1699, 1.2055, 1.2311, 1.2459, 1.2497, 1.2426, 1.2253,
+    1.1989, 1.1648, 1.1247, 1.0806, 1.0345, 0.9884, 0.9442, 0.9036, 0.8679,
+    0.8383, 0.8155, 0.8, 0.8, 0.8073, 0.8213, 0.8412, 0.8659, 0.8944, 0.9253,
+    0.9575, 0.9897, 1.0207, 1.0494, 1.0748, 1.0962, 1.1128, 1.1243, 1.1305,
+    1.1314, 1.1273, 1.1187, 1.1063, 1.0908, 1.0731, 1.0542, 1.0349, 1.0161,
+    0.9986, 0.983, 0.9698, 0.9594, 0.952, 0.9478, 0.9466, 0.9484, 0.9528,
+    0.9595, 0.9682, 0.9783, 0.9895, 1.0012, 1.0129, 1.0243, 1.0349, 1.0444,
+    1.0525, 1.0591, 1.0639, 1.067, 1.0684, 1.0682, 1.0665, 1.0635, 1.0595,
+    1.0546, 1.0492, 1.0435, 1.0378, 1.0323, 1.0272, 1.0227, 1.0189, 1
+  );
+  /* damping ~0.8 — a little overshoot, for motion that followed a gesture */
+  --ease-spring-soft: linear(
+    0, 0.0087, 0.0334, 0.0716, 0.1211, 0.18, 0.2465, 0.3188, 0.3954, 0.4749,
+    0.5559, 0.6373, 0.718, 0.797, 0.8735, 0.9468, 1.0163, 1.0814, 1.1418,
+    1.1971, 1.2471, 1.2916, 1.3305, 1.3637, 1.3914, 1.4136, 1.4305, 1.4423,
+    1.4493, 1.4518, 1.4501, 1.4446, 1.4357, 1.4238, 1.4093, 1.3926, 1.3742,
+    1.3543, 1.3335, 1.312, 1.2902, 1.2683, 1.2467, 1.2255, 1.205, 1.1854,
+    1.1668, 1.1493, 1.1331, 1.1181, 1.1045, 1.0922, 1.0813, 1.0717, 1.0634,
+    1.0563, 1.0505, 1.0457, 1.042, 1.0392, 1.0373, 1.0361, 1.0355, 1.0355,
+    1.036, 1.0368, 1.0378, 1.0391, 1.0404, 1.0417, 1.0429, 1.044, 1.0448,
+    1.0454, 1.0457, 1.0457, 1.0454, 1.0448, 1.0439, 1.0428, 1.0415, 1.04, 1
+  );
+
+  /* Ready-made transition bundles. */
+  --t-press: transform var(--dur-instant) var(--ease-out);
+  --t-tint: background-color var(--dur-fast) var(--ease-out),
+            border-color var(--dur-fast) var(--ease-out),
+            color var(--dur-fast) var(--ease-out);
+  --t-lift: transform var(--dur-base) var(--ease-spring),
+            box-shadow var(--dur-base) var(--ease-out);
+
+  /* ── Shell geometry ──────────────────────────────────────────────────────  */
   --sidebar-expanded: 260px;
   --sidebar-collapsed: 60px;
   --sidebar-width: var(--sidebar-expanded);
-
-  /* Shell chrome */
-  --header-height: 64px;
-
-  /* Strip heights */
+  --header-height: 60px;
+  --rail-width: 320px;
   --workspace-bar-h: 52px;
   --tab-bar-h: 44px;
   --analytics-h: 52px;
+  --content-max: 1440px;
 
-  /* Transition */
-  --t-fast: 0.15s ease;
-  --t-sidebar: 0.2s ease;
-  --transition-base: var(--t-sidebar);
+  /* ═════════════════════════════════════════════════════════════════════════
+     COMPATIBILITY ALIASES
 
-  /* Legacy aliases - used by component CSS from earlier iterations */
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-card: var(--card);
-  --color-card-hover: var(--card-hover);
+     Everything below exists so the ~60 stylesheets written against earlier
+     token vocabularies keep resolving while screens migrate. Two groups:
+     (a) v3 names remapped onto the v4 ladder, so untouched components shift
+         coherently with the refresh rather than being left behind;
+     (b) names that components referenced but nobody ever defined — in v3
+         these silently fell back to `unset`, which is why the active tab
+         indicator (ui/Tabs.css: --color-primary) had no resolvable color.
+
+     Do not write new CSS against these.
+     ═════════════════════════════════════════════════════════════════════════ */
+
+  /* (a) v3 core → v4 ladder */
+  --bg: var(--layer-canvas);
+  --surface: var(--layer-chrome);
+  --card: var(--layer-raised);
+  --card-hover: var(--layer-raised-hover);
+  --elevated: var(--layer-overlay);
+  --border-light: var(--border-strong);
+  --mint: var(--positive);
+  --error: var(--negative);
+  --card-grad: linear-gradient(168deg, #1a1c24 0%, var(--layer-raised) 60%, #131520 100%);
+
+  /* (a) v3 kepler-glass namespace → v4 ladder */
+  --kepler-base: var(--layer-canvas);
+  --kepler-surface: var(--layer-chrome);
+  --kepler-panel: var(--layer-raised);
+  --kepler-elevated: var(--layer-overlay);
+  --kepler-border: var(--border-subtle);
+  --kepler-border-strong: var(--border);
+  --kepler-text: var(--text);
+  --kepler-muted: var(--text-muted);
+  --kepler-text-muted: var(--text-muted);
+  --kepler-accent: var(--accent);
+  --kepler-accent-2: var(--accent-text);
+  --kepler-accent-3: var(--positive);
+  --kepler-accent-deep: var(--accent-deep);
+
+  /* (a) v3 font-role aliases — all one family; kept so call sites resolve */
+  --font-heading: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-section: var(--font-sans);
+
+  /* (a) v3 --color-* / --space-* / --radius-* */
+  --color-bg: var(--layer-canvas);
+  --color-surface: var(--layer-chrome);
+  --color-card: var(--layer-raised);
+  --color-card-hover: var(--layer-raised-hover);
   --color-border: var(--border);
   --color-text: var(--text);
   --color-muted: var(--text-muted);
-  --color-mint: var(--mint);
-  --radius-sm: var(--r-sm);
-  --radius-md: var(--r-md);
+  --color-mint: var(--positive);
+  --radius-sm: var(--r-xs);
+  --radius-md: var(--r-sm);
+  --radius-lg: var(--r-md);
   --space-1: var(--sp-1);
   --space-2: var(--sp-2);
   --space-3: var(--sp-3);
   --space-4: var(--sp-4);
+  --space-5: var(--sp-5);
   --space-6: var(--sp-6);
   --space-8: var(--sp-8);
+  --space-10: var(--sp-10);
+  --t-fast: var(--dur-fast) var(--ease-out);
+  --t-sidebar: var(--dur-base) var(--ease-out);
+  --transition-base: var(--t-sidebar);
+
+  /* (b) referenced but never defined before v4 */
+  --color-primary: var(--accent);
+  --color-accent: var(--accent);
+  --surface-1: var(--layer-chrome);
+  --surface-2: var(--layer-raised);
+  --surface-3: var(--layer-overlay);
+  --success: var(--positive);
 }
 
-/* ── Reset ───────────────────────────────────────────────── */
+/* ── Reset ───────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -135,64 +310,126 @@ body,
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--bg);
+  background-color: var(--layer-canvas);
   color: var(--text);
-  font-size: 14px;
-  line-height: 1.5;
-  font-weight: 400;
+  font-size: var(--fs-md);
+  line-height: var(--lh-md);
+  font-weight: var(--fw-regular);
+  font-optical-sizing: auto;
 }
 
-/* ── Typography ──────────────────────────────────────────── */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-weight: 500;
-  letter-spacing: -0.01em;
+/* ── Typography ──────────────────────────────────────────────────────────── */
+
+/* Headings inherit the scale via .type-* below. These base rules only keep
+   raw h1–h6 sane; v3 set them to 500 while the .font-* utilities set 700, so
+   a heading's weight depended on whether someone remembered a class. */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--fw-semibold);
   color: var(--text);
-  line-height: 1.3;
+  line-height: var(--lh-lg);
+  letter-spacing: var(--tr-lg);
 }
 
-/* Label system - 11px uppercase used throughout */
-.label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  text-transform: none;
+/* Type roles — size, weight, leading and tracking always move together.
+   Reach for these instead of setting font-size at a call site. */
+.type-display {
+  font-size: var(--fs-4xl);
+  line-height: var(--lh-4xl);
+  letter-spacing: var(--tr-4xl);
+  font-weight: var(--fw-bold);
+}
+
+.type-title {
+  font-size: var(--fs-3xl);
+  line-height: var(--lh-3xl);
+  letter-spacing: var(--tr-3xl);
+  font-weight: var(--fw-bold);
+}
+
+.type-heading {
+  font-size: var(--fs-2xl);
+  line-height: var(--lh-2xl);
+  letter-spacing: var(--tr-2xl);
+  font-weight: var(--fw-semibold);
+}
+
+.type-subheading {
+  font-size: var(--fs-xl);
+  line-height: var(--lh-xl);
+  letter-spacing: var(--tr-xl);
+  font-weight: var(--fw-semibold);
+}
+
+.type-strong {
+  font-size: var(--fs-lg);
+  line-height: var(--lh-lg);
+  letter-spacing: var(--tr-lg);
+  font-weight: var(--fw-semibold);
+}
+
+.type-body {
+  font-size: var(--fs-md);
+  line-height: var(--lh-md);
+  letter-spacing: var(--tr-md);
+  font-weight: var(--fw-regular);
+}
+
+.type-secondary {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  letter-spacing: var(--tr-sm);
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+}
+
+.type-meta {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+  letter-spacing: var(--tr-xs);
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
+}
+
+.type-label {
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-2xs);
+  letter-spacing: var(--tr-2xs);
+  font-weight: var(--fw-medium);
   color: var(--text-dim);
 }
 
-/* KEPLER typography roles. Headings render in Title Case (every word capitalized)
-   via text-transform: capitalize - non-destructive to existing caps (KEPLER, SEO,
-   CloudVerse stay intact) so no source strings need rewriting. */
-.font-heading {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  text-transform: capitalize;
+.type-numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
-.font-display {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: capitalize;
+.label {
+  font-size: var(--fs-2xs);
+  line-height: var(--lh-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-2xs);
+  color: var(--text-dim);
 }
 
+/* v3 role utilities. `text-transform: capitalize` was removed: every label
+   these are applied to is already correctly cased, and capitalize mangles
+   user data (campaign names, brand values) that flows through the same
+   classes. */
+.font-heading,
+.font-display,
 .font-section {
-  font-family: var(--font-section);
-  font-weight: 700;
-  text-transform: capitalize;
+  font-family: var(--font-sans);
+  font-weight: var(--fw-bold);
 }
 
-/* ── Buttons ─────────────────────────────────────────────── */
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
 button {
   font-family: inherit;
   cursor: pointer;
   border: none;
   background: none;
   color: inherit;
-  transition: background-color var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+  transition: var(--t-tint);
 }
 
 button:disabled {
@@ -201,129 +438,151 @@ button:disabled {
   pointer-events: none;
 }
 
+/* The canonical button system. ui/Button.css previously redefined .btn-primary
+   at the same specificity, so import order silently decided which gradient
+   won; it now defers to these rules and only adds sizing variants. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 8px 16px;
-  gap: 6px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  line-height: 1;
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-sm);
+  padding: 0 var(--sp-4);
+  height: 34px;
+  gap: var(--sp-2);
   white-space: nowrap;
+  border: 1px solid transparent;
+  transition: var(--t-tint), transform var(--dur-instant) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+
+/* Feedback lands on pointer-down, not on release — waiting for the click
+   event to show state is the single most common source of "dead" feel. */
+.btn:active:not(:disabled) {
+  transform: scale(0.975);
 }
 
 .btn-primary {
-  background: linear-gradient(
-    180deg,
-    #6d8bff 0%,
-    #4a6cf7 100%
-  );
+  background: var(--highlight-grad);
   color: #ffffff;
-  border: 1px solid rgba(var(--accent-rgb), 0.5);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-    0 6px 18px -8px rgba(var(--accent-rgb), 0.7);
-  transition:
-    background 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.1s ease,
-    border-color 0.15s ease;
+  border-color: var(--border-accent);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2), var(--shadow-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #7d97ff 0%, #3a56d4 100%);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
-    0 8px 22px -8px rgba(var(--accent-rgb), 0.85);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0.5px);
+  background: linear-gradient(140deg, #7e99ff 0%, #5878f8 44%, #3346c4 100%);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.26),
+              0 8px 24px -8px rgba(var(--accent-rgb), 0.78);
 }
 
 .btn-secondary {
-  background: linear-gradient(
-    180deg,
-    rgba(34, 35, 58, 0.85) 0%,
-    rgba(24, 25, 44, 0.85) 100%
-  );
-  color: #f0f0f6;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 2px 8px -4px rgba(0, 0, 0, 0.4);
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  background: var(--layer-overlay);
+  color: var(--text);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: linear-gradient(
-    180deg,
-    rgba(42, 43, 70, 0.92) 0%,
-    rgba(30, 31, 54, 0.92) 100%
-  );
-  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--layer-raised-hover);
+  border-color: var(--border-strong);
 }
 
 .btn-ghost {
-  color: #b6b7c6;
-  border: 1px solid transparent;
-  transition:
-    color 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease;
+  color: var(--text-muted);
+  border-color: transparent;
 }
 
 .btn-ghost:hover:not(:disabled) {
-  color: #f0f0f6;
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .btn-destructive {
   color: var(--text-muted);
+  border-color: transparent;
 }
 
 .btn-destructive:hover:not(:disabled) {
-  color: var(--error);
+  color: var(--negative);
+  background: var(--negative-soft);
 }
 
-/* ── Links ───────────────────────────────────────────────── */
+.btn-sm {
+  height: 28px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-xs);
+  border-radius: var(--r-sm);
+}
+
+.btn-lg {
+  height: 40px;
+  padding: 0 var(--sp-5);
+  font-size: var(--fs-md);
+}
+
+.btn-icon {
+  width: 34px;
+  padding: 0;
+}
+
+/* ── Links ───────────────────────────────────────────────────────────────── */
 a {
   text-decoration: none;
   color: inherit;
-  transition: color var(--t-fast);
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
-/* ── Form Elements ───────────────────────────────────────── */
-input,
+/* ── Form elements ───────────────────────────────────────────────────────── */
+
+/* Checkboxes and radios are excluded from everything below. They are sized by
+   the browser, not by the text-field rules — `width: 100%` on a checkbox makes
+   it stretch to fill its flex parent, which pushed the label text to the far
+   end of the row (visible on every prospect row until this was added). */
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+input:not([type='checkbox']):not([type='radio']),
 select,
 textarea {
   font-family: inherit;
-  font-size: 13px;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-sm);
+  /* Fields are wells recessed into their container, one rung DOWN the ladder —
+     v3 made them lighter than the card, which read as another floating box. */
+  background-color: var(--layer-inset);
+  border: 1px solid var(--border-subtle);
   color: var(--text);
-  border-radius: var(--r-md);
-  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3);
   outline: none;
   width: 100%;
-  transition: border-color var(--t-fast);
+  transition: var(--t-tint), box-shadow var(--dur-fast) var(--ease-out);
 }
 
-input:focus,
+input:not([type='checkbox']):not([type='radio']):hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--border);
+}
+
+input:not([type='checkbox']):not([type='radio']):focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 input::placeholder,
 textarea::placeholder {
   color: var(--text-dim);
-  opacity: 0.7;
 }
 
 textarea {
@@ -335,27 +594,92 @@ select {
   cursor: pointer;
 }
 
-/* ── Utilities ───────────────────────────────────────────── */
-.text-muted {
-  color: var(--text-muted);
+/* Keyboard users get a visible ring everywhere, without giving mouse users
+   an outline on every click. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-.text-dim {
-  color: var(--text-dim);
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+/* v3 left the platform scrollbar visible inside the sidebar and content area,
+   which added a hard bright edge next to every scrolling region. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
 }
 
-.text-accent {
-  color: var(--accent-text);
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-.text-mint {
-  color: var(--mint);
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.text-error {
-  color: var(--error);
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
-.full-width {
-  width: 100%;
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Utilities ───────────────────────────────────────────────────────────── */
+.text-muted { color: var(--text-muted); }
+.text-dim { color: var(--text-dim); }
+.text-accent { color: var(--accent-text); }
+.text-mint { color: var(--positive); }
+.text-error { color: var(--negative); }
+.full-width { width: 100%; }
+
+/* Truncate to a single line; the flex-min-width reset is needed or the text
+   pushes its flex parent wider instead of ellipsising. */
+.truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Accessibility ───────────────────────────────────────────────────────── */
+/* Reduced motion keeps state changes legible but drops travel and overshoot;
+   it is not "no feedback". */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --layer-chrome-thin: var(--layer-chrome);
+    --layer-raised-thin: var(--layer-raised);
+    --layer-overlay-thin: var(--layer-overlay);
+    --blur-thin: none;
+    --blur-thick: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border-subtle: rgba(255, 255, 255, 0.18);
+    --border: rgba(255, 255, 255, 0.28);
+    --border-strong: rgba(255, 255, 255, 0.42);
+    --text-muted: #a8aeba;
+    --text-dim: #8a90a0;
+  }
 }

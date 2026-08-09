@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import ContentCard from '../../components/ui/ContentCard';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
+import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail';
 import EmptyState from '../../components/ui/EmptyState';
 import SetupRequired from '../../components/workspace/SetupRequired';
 import CampaignStepBanner from '../../components/campaigns/CampaignStepBanner';
@@ -204,53 +206,69 @@ const AdCampaigns = ({ workspaceId }) => {
     const selectedIcp = personas.find((p) => p.id === config.icpId) ?? null;
 
     return (
-        <div className="ad-campaigns-module module-kepler">
-            {campaignCtx.campaignId && (
-                <CampaignStepBanner
-                    workspaceId={workspaceId}
-                    campaignId={campaignCtx.campaignId}
-                    stepId={campaignCtx.stepId}
-                    brief={campaignCtx.brief}
-                />
-            )}
-            <FeedbackInsight workspaceId={workspaceId} module="ads" refreshKey={feedbackVersion} />
-            <Panel>
-                <PanelHeader
-                    title="Ad Campaign Builder"
-                    meta="Configure a campaign brief from your saved brand and audience data."
-                    action={
-                        <div className="module-toolbar module-toolbar--inline">
-                            {variants.length > 0 && (
-                                <button type="button" className="btn btn-secondary" onClick={handleSaveCampaign} disabled={saving}>
-                                    {saving ? 'Saving…' : 'Save campaign'}
-                                </button>
-                            )}
-                            <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
-                                {generating ? 'Generating…' : 'Generate Campaign Assets'}
-                            </button>
-                        </div>
-                    }
-                />
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
-                {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
-                {competitiveContext && <p className="brand-intel-module__source-label" role="status">Generation is grounded in your Meta Ad Library competitor read.</p>}
-            </Panel>
-
-            {saved.length > 0 && (
-                <Panel className="module-panel">
-                    <PanelHeader title="Saved campaigns" meta={`${saved.length} saved - click to reopen`} />
-                    <div className="platform-pills">
-                        {saved.map((item) => (
-                            <button key={item.id} type="button" className="btn btn-secondary platform-pill" onClick={() => openSaved(item)}>
-                                {item.title} ({item.payload.variants?.length ?? 0})
-                            </button>
-                        ))}
-                    </div>
-                </Panel>
-            )}
-
-            <CompetitorAdsPanel workspaceId={workspaceId} onGroundingChange={setCompetitiveContext} />
-
+        <ModuleScreen
+            className="ad-campaigns-module module-kepler"
+            moduleKey="ad-campaigns"
+            banner={
+                <>
+                    {campaignCtx.campaignId && (
+                        <CampaignStepBanner
+                            workspaceId={workspaceId}
+                            campaignId={campaignCtx.campaignId}
+                            stepId={campaignCtx.stepId}
+                            brief={campaignCtx.brief}
+                        />
+                    )}
+                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    <FeedbackInsight workspaceId={workspaceId} module="ads" refreshKey={feedbackVersion} />
+                </>
+            }
+            status={
+                <>
+                    {variants.length > 0 && <span><strong>{variants.length}</strong> variants</span>}
+                    {competitiveContext && (
+                        <span className="text-mint">Grounded in your Meta Ad Library competitor read</span>
+                    )}
+                </>
+            }
+            actions={variants.length > 0 ? (
+                <button type="button" className="btn btn-secondary" onClick={handleSaveCampaign} disabled={saving}>
+                    {saving ? 'Saving…' : 'Save campaign'}
+                </button>
+            ) : null}
+            /* v3 put this in the header of a near-empty panel a full scroll ABOVE
+               the configuration form it submits. In the sticky screen bar it stays
+               with the form no matter how far you scroll. */
+            primary={
+                <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
+                    {generating ? 'Generating…' : 'Generate campaign assets'}
+                </button>
+            }
+            railLabel="Research"
+            rail={
+                <ToolRail>
+                    {saved.length > 0 && (
+                        <ToolGroup label="Saved">
+                            <ToolCard title="Saved campaigns" state={`${saved.length}`} tone="ok">
+                                <div className="platform-pills">
+                                    {saved.map((item) => (
+                                        <button key={item.id} type="button" className="btn btn-ghost btn-sm platform-pill" onClick={() => openSaved(item)}>
+                                            {item.title} ({item.payload.variants?.length ?? 0})
+                                        </button>
+                                    ))}
+                                </div>
+                            </ToolCard>
+                        </ToolGroup>
+                    )}
+                    <ToolGroup label="Competitor intelligence">
+                        <ToolCard title="Meta Ad Library" state={competitiveContext ? 'Grounded' : null} tone="ok">
+                            <CompetitorAdsPanel workspaceId={workspaceId} onGroundingChange={setCompetitiveContext} chrome={false} />
+                        </ToolCard>
+                    </ToolGroup>
+                </ToolRail>
+            }
+        >
             <div className="campaign-builder-layout">
                 <Panel className="builder-config-pane">
                     <PanelHeader title="Campaign configuration" meta="Strategy, targets, and placement" />
@@ -458,7 +476,7 @@ const AdCampaigns = ({ workspaceId }) => {
                     )}
                 </Panel>
             </div>
-        </div>
+        </ModuleScreen>
     );
 };
 

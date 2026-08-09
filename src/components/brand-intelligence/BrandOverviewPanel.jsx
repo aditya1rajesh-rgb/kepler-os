@@ -43,7 +43,10 @@ const SectionAction = ({ section, status = {}, onGenerate, disabled }) => {
     // request, so we don't offer a retry button for it.
     const blockRetry = state === 'error' && status.errorKind === 'insufficient_context';
     return (
-        <div className="brand-section-action">
+        // `intel-section-action` anchors this to its field's label row (see
+        // BrandIntelligence.css); `is-running` keeps it visible mid-generation
+        // even after the pointer leaves the field.
+        <div className={`brand-section-action intel-section-action ${state !== 'idle' ? 'is-running' : ''}`.trim()}>
             {isRunning && <span className="brand-section-action__status">Generating…</span>}
             {state === 'done' && (
                 <span className="brand-section-action__status brand-section-action__status--done">Updated</span>

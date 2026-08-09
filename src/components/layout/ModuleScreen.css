@@ -1,0 +1,257 @@
+/* ModuleScreen — the canvas + rail frame. See ModuleScreen.jsx for the model. */
+
+.mscreen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack);
+    min-height: 100%;
+}
+
+/* `fill` — for canvases that are boards or maps rather than documents: the
+   screen is exactly one viewport tall and the canvas scrolls internally,
+   instead of the whole page growing to the content's height.
+   The subtracted terms are the shell's own chrome and gutters, all tokens, so
+   this stays correct if the header height or content padding changes. */
+.mscreen--fill {
+    height: calc(100vh - var(--header-height) - var(--sp-5) - var(--sp-12));
+    min-height: 520px;
+}
+
+/* The default body aligns to flex-start so short canvases don't stretch their
+   backgrounds down the page; a filling canvas needs the opposite. */
+.mscreen--fill .mscreen__body {
+    align-items: stretch;
+    min-height: 0;
+}
+
+.mscreen--fill .mscreen__canvas {
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.mscreen__banner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack-tight);
+}
+
+/* ── The one bar ─────────────────────────────────────────────────────────────
+   State on the left, intent on the right. Sticky, so the primary action stays
+   reachable on a long canvas instead of scrolling away — v3 buried "Generate"
+   above a 1,800px pipeline board. */
+.mscreen__bar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    min-height: 44px;
+    padding: var(--sp-2) 0;
+    /* Translucent so canvas content passes under it rather than being clipped
+       by an opaque strip. */
+    background: linear-gradient(
+        to bottom,
+        var(--layer-canvas) 0%,
+        var(--layer-canvas) 62%,
+        rgba(10, 11, 15, 0) 100%
+    );
+    backdrop-filter: var(--blur-thin);
+    -webkit-backdrop-filter: var(--blur-thin);
+}
+
+.mscreen__status {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-4);
+    min-width: 0;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    letter-spacing: var(--tr-xs);
+    color: var(--text-muted);
+}
+
+.mscreen__intent {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-shrink: 0;
+}
+
+.mscreen__rail-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    height: 34px;
+    padding: 0 var(--sp-3);
+    border-radius: var(--r-md);
+    border: 1px solid transparent;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-muted);
+    transition: var(--t-tint), transform var(--dur-instant) var(--ease-out);
+}
+
+.mscreen__rail-toggle:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.055);
+}
+
+.mscreen__rail-toggle:active {
+    transform: scale(0.975);
+}
+
+.mscreen__rail-toggle.is-active {
+    color: var(--accent-text);
+    background: var(--accent-soft);
+    border-color: var(--border-accent);
+}
+
+/* ── Body: canvas + rail ─────────────────────────────────────────────────── */
+.mscreen__body {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-5);
+    flex: 1;
+    min-height: 0;
+}
+
+.mscreen__canvas {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack);
+}
+
+/* The rail is a parallel, non-blocking panel: translucent and offset, with NO
+   scrim, so the canvas stays readable and the flow is not interrupted. A modal
+   would be wrong here — these are tools you use *against* the canvas. */
+.mscreen__rail {
+    flex-shrink: 0;
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    position: sticky;
+    top: 52px;
+    max-height: calc(100vh - var(--header-height) - var(--sp-10));
+    /* Width and opacity are both spring-eased so the rail arrives as one
+       movement rather than sliding then fading. */
+    transition:
+        width var(--dur-slow) var(--ease-spring),
+        opacity var(--dur-base) var(--ease-out);
+}
+
+.mscreen--rail-open .mscreen__rail {
+    width: var(--rail-width);
+    opacity: 1;
+}
+
+.mscreen__rail-inner {
+    width: var(--rail-width);
+    max-height: calc(100vh - var(--header-height) - var(--sp-10));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border-radius: var(--r-lg);
+    background: var(--layer-raised-thin);
+    backdrop-filter: var(--blur-thick);
+    -webkit-backdrop-filter: var(--blur-thick);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-md);
+}
+
+/* Below ~1400px a side-by-side rail leaves too little for the canvas — a
+   three-column board would be crushed to ~200px per column on a 1280px laptop.
+   So the rail stops pushing and starts floating: it overlays the right edge of
+   the canvas, which keeps its full width underneath.
+
+   Still no scrim and still not focus-trapping: it is a parallel tool panel, not
+   a modal task. It enters and leaves along the same path (in from the right,
+   out to the right), so the spatial relationship holds. */
+@media (max-width: 1399px) {
+    .mscreen__rail {
+        position: fixed;
+        top: calc(var(--header-height) + var(--sp-4));
+        right: var(--sp-4);
+        bottom: var(--sp-4);
+        width: var(--rail-width);
+        max-height: none;
+        z-index: 30;
+        opacity: 1;
+        overflow: visible;
+        transform: translateX(calc(100% + var(--sp-4)));
+        transition:
+            transform var(--dur-slow) var(--ease-spring),
+            opacity var(--dur-base) var(--ease-out);
+    }
+
+    .mscreen--rail-open .mscreen__rail {
+        width: var(--rail-width);
+        transform: translateX(0);
+    }
+
+    .mscreen__rail-inner {
+        max-height: 100%;
+        height: 100%;
+        box-shadow: var(--shadow-xl);
+    }
+}
+
+/* On a phone the same panel is a bottom sheet — thumbs reach the bottom edge,
+   not the right one. */
+@media (max-width: 640px) {
+    .mscreen__rail {
+        top: auto;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        max-height: 72vh;
+        transform: translateY(100%);
+    }
+
+    .mscreen--rail-open .mscreen__rail {
+        width: 100%;
+        transform: translateY(0);
+    }
+
+    .mscreen__rail-inner {
+        width: 100%;
+        max-height: 72vh;
+        border-radius: var(--r-xl) var(--r-xl) 0 0;
+        border-bottom: none;
+        padding-bottom: var(--sp-8);
+    }
+}
+
+@media (max-width: 640px) {
+    .mscreen__bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--sp-2);
+    }
+
+    .mscreen__intent {
+        justify-content: flex-end;
+    }
+
+    /* A filling canvas needs the browser chrome accounted for on mobile, where
+       100vh overshoots; dvh tracks the collapsing address bar. */
+    .mscreen--fill {
+        height: auto;
+        min-height: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mscreen__rail {
+        transition: opacity var(--dur-fast) linear;
+    }
+}

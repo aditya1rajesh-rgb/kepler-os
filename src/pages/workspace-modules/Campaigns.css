@@ -80,26 +80,39 @@
 }
 
 /* ---- Campaign cards ---- */
+/* `align-items: stretch` (the grid default) only stretches the <li>; the button
+   inside it kept its content height, so a card with two channel chips sat
+   visibly shorter than one with four. Both the item and the card now fill the
+   row, and the footer is pushed down with `margin-top: auto`. */
 .campaigns__list {
     list-style: none;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 14px;
+    gap: var(--sp-3);
+    align-items: stretch;
+}
+
+.campaigns__list > li {
+    display: flex;
 }
 
 .campaigns__card {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--sp-3);
     width: 100%;
-    padding: 18px 20px;
+    padding: var(--sp-4) var(--sp-5);
     text-align: left;
     cursor: pointer;
 }
 
+.campaigns__card .campaigns__card-foot {
+    margin-top: auto;
+}
+
 .campaigns__card.pcard:hover {
-    transform: translateY(-3px);
-    border-color: rgba(255, 255, 255, 0.14);
+    transform: translateY(-2px);
+    border-color: var(--border);
 }
 
 .campaigns__card-top {
@@ -709,11 +722,7 @@
 }
 
 .campaigns__spin {
-    animation: campaigns-spin 0.8s linear infinite;
-}
-
-@keyframes campaigns-spin {
-    to { transform: rotate(360deg); }
+    animation: kepler-spin 0.8s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

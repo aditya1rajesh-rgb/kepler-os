@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { UserSearch, Check, Trash2, ExternalLink } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
 import EmptyState from '../../components/ui/EmptyState';
 import SelectionBar from '../../components/ui/SelectionBar';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
@@ -209,25 +210,17 @@ const Prospecting = ({ workspaceId }) => {
 
     const selectedCount = saved.filter((p) => selected.has(p.id) && p.status !== 'pushed').length;
 
-    return (
-        <div className="prospecting-module module-kepler">
-            <Panel>
-                <PanelHeader
-                    title="Prospecting"
-                    meta="Find net-new prospects with Apollo, then push the right ones into your CRM."
-                />
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
-                {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
-                {!apolloConnected && (
-                    <p className="cockpit__intel-hint">
-                        Connect Apollo in <strong>Profile &amp; settings → Connectors</strong> to search for prospects.
-                    </p>
-                )}
-            </Panel>
-
-            {apolloConnected && (
-                <Panel className="module-panel">
-                    <PanelHeader title="Search Apollo" meta="Select ICPs, or filter by title / keywords / location" />
+    /* Searching Apollo IS this screen's job, so the form lives on the canvas.
+       It briefly sat in the 320px tool rail, which mangled a six-field form
+       (placeholders truncated to "e.g. Hea…") — a form that feeds the screen's
+       own primary action must never be behind a toggle. */
+    const searchSection = apolloConnected ? (
+        <Panel variant="quiet" className="prospecting__search">
+            <PanelHeader
+                title="Find prospects"
+                meta={results.length ? `${results.length} results` : 'Apollo'}
+            />
+            <div className="prospecting__search-body">
                     {personas.length > 0 && (
                         <div className="input-group">
                             <label className="label-text">Target ICPs (optional - fills job titles from your saved personas)</label>
@@ -319,14 +312,33 @@ const Prospecting = ({ workspaceId }) => {
                             })}
                         </ul>
                     )}
-                </Panel>
-            )}
+            </div>
+        </Panel>
+    ) : null;
 
-            <Panel className="module-panel">
-                <PanelHeader
-                    title={`Saved prospects${saved.length ? ` · ${saved.length}` : ''}`}
-                    meta={zohoConnected ? 'Select prospects and push them into Zoho as Leads' : 'Connect Zoho to push these into your CRM'}
-                />
+    return (
+        <ModuleScreen
+            className="prospecting-module module-kepler"
+            banner={
+                <>
+                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    {!apolloConnected && (
+                        <p className="cockpit__intel-hint">
+                            Connect Apollo in <strong>Profile &amp; settings → Connectors</strong> to search for prospects.
+                        </p>
+                    )}
+                </>
+            }
+            status={
+                <>
+                    <span><strong>{saved.length}</strong> saved</span>
+                    <span>{zohoConnected ? 'Zoho connected' : 'Connect Zoho to push to CRM'}</span>
+                </>
+            }
+        >
+            {searchSection}
+            <Panel variant="quiet">
                 {saved.length === 0 ? (
                     <EmptyState message="No saved prospects yet. Search Apollo above and save the good ones." />
                 ) : (
@@ -384,7 +396,7 @@ const Prospecting = ({ workspaceId }) => {
                     setSelected(new Set());
                 }}
             />
-        </div>
+        </ModuleScreen>
     );
 };
 

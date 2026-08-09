@@ -32,8 +32,13 @@ const CONNECTOR_LOGOS = {
  * so both the workspace-scoped Integrations screen and the account Settings page can
  * share one implementation. Workspace selection is the caller's concern (the sidebar
  * switcher scopes Integrations; Settings wraps this in workspace tabs).
+ *
+ * `chrome={false}` drops the panel wrapper and its header — for callers that are
+ * already a ModuleScreen and so already name the screen and report its state.
+ * `onStatusesChange` lets such a caller lift the connected count into its own
+ * status line instead of repeating a header here.
  */
-const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta }) => {
+const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = true, onStatusesChange }) => {
     const [statuses, setStatuses] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -50,12 +55,15 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta }) => {
         (async () => {
             try {
                 const map = await integrationService.listStatuses(workspaceId);
-                if (!cancelled) { setStatuses(map); setLoading(false); }
+                if (!cancelled) { setStatuses(map); setLoading(false); onStatusesChange?.(map); }
             } catch {
-                if (!cancelled) { setStatuses({}); setLoading(false); }
+                if (!cancelled) { setStatuses({}); setLoading(false); onStatusesChange?.({}); }
             }
         })();
         return () => { cancelled = true; };
+        // onStatusesChange is a reporting callback; callers memoize it. Including
+        // it here would refetch every render for callers that don't.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId, reloadKey]);
 
     const reload = () => setReloadKey((k) => k + 1);
@@ -126,12 +134,8 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta }) => {
         return <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => connectOauth(c.id)}>Connect</button>;
     };
 
-    return (
-        <Panel className="profile__panel">
-            <PanelHeader
-                title={title}
-                meta={meta ?? 'Optional - per workspace. Everything works without them; connecting one raises that workspace’s quality.'}
-            />
+    const grid = (
+        <>
             {error && <p className="profile__error profile__error--block">{error}</p>}
             <div className="connector-grid">
                 {CONNECTORS.map((c) => {
@@ -199,6 +203,18 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta }) => {
                 <p className="connector-modal__note">Your key is stored securely server-side and never exposed to the browser.</p>
                 {modalError && <p className="profile__error">{modalError}</p>}
             </Modal>
+        </>
+    );
+
+    if (!chrome) return grid;
+
+    return (
+        <Panel className="profile__panel">
+            <PanelHeader
+                title={title}
+                meta={meta ?? 'Optional — per workspace. Connecting one raises that workspace’s quality.'}
+            />
+            {grid}
         </Panel>
     );
 };

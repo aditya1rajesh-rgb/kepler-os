@@ -21,7 +21,7 @@
 
 .oauth-callback__spin {
     color: var(--accent-text);
-    animation: oauth-spin 0.8s linear infinite;
+    animation: kepler-spin 0.8s linear infinite;
 }
 
 .oauth-callback__warn {
@@ -62,10 +62,6 @@
 .oauth-callback__site:hover:not(:disabled) {
     border-color: rgba(var(--accent-rgb), 0.5);
     background: rgba(var(--accent-rgb), 0.1);
-}
-
-@keyframes oauth-spin {
-    to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

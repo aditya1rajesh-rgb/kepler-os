@@ -4,6 +4,7 @@ import { SolarProvider } from '@solar-icons/react';
 import { validateClientEnv } from './lib/env';
 import ConfigError from './components/boot/ConfigError';
 import './index.css';
+import './styles/surfaces.css';
 import './styles/kepler-materials.css';
 import './styles/dashboard.css';
 import './styles/card-edge.css';

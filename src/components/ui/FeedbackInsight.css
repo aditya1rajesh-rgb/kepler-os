@@ -1,19 +1,23 @@
-/* Visible learning loop - shows which past notes are shaping the next generation. */
+/* Visible learning loop — shows which past notes are shaping the next
+   generation. This is an advisory strip, not a section: it sits above the
+   canvas without a container of its own so it doesn't add to the box count. */
 .feedback-insight {
-    margin-bottom: 12px;
-    border: 1px solid rgba(var(--accent-rgb), 0.25);
-    background: rgba(var(--accent-rgb), 0.07);
-    border-radius: 10px;
+    border: 1px solid var(--border-accent);
+    background: var(--accent-soft);
+    border-radius: var(--r-md);
     padding: 2px;
 }
 
+/* The muted state carries no learned notes yet — it is a hint, so it drops the
+   container entirely rather than reserving a full-width box for one sentence. */
 .feedback-insight--muted {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border-color: rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
+    gap: var(--sp-2);
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    font-size: var(--fs-xs);
 }
 
 .feedback-insight__head {
@@ -46,13 +50,13 @@
 
 .feedback-insight__text {
     flex: 1;
-    font-size: 12.5px;
-    line-height: 1.4;
-    color: var(--kepler-text, #f0f0f6);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    color: var(--text);
 }
 
 .feedback-insight--muted .feedback-insight__text {
-    color: var(--kepler-muted, #b6b7c6);
+    color: var(--text-dim);
 }
 
 .feedback-insight__chevron {

@@ -38,6 +38,15 @@ export const clientState = {
         }
     },
 
+    // Tool-rail open state, keyed by module. Each module remembers its own, so a
+    // user who lives in the SEO tools keeps them open without forcing the rail
+    // open everywhere else. Default (no stored value) is CLOSED — the point of
+    // the rail is that the canvas is what you see first.
+    getRailOpen: (moduleKey) => localStorage.getItem(`kepler:rail:${moduleKey}`) === '1',
+    setRailOpen: (moduleKey, open) => {
+        if (moduleKey) localStorage.setItem(`kepler:rail:${moduleKey}`, open ? '1' : '0');
+    },
+
     // Activity-feed read cursor per workspace — drives the header bell's unread dot.
     getEventsReadAt: (workspaceId) => localStorage.getItem(`kepler:eventsReadAt:${workspaceId}`),
     setEventsReadAt: (workspaceId, iso) => {

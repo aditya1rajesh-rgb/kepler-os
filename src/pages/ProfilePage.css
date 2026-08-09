@@ -121,7 +121,7 @@
 
 .profile__spin {
     color: var(--accent-text);
-    animation: profile-spin 0.8s linear infinite;
+    animation: kepler-spin 0.8s linear infinite;
 }
 
 /* ── Connector grid ── */
@@ -261,10 +261,6 @@
     font-size: 12px;
     color: var(--text-dim);
     line-height: 1.5;
-}
-
-@keyframes profile-spin {
-    to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

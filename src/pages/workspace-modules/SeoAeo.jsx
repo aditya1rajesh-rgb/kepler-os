@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import ContentCard from '../../components/ui/ContentCard';
-import AnalyticsStrip from '../../components/ui/AnalyticsStrip';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
+import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
 import SetupRequired from '../../components/workspace/SetupRequired';
@@ -585,10 +586,9 @@ const SeoAeo = ({ workspaceId }) => {
         );
     }
 
-    const stats = COLUMN_STATUSES.map(({ key, title }) => ({
-        label: title,
-        value: String(items.filter((i) => i.status === key).length),
-    }));
+    const counts = Object.fromEntries(
+        COLUMN_STATUSES.map(({ key }) => [key, items.filter((i) => i.status === key).length])
+    );
 
     // Technical SEO: derive sitemap + robots from completed blogs anchored to the workspace URL.
     const baseUrl = normalizeBaseUrl(brand?.url);
@@ -614,332 +614,357 @@ const SeoAeo = ({ workspaceId }) => {
     });
     const geoReadiness = buildGeoReadiness(completedBlogs.map((i) => i.payload.blog));
 
-    return (
-        <div className="seo-aeo-module module-kepler">
-            {campaignCtx.campaignId && (
-                <CampaignStepBanner
-                    workspaceId={workspaceId}
-                    campaignId={campaignCtx.campaignId}
-                    stepId={campaignCtx.stepId}
-                    brief={campaignCtx.brief}
-                />
-            )}
-            <FeedbackInsight workspaceId={workspaceId} module="blog" refreshKey={feedbackVersion} />
-            <Panel>
-                <PanelHeader
-                    title="SEO & AEO Pipeline"
-                    meta="Keyword research → content ideas → drafts, grounded in your brand and audience."
-                    action={
-                        <div className="module-toolbar module-toolbar--inline">
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={handleGeneratePackage}
-                                disabled={generating}
-                            >
-                                {generating ? 'Researching keywords…' : 'Generate keyword ideas'}
-                            </button>
+    /* Opportunities finds the work that feeds the board, so it belongs on the
+       canvas next to it — not behind a toggle. It briefly sat in the rail,
+       which made the screen's main source of new work invisible on arrival. */
+    const opportunitiesSection = (gscConfigured || gscStatus) ? (
+        <Panel variant="quiet" className="seo-opportunities">
+            <PanelHeader
+                title="Opportunities"
+                meta={opportunities.length ? `${opportunities.length} found` : 'From your Search Console data'}
+                action={gscOperatorReady ? (
+                    <button type="button" className="btn btn-secondary" onClick={findOpportunities} disabled={opBusy}>
+                        {opBusy ? 'Analyzing…' : (opRan ? 'Re-analyze' : 'Find opportunities')}
+                    </button>
+                ) : null}
+            />
+            {gscOperatorReady ? (
+                <>
+                    {opSummary && Object.keys(opSummary).length > 0 && (
+                        <div className="op-summary">
+                            {Object.entries(opSummary).map(([type, n]) => (
+                                <span key={type} className="op-chip">{OPPORTUNITY_LABELS[type] ?? type}: {n}</span>
+                            ))}
                         </div>
-                    }
-                />
-                <AnalyticsStrip
-                    stats={stats}
-                    variant="kepler"
-                    className="analytics-strip-kepler--cols-3"
-                />
-            </Panel>
+                    )}
+                    {opportunities.length > 0 ? (
+                        <ul className="op-list">
+                            {opportunities.map((op) => (
+                                <li key={op.key} className={`op-item op-item--${op.type}`}>
+                                    <div className="op-item__head">
+                                        <span className="op-badge">{OPPORTUNITY_LABELS[op.type] ?? op.type}</span>
+                                        <span className="op-item__title">{op.title}</span>
+                                        <span className="op-item__impact">≈{Math.round(op.impact)} clicks/mo (est.)</span>
+                                    </div>
+                                    <p className="op-item__detail">{op.detail}</p>
+                                    <p className="op-item__action">{op.action}</p>
+                                    <button type="button" className="btn btn-secondary op-item__add" onClick={() => addOpportunityToPipeline(op)}>
+                                        Add to pipeline
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        opRan && <p className="brand-intel-module__source-label">No opportunities surfaced yet — your site needs more Search Console history.</p>
+                    )}
+                </>
+            ) : (
+                <p className="brand-intel-module__source-label">
+                    {caps?.gsc_operator?.degraded || 'Connect Search Console to surface real ranking opportunities.'}
+                </p>
+            )}
+        </Panel>
+    ) : null;
 
+    const gscSyncedLabel = gscStatus?.lastSyncAt
+        ? `synced ${new Date(gscStatus.lastSyncAt).toLocaleDateString()}`
+        : null;
+
+    /* Everything that was a full-width peer panel in v3 and is NOT the pipeline:
+       data sources, the three discovery tools, and the technical exports. Each
+       keeps all of its behaviour — this is relocation, not removal. */
+    const rail = (
+        <ToolRail note="Tools act on the pipeline board. Anything you add from here lands in the Queue column.">
             {(gscConfigured || gscStatus) && (
-                <Panel className="module-panel">
-                    <PanelHeader
+                <ToolGroup label="Data source">
+                    <ToolCard
                         title="Search Console"
-                        meta="Real search performance - grounds keywords in what people actually search for."
-                        action={
-                            gscStatus ? (
-                                <div className="module-toolbar module-toolbar--inline">
+                        state={gscStatus ? (gscStatus.status === 'connected' ? 'Connected' : gscStatus.status) : 'Not connected'}
+                        tone={gscStatus?.status === 'connected' ? 'ok' : 'warn'}
+                        defaultOpen={!gscStatus}
+                    >
+                        {gscStatus ? (
+                            <>
+                                <p>{gscStatus.propertyUrl || 'No property selected'}{gscSyncedLabel ? ` · ${gscSyncedLabel}` : ''}</p>
+                                <div className="row row--wrap">
                                     <button type="button" className="btn btn-secondary" onClick={pullGsc} disabled={gscBusy}>
                                         {gscBusy ? 'Pulling…' : 'Pull latest'}
                                     </button>
                                     <button type="button" className="btn btn-ghost" onClick={disconnectGsc}>Disconnect</button>
                                 </div>
-                            ) : (
-                                <button type="button" className="btn btn-primary" onClick={connectGsc}>
-                                    Connect Search Console
-                                </button>
-                            )
-                        }
-                    />
-                    {gscStatus ? (
-                        <>
-                            <p className="brand-intel-module__source-label">
-                                {gscStatus.status === 'connected' ? 'Connected' : gscStatus.status}
-                                {' · '}{gscStatus.propertyUrl || 'no property selected'}
-                                {gscStatus.lastSyncAt ? ` · synced ${new Date(gscStatus.lastSyncAt).toLocaleDateString()}` : ''}
-                            </p>
-                            {gscRows.length > 0 && (
-                                <ul className="gsc-rows">
-                                    {gscRows.slice(0, 25).map((r) => (
-                                        <li key={r.query} className="gsc-row">
-                                            <span className="gsc-row__q">{r.query}</span>
-                                            <span className="gsc-row__m">
-                                                {Math.round(r.impressions)} impr · {Math.round(r.clicks)} clicks · pos {Number(r.position).toFixed(1)}
-                                            </span>
-                                            <button type="button" className="btn btn-secondary gsc-row__add" onClick={() => addGscToPipeline(r)}>
-                                                Add to pipeline
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </>
-                    ) : (
-                        <p className="brand-intel-module__source-label">
-                            Connect Google Search Console to pull real queries, impressions, clicks, and positions into your pipeline.
-                        </p>
-                    )}
-                </Panel>
+                                {gscRows.length > 0 && (
+                                    <ul className="tool-card__list">
+                                        {gscRows.slice(0, 25).map((r) => (
+                                            <li key={r.query} className="tool-card__row">
+                                                <span className="tool-card__row-text" title={r.query}>
+                                                    {r.query}
+                                                    <br />
+                                                    {Math.round(r.impressions)} impr · {Math.round(r.clicks)} clicks · pos {Number(r.position).toFixed(1)}
+                                                </span>
+                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => addGscToPipeline(r)}>
+                                                    Add
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <p>Pull real queries, impressions, clicks and positions into your pipeline.</p>
+                                <button type="button" className="btn btn-secondary" onClick={connectGsc}>Connect Search Console</button>
+                            </>
+                        )}
+                    </ToolCard>
+                </ToolGroup>
             )}
 
-            {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
-            {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
-
-            {(gscConfigured || gscStatus) && (
-                <Panel className="module-panel">
-                    <PanelHeader
-                        title="Opportunities"
-                        meta="Prioritized fixes from your real Search Console data — striking distance, low CTR, cannibalization, dead pages, and decay."
-                        action={gscOperatorReady ? (
-                            <button type="button" className="btn btn-primary" onClick={findOpportunities} disabled={opBusy}>
-                                {opBusy ? 'Analyzing…' : (opRan ? 'Re-analyze' : 'Find opportunities')}
-                            </button>
-                        ) : null}
-                    />
-                    {gscOperatorReady ? (
-                        <>
-                            {opSummary && Object.keys(opSummary).length > 0 && (
-                                <div className="op-summary">
-                                    {Object.entries(opSummary).map(([type, n]) => (
-                                        <span key={type} className="op-chip">{OPPORTUNITY_LABELS[type] ?? type}: {n}</span>
-                                    ))}
+            <ToolGroup label="Find work">
+                <ToolCard title="Page teardown" state={teardown?.teardown ? 'Ready' : null} tone="ok">
+                    <div className="teardown-input">
+                        <input
+                            type="url"
+                            className="teardown-url"
+                            placeholder="https://competitor.com/their-page"
+                            value={teardownUrl}
+                            onChange={(e) => setTeardownUrl(e.target.value)}
+                        />
+                        <button type="button" className="btn btn-secondary" onClick={runTeardown} disabled={teardownBusy || !teardownUrl.trim()}>
+                            {teardownBusy ? 'Reading…' : 'Analyze'}
+                        </button>
+                    </div>
+                    {teardown?.teardown && (
+                        <div className="teardown-result">
+                            <p className="teardown-summary">{teardown.teardown.summary}</p>
+                            {teardown.teardown.gaps.length > 0 && (
+                                <div className="data-section">
+                                    <label className="data-label">Gaps to exploit</label>
+                                    <ul className="icp-list">{teardown.teardown.gaps.map((g, i) => <li key={i}>{g}</li>)}</ul>
                                 </div>
                             )}
-                            {opportunities.length > 0 ? (
-                                <ul className="op-list">
-                                    {opportunities.map((op) => (
-                                        <li key={op.key} className={`op-item op-item--${op.type}`}>
-                                            <div className="op-item__head">
-                                                <span className="op-badge">{OPPORTUNITY_LABELS[op.type] ?? op.type}</span>
-                                                <span className="op-item__title">{op.title}</span>
-                                                <span className="op-item__impact">≈{Math.round(op.impact)} clicks/mo (est.)</span>
-                                            </div>
-                                            <p className="op-item__detail">{op.detail}</p>
-                                            <p className="op-item__action">{op.action}</p>
-                                            <button type="button" className="btn btn-secondary op-item__add" onClick={() => addOpportunityToPipeline(op)}>
-                                                Add to pipeline
-                                            </button>
-                                        </li>
-                                    ))}
+                            {teardown.teardown.angles.length > 0 && (
+                                <div className="data-section">
+                                    <label className="data-label">Angles to out-teach it</label>
+                                    <ul className="icp-list">{teardown.teardown.angles.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                                </div>
+                            )}
+                            {teardown.teardown.recommendedFormat && (
+                                <p>Recommended format: {teardown.teardown.recommendedFormat}</p>
+                            )}
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={teardownToIdea}>Turn into content idea</button>
+                        </div>
+                    )}
+                </ToolCard>
+
+                <ToolCard
+                    title="Mention finder"
+                    state={mentionThreads.length > 0 ? `${mentionThreads.length} threads` : null}
+                    tone="ok"
+                >
+                    {caps?.mention_finder?.configured ? (
+                        <>
+                            <div className="teardown-input">
+                                <input
+                                    type="text"
+                                    className="teardown-url"
+                                    placeholder="a topic your buyers ask about"
+                                    value={mentionTopic}
+                                    onChange={(e) => setMentionTopic(e.target.value)}
+                                />
+                                <button type="button" className="btn btn-secondary" onClick={findMentions} disabled={mentionBusy || !mentionTopic.trim()}>
+                                    {mentionBusy ? 'Searching…' : 'Find'}
+                                </button>
+                            </div>
+                            {mentionThreads.length > 0 ? (
+                                <ul className="mention-list">
+                                    {mentionThreads.map((t) => {
+                                        const draft = mentionDrafts[t.url];
+                                        return (
+                                            <li key={t.url} className="mention-item">
+                                                <a href={t.url} target="_blank" rel="noopener noreferrer" className="mention-item__title">{t.title || t.url}</a>
+                                                {t.source && <span className="mention-item__meta">{t.source}</span>}
+                                                {t.snippet && <p className="mention-item__snippet">{t.snippet}</p>}
+                                                {draft ? (
+                                                    <div className="mention-draft">
+                                                        <div className="mention-draft__flags">
+                                                            <span className={`mention-flag${draft.recommendation === 'skip' ? ' mention-flag--skip' : ''}`}>
+                                                                {draft.recommendation === 'skip' ? 'Recommended: skip' : 'Recommended: worth a reply'}
+                                                            </span>
+                                                            {draft.mentionsBrand && (
+                                                                <span className={`mention-flag${draft.disclosed ? ' mention-flag--ok' : ' mention-flag--warn'}`}>
+                                                                    {draft.disclosed ? 'Brand mention · disclosed' : 'Brand mention · NOT disclosed'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <pre className="mention-draft__text">{draft.answer}</pre>
+                                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleCopy(draft.answer, `m-${t.url}`)}>
+                                                            {copied === `m-${t.url}` ? 'Copied!' : 'Copy draft'}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button type="button" className="btn btn-ghost btn-sm mention-item__draft" onClick={() => draftMentionAnswer(t)} disabled={draftingUrl === t.url}>
+                                                        {draftingUrl === t.url ? 'Drafting…' : 'Draft disclosed answer'}
+                                                    </button>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             ) : (
-                                opRan
-                                    ? <p className="brand-intel-module__source-label">No opportunities surfaced yet — your site needs more Search Console history.</p>
-                                    : <p className="brand-intel-module__source-label">Analyze your last 28 days for pages one push from page 1, low-CTR winners, cannibalization, dead pages, and decay.</p>
+                                mentionRan && <p>No threads found — try a more specific topic or question.</p>
                             )}
+                            <p>
+                                This never posts for you. Disclose your affiliation, add real value, and reply
+                                manually only where you genuinely help — at most one brand mention in four.
+                            </p>
                         </>
                     ) : (
-                        <p className="brand-intel-module__source-label">
-                            {caps?.gsc_operator?.degraded || 'Connect Search Console above to surface real ranking opportunities.'}
-                        </p>
+                        <p>{caps?.mention_finder?.degraded || 'Add the APIFY_TOKEN platform secret to find real community threads.'}</p>
                     )}
-                </Panel>
-            )}
+                </ToolCard>
+            </ToolGroup>
 
-            <Panel className="module-panel">
-                <PanelHeader
-                    title="Page teardown"
-                    meta="Read a live competitor or your own page - what it covers, where it's thin, and how to beat it. No key needed."
-                />
-                <div className="teardown-input">
-                    <input
-                        type="url"
-                        className="teardown-url"
-                        placeholder="https://competitor.com/their-ranking-page"
-                        value={teardownUrl}
-                        onChange={(e) => setTeardownUrl(e.target.value)}
-                    />
-                    <button type="button" className="btn btn-primary" onClick={runTeardown} disabled={teardownBusy || !teardownUrl.trim()}>
-                        {teardownBusy ? 'Reading…' : 'Analyze'}
-                    </button>
-                </div>
-                {teardown?.teardown && (
-                    <div className="teardown-result">
-                        <p className="teardown-summary">{teardown.teardown.summary}</p>
-                        {teardown.teardown.gaps.length > 0 && (
-                            <div className="data-section">
-                                <label className="data-label">Gaps to exploit</label>
-                                <ul className="icp-list">{teardown.teardown.gaps.map((g, i) => <li key={i}>{g}</li>)}</ul>
-                            </div>
-                        )}
-                        {teardown.teardown.angles.length > 0 && (
-                            <div className="data-section">
-                                <label className="data-label">Angles to out-teach it</label>
-                                <ul className="icp-list">{teardown.teardown.angles.map((a, i) => <li key={i}>{a}</li>)}</ul>
-                            </div>
-                        )}
-                        <div className="intel-action-row">
-                            {teardown.teardown.recommendedFormat && (
-                                <span className="brand-intel-module__source-label">Recommended format: {teardown.teardown.recommendedFormat}</span>
-                            )}
-                            <button type="button" className="btn btn-secondary" onClick={teardownToIdea}>Turn into content idea</button>
-                        </div>
-                    </div>
-                )}
-            </Panel>
-
-            <Panel className="module-panel">
-                <PanelHeader
-                    title="Mention finder"
-                    meta="Find real community threads where a disclosed, genuinely-helpful answer belongs. It never posts for you."
-                    action={caps?.mention_finder?.configured ? (
-                        <div className="module-toolbar module-toolbar--inline">
-                            <input
-                                type="text"
-                                className="teardown-url"
-                                placeholder="a topic or question your buyers ask"
-                                value={mentionTopic}
-                                onChange={(e) => setMentionTopic(e.target.value)}
-                            />
-                            <button type="button" className="btn btn-primary" onClick={findMentions} disabled={mentionBusy || !mentionTopic.trim()}>
-                                {mentionBusy ? 'Searching…' : 'Find threads'}
-                            </button>
-                        </div>
-                    ) : null}
-                />
-                {caps?.mention_finder?.configured ? (
-                    <>
-                        {mentionThreads.length > 0 ? (
-                            <ul className="mention-list">
-                                {mentionThreads.map((t) => {
-                                    const draft = mentionDrafts[t.url];
-                                    return (
-                                        <li key={t.url} className="mention-item">
-                                            <a href={t.url} target="_blank" rel="noopener noreferrer" className="mention-item__title">{t.title || t.url}</a>
-                                            {t.source && <span className="mention-item__meta">{t.source}</span>}
-                                            {t.snippet && <p className="mention-item__snippet">{t.snippet}</p>}
-                                            {draft ? (
-                                                <div className="mention-draft">
-                                                    <div className="mention-draft__flags">
-                                                        <span className={`mention-flag${draft.recommendation === 'skip' ? ' mention-flag--skip' : ''}`}>
-                                                            {draft.recommendation === 'skip' ? 'Recommended: skip' : 'Recommended: worth a reply'}
-                                                        </span>
-                                                        {draft.mentionsBrand && (
-                                                            <span className={`mention-flag${draft.disclosed ? ' mention-flag--ok' : ' mention-flag--warn'}`}>
-                                                                {draft.disclosed ? 'Brand mention · disclosed' : 'Brand mention · NOT disclosed'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <pre className="mention-draft__text">{draft.answer}</pre>
-                                                    <button type="button" className="btn btn-secondary" onClick={() => handleCopy(draft.answer, `m-${t.url}`)}>
-                                                        {copied === `m-${t.url}` ? 'Copied!' : 'Copy draft'}
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button type="button" className="btn btn-secondary mention-item__draft" onClick={() => draftMentionAnswer(t)} disabled={draftingUrl === t.url}>
-                                                    {draftingUrl === t.url ? 'Drafting…' : 'Draft disclosed answer'}
-                                                </button>
-                                            )}
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        ) : (
-                            mentionRan && <p className="brand-intel-module__source-label">No threads found — try a more specific topic or question.</p>
-                        )}
-                        <p className="brand-intel-module__source-label">
-                            This never posts for you. Disclose your affiliation, add real value, and reply manually only where you genuinely help — at most one brand mention in four.
-                        </p>
-                    </>
-                ) : (
-                    <p className="brand-intel-module__source-label">
-                        {caps?.mention_finder?.degraded || 'Add the APIFY_TOKEN platform secret to find real community threads.'}
-                    </p>
-                )}
-            </Panel>
-
-            <Panel className="module-panel">
-                <PanelHeader title="Pipeline board" meta="Queue, generate, and complete content packages" />
-                {loadingItems ? (
-                    <EmptyState loading message="Loading pipeline…" />
-                ) : (
-                    <div className="pipeline-container">
-                        {COLUMN_STATUSES.map(renderColumn)}
-                    </div>
-                )}
-            </Panel>
-
-            <Panel className="module-panel">
-                <PanelHeader
-                    title="Technical SEO"
-                    meta={baseUrl
-                        ? `${blogUrlEntries.length} blog URL${blogUrlEntries.length === 1 ? '' : 's'} · ${baseUrl}`
-                        : 'Add a website URL in Brand Intelligence to anchor sitemap URLs'}
-                />
-                <div className="intel-action-row">
-                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => handleCopy(sitemapXml, 'sitemap')}>
-                        {copied === 'sitemap' ? 'Copied!' : 'Copy sitemap.xml'}
-                    </button>
-                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => downloadText('sitemap.xml', sitemapXml, 'application/xml')}>
-                        Download sitemap.xml
-                    </button>
-                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => handleCopy(robotsTxt, 'robots')}>
-                        {copied === 'robots' ? 'Copied!' : 'Copy robots.txt'}
-                    </button>
-                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => downloadText('robots.txt', robotsTxt)}>
-                        Download robots.txt
-                    </button>
-                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => handleCopy(llmsTxt, 'llms')}>
-                        {copied === 'llms' ? 'Copied!' : 'Copy llms.txt'}
-                    </button>
-                    <button type="button" className="btn btn-secondary" disabled={!baseUrl} onClick={() => downloadText('llms.txt', llmsTxt)}>
-                        Download llms.txt
-                    </button>
-                </div>
-                <p className="brand-intel-module__source-label">
-                    Per-post JSON-LD schema (Article/HowTo + FAQPage + Breadcrumb, with publisher &amp; author E-E-A-T) is available via “Copy schema” in each completed blog’s view. robots.txt explicitly welcomes AI answer-engine crawlers (GPTBot, PerplexityBot, ClaudeBot, Google-Extended, Bingbot…).
-                </p>
-                <div className="tech-seo-extra">
-                    <div className="tech-seo-block">
-                        <label className="data-label">IndexNow — ping Bing/Yandex when content changes</label>
-                        {indexNowKey ? (
-                            <div className="indexnow-key">
-                                <code className="indexnow-key__val">{indexNowKey}</code>
-                                <button type="button" className="btn btn-secondary" onClick={() => { const f = indexNowKeyFile(indexNowKey); downloadText(f.name, f.content); }}>
-                                    Download key file
+            <ToolGroup label="Technical SEO">
+                <ToolCard
+                    title="Sitemap, robots &amp; llms.txt"
+                    state={baseUrl ? `${blogUrlEntries.length} URL${blogUrlEntries.length === 1 ? '' : 's'}` : 'No site URL'}
+                    tone={baseUrl ? 'idle' : 'warn'}
+                >
+                    {baseUrl ? (
+                        <>
+                            <p>{baseUrl}</p>
+                            <div className="row row--wrap">
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleCopy(sitemapXml, 'sitemap')}>
+                                    {copied === 'sitemap' ? 'Copied!' : 'Copy sitemap.xml'}
                                 </button>
-                                <span className="brand-intel-module__source-label">
-                                    Host this at {baseUrl || 'https://your-domain'}/{indexNowKey}.txt, then POST changed URLs to api.indexnow.org.
-                                </span>
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => downloadText('sitemap.xml', sitemapXml, 'application/xml')}>
+                                    Download
+                                </button>
                             </div>
-                        ) : (
+                            <div className="row row--wrap">
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleCopy(robotsTxt, 'robots')}>
+                                    {copied === 'robots' ? 'Copied!' : 'Copy robots.txt'}
+                                </button>
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => downloadText('robots.txt', robotsTxt)}>
+                                    Download
+                                </button>
+                            </div>
+                            <div className="row row--wrap">
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleCopy(llmsTxt, 'llms')}>
+                                    {copied === 'llms' ? 'Copied!' : 'Copy llms.txt'}
+                                </button>
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => downloadText('llms.txt', llmsTxt)}>
+                                    Download
+                                </button>
+                            </div>
+                            <p>
+                                Per-post JSON-LD schema (Article/HowTo + FAQPage + Breadcrumb, with publisher &amp;
+                                author E-E-A-T) is available via “Copy schema” in each completed blog’s view.
+                                robots.txt explicitly welcomes AI answer-engine crawlers (GPTBot, PerplexityBot,
+                                ClaudeBot, Google-Extended, Bingbot…).
+                            </p>
+                        </>
+                    ) : (
+                        <p>Add a website URL in Brand Intelligence to anchor sitemap URLs.</p>
+                    )}
+                </ToolCard>
+
+                <ToolCard title="IndexNow" state={indexNowKey ? 'Key ready' : null} tone="ok">
+                    {indexNowKey ? (
+                        <div className="indexnow-key">
+                            <code className="indexnow-key__val">{indexNowKey}</code>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { const f = indexNowKeyFile(indexNowKey); downloadText(f.name, f.content); }}>
+                                Download key file
+                            </button>
+                            <span>Host this at {baseUrl || 'https://your-domain'}/{indexNowKey}.txt, then POST changed URLs to api.indexnow.org.</span>
+                        </div>
+                    ) : (
+                        <>
+                            <p>Ping Bing and Yandex when your content changes.</p>
                             <button type="button" className="btn btn-secondary" onClick={() => setIndexNowKey(generateIndexNowKey())}>
                                 Generate IndexNow key
                             </button>
-                        )}
-                    </div>
-                    <div className="tech-seo-block">
-                        <label className="data-label">GEO readiness</label>
-                        <ul className="geo-readiness">
-                            {geoReadiness.map((c) => (
-                                <li key={c.label} className={`geo-check${c.done ? ' geo-check--done' : ''}`}>
-                                    <span className="geo-check__mark">{c.done ? '✓' : '○'}</span>
-                                    <span className="geo-check__label">{c.label}</span>
-                                    <span className="geo-check__detail">{c.detail}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                        </>
+                    )}
+                </ToolCard>
+
+                <ToolCard
+                    title="GEO readiness"
+                    state={`${geoReadiness.filter((c) => c.done).length}/${geoReadiness.length}`}
+                    tone={geoReadiness.every((c) => c.done) ? 'ok' : 'idle'}
+                >
+                    <ul className="geo-readiness">
+                        {geoReadiness.map((c) => (
+                            <li key={c.label} className={`geo-check${c.done ? ' geo-check--done' : ''}`}>
+                                <span className="geo-check__mark">{c.done ? '✓' : '○'}</span>
+                                <span className="geo-check__label">{c.label}</span>
+                                <span className="geo-check__detail">{c.detail}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </ToolCard>
+            </ToolGroup>
+        </ToolRail>
+    );
+
+    return (
+        <ModuleScreen
+            moduleKey="seo-aeo"
+            className="seo-aeo-module module-kepler"
+            railLabel="SEO tools"
+            rail={rail}
+            banner={
+                <>
+                    {campaignCtx.campaignId && (
+                        <CampaignStepBanner
+                            workspaceId={workspaceId}
+                            campaignId={campaignCtx.campaignId}
+                            stepId={campaignCtx.stepId}
+                            brief={campaignCtx.brief}
+                        />
+                    )}
+                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    {/* What the system has learned from your ratings. Kept above the
+                        canvas because it changes how you judge what you generate. */}
+                    <FeedbackInsight workspaceId={workspaceId} module="blog" refreshKey={feedbackVersion} />
+                </>
+            }
+            /* The three pipeline counts were three large stat tiles in v3, costing
+               ~200px above the board they describe. As a status line they say the
+               same thing in one row and stay pinned while you scroll. */
+            status={
+                <>
+                    <span><strong>{counts.queue}</strong> queued</span>
+                    <span><strong>{counts.generating}</strong> generating</span>
+                    <span><strong>{counts.completed}</strong> completed</span>
+                    {gscStatus?.status === 'connected' && (
+                        <span className="text-mint">Search Console{gscSyncedLabel ? ` · ${gscSyncedLabel}` : ''}</span>
+                    )}
+                </>
+            }
+            primary={
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleGeneratePackage}
+                    disabled={generating}
+                >
+                    {generating ? 'Researching keywords…' : 'Generate keyword ideas'}
+                </button>
+            }
+        >
+            {/* The canvas: the board itself, with no panel chrome wrapped around
+                it. In v3 this was the 7th of 8 stacked panels, 1,800px below the
+                fold, behind five setup and utility panels. */}
+            {opportunitiesSection}
+            {loadingItems ? (
+                <EmptyState loading message="Loading pipeline…" />
+            ) : (
+                <div className="pipeline-container">
+                    {COLUMN_STATUSES.map(renderColumn)}
                 </div>
-            </Panel>
+            )}
 
             <Modal
                 isOpen={!!viewItem}
@@ -1019,7 +1044,7 @@ const SeoAeo = ({ workspaceId }) => {
                     <p className="module-empty-state">No draft available.</p>
                 )}
             </Modal>
-        </div>
+        </ModuleScreen>
     );
 };
 

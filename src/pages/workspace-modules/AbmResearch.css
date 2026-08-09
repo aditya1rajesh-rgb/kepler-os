@@ -203,3 +203,77 @@
     display: flex; flex-direction: column; gap: 0.15rem;
 }
 .abm-saved-open:hover .prospect-row__name { text-decoration: underline; }
+
+/* The chat is the canvas: the log scrolls internally and the composer stays
+   pinned, so researching a long list never pushes the input off screen. */
+.abm-research-module.mscreen--fill .abm-chat {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.abm-research-module.mscreen--fill .abm-chat__log {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.abm-research-module.mscreen--fill .abm-composer {
+    flex-shrink: 0;
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Bulk research sits on the canvas as a collapsible strip — visible and
+   scannable, but subordinate to the analyst chat below it. It spent a short
+   while in the tool rail, which hid one of the two ways to start work here. */
+.abm-bulk {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-md);
+    background: var(--layer-inset);
+}
+
+.abm-bulk__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4);
+    cursor: pointer;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-secondary);
+    list-style: none;
+}
+
+.abm-bulk__summary::-webkit-details-marker { display: none; }
+
+.abm-bulk__summary::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    opacity: 0.6;
+    transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.abm-bulk[open] .abm-bulk__summary::before { transform: rotate(90deg); }
+.abm-bulk__summary:hover { color: var(--text); }
+
+.abm-bulk__count {
+    padding: 1px var(--sp-2);
+    border-radius: var(--r-full);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-size: var(--fs-2xs);
+}
+
+.abm-bulk__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: 0 var(--sp-4) var(--sp-4);
+}

@@ -45,13 +45,7 @@
     border: 2px solid rgba(var(--accent-rgb), 0.3);
     border-top-color: rgba(var(--accent-rgb), 0.9);
     border-radius: 50%;
-    animation: population-banner-spin 0.7s linear infinite;
-}
-
-@keyframes population-banner-spin {
-    to {
-        transform: rotate(360deg);
-    }
+    animation: kepler-spin 0.7s linear infinite;
 }
 
 .population-banner__message--error {

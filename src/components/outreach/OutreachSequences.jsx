@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import ContentCard from '../../components/ui/ContentCard';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../layout/ModuleScreen';
+import ToolRail, { ToolCard, ToolGroup } from '../layout/ToolRail';
 import EmptyState from '../../components/ui/EmptyState';
 import Modal from '../../components/ui/Modal';
 import Tabs from '../../components/ui/Tabs';
@@ -316,66 +318,73 @@ const OutreachSequences = ({ workspaceId }) => {
     }
 
     return (
-        <div className="outreach-module module-kepler">
-            {campaignCtx.campaignId && (
-                <CampaignStepBanner
-                    workspaceId={workspaceId}
-                    campaignId={campaignCtx.campaignId}
-                    stepId={campaignCtx.stepId}
-                    brief={campaignCtx.brief}
-                />
-            )}
-            <Tabs tabs={VIEWS} activeTab={view} onTabChange={setView} variant="kepler" />
+        <ModuleScreen
+            className="outreach-module module-kepler"
+            moduleKey={`sequences-${view}`}
+            banner={
+                <>
+                    {campaignCtx.campaignId && (
+                        <CampaignStepBanner
+                            workspaceId={workspaceId}
+                            campaignId={campaignCtx.campaignId}
+                            stepId={campaignCtx.stepId}
+                            brief={campaignCtx.brief}
+                        />
+                    )}
+                    {view === 'builder' && error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {view === 'builder' && notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    {view === 'builder' && (
+                        <FeedbackInsight workspaceId={workspaceId} module="outreach" refreshKey={feedbackVersion} />
+                    )}
+                </>
+            }
+            status={<Tabs tabs={VIEWS} activeTab={view} onTabChange={setView} variant="kepler" />}
+            /* v3 put FOUR buttons in this header, TWO of them primary-styled
+               ("Prepare for sending" and "Generate sequence"), so the screen had
+               no single next step. Generate is the one primary; the rest are
+               things you do to a sequence that already exists. */
+            actions={view === 'builder' && sequence ? (
+                <>
+                    <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving…' : 'Save'}
+                    </button>
+                    {zohoConnected && (
+                        <button type="button" className="btn btn-secondary" onClick={() => { setPushError(''); setCrmContacts(null); setPushOpen(true); }}>
+                            Push to Zoho
+                        </button>
+                    )}
+                    <button type="button" className="btn btn-secondary" onClick={handlePrepareSend} disabled={promoting}>
+                        {promoting ? 'Preparing…' : 'Prepare for sending'}
+                    </button>
+                </>
+            ) : null}
+            primary={view === 'builder' ? (
+                <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
+                    {generating ? 'Generating…' : 'Generate sequence'}
+                </button>
+            ) : null}
+            railLabel="Saved sequences"
+            rail={view === 'builder' && saved.length > 0 ? (
+                <ToolRail>
+                    <ToolGroup label="Reopen">
+                        <ToolCard title="Saved sequences" state={`${saved.length}`} tone="ok" defaultOpen>
+                            <div className="platform-pills">
+                                {saved.map((item) => (
+                                    <button key={item.id} type="button" className="btn btn-ghost btn-sm platform-pill" onClick={() => openSaved(item)}>
+                                        {item.title} ({item.payload.sequence?.steps?.length ?? 0})
+                                    </button>
+                                ))}
+                            </div>
+                        </ToolCard>
+                    </ToolGroup>
+                </ToolRail>
+            ) : null}
+        >
             {view === 'engine' && (
                 <OutreachEngine workspaceId={workspaceId} zohoConnected={zohoConnected} refreshKey={engineRefresh} />
             )}
             {view === 'builder' && (<>
-            <FeedbackInsight workspaceId={workspaceId} module="outreach" refreshKey={feedbackVersion} />
-            <Panel>
-                <PanelHeader
-                    title="Outreach Sequence Builder"
-                    meta="Generate personalized multi-touch sequences grounded in your brand and a saved ICP."
-                    action={
-                        <div className="module-toolbar module-toolbar--inline">
-                            {sequence && (
-                                <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={saving}>
-                                    {saving ? 'Saving…' : 'Save sequence'}
-                                </button>
-                            )}
-                            {sequence && zohoConnected && (
-                                <button type="button" className="btn btn-secondary" onClick={() => { setPushError(''); setCrmContacts(null); setPushOpen(true); }}>
-                                    Push to Zoho CRM
-                                </button>
-                            )}
-                            {sequence && (
-                                <button type="button" className="btn btn-primary" onClick={handlePrepareSend} disabled={promoting}>
-                                    {promoting ? 'Preparing…' : 'Prepare for sending'}
-                                </button>
-                            )}
-                            <button type="button" className="btn btn-primary" onClick={handleGenerate} disabled={generating}>
-                                {generating ? 'Generating…' : 'Generate sequence'}
-                            </button>
-                        </div>
-                    }
-                />
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
-                {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
-            </Panel>
-
-            {saved.length > 0 && (
-                <Panel className="module-panel">
-                    <PanelHeader title="Saved sequences" meta={`${saved.length} saved - click to reopen`} />
-                    <div className="platform-pills">
-                        {saved.map((item) => (
-                            <button key={item.id} type="button" className="btn btn-secondary platform-pill" onClick={() => openSaved(item)}>
-                                {item.title} ({item.payload.sequence?.steps?.length ?? 0})
-                            </button>
-                        ))}
-                    </div>
-                </Panel>
-            )}
-
-            <Panel className="module-panel">
+            <Panel variant="quiet">
                 <PanelHeader title="Sequence configuration" meta="Mode, audience, and goal" />
                 <div className="builder-grid">
                     <div className="input-group">
@@ -575,7 +584,7 @@ const OutreachSequences = ({ workspaceId }) => {
                 </div>
                 {pushError && <p className="brand-intel-module__error" role="alert">{pushError}</p>}
             </Modal>
-        </div>
+        </ModuleScreen>
     );
 };
 

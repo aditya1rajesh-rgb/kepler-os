@@ -26,8 +26,11 @@ import BusinessDetailsPanel from '../../components/brand-intelligence/BusinessDe
 import BrandPopulationBanner from '../../components/brand-intelligence/BrandPopulationBanner';
 import ProvenanceLabel from '../../components/brand-intelligence/ProvenanceLabel';
 import CompetitorIntelligencePanel from '../../components/brand-intelligence/CompetitorIntelligencePanel';
-import BrandHealthStrip from '../../components/brand-intelligence/BrandHealthStrip';
 import LearnedUpdatesCard from '../../components/brand-intelligence/LearnedUpdatesCard';
+import EmptyState from '../../components/ui/EmptyState';
+import ModuleScreen from '../../components/layout/ModuleScreen';
+import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail';
+import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import IcpSuggestionCard from '../../components/brand-intelligence/IcpSuggestionCard';
 import { EMPTY_ICP_DRAFT, icpDraftToPayload, icpPayloadToPersona } from '../../lib/icpContracts';
 import '../../styles/module-kepler.css';
@@ -610,57 +613,18 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
         !workspace?.url?.trim() ||
         (popStatus !== 'idle' && popStatus !== 'running' && !sourcesUsed.includes('website'));
 
+    /* v3 stacked four strips above the profile before any content appeared: a
+       population banner that was an empty box holding one button, a health stat
+       row, a learned-updates row with its own button, and a section header with
+       a third button. The two that are actions now live in the tool rail, the
+       stats are the screen's status line, and the profile is the canvas. */
     const renderOverview = () => (
         <>
-            <BrandPopulationBanner
-                status={popStatus}
-                stage={popStage}
-                errors={popErrors}
-                sourcesUsed={sourcesUsed}
-                fieldsUpdated={fieldsUpdated}
-                onRefresh={handleRefreshPopulation}
-                refreshing={refreshing}
-            />
-
-            <BrandHealthStrip
-                health={brandHealth}
-                freshness={freshness}
-                onRefresh={handleRefreshPopulation}
-                refreshing={refreshing}
-            />
-
-            <LearnedUpdatesCard
-                items={fieldSuggestions}
-                onAccept={handleAcceptLearned}
-                onDismiss={handleDismissLearned}
-                onScan={handleScanLearnings}
-                scanning={learnScanning}
-                busyId={learnBusyId}
-                notice={learnNotice}
-            />
-
-            <div className="intel-section-header">
-                <div>
-                    <span className="brand-intel-module__source-label">Brand profile</span>
-                    {isLiveEmptyBrand && !editing && !overviewLoading && (
-                        <p className="brand-intel-module__empty">
-                            No brand profile yet - add your website or a file to auto-build it, or edit manually.
-                        </p>
-                    )}
-                </div>
-                {editing ? (
-                    <div className="intel-action-row">
-                        <button type="button" className="btn btn-secondary" onClick={handleCancelEdit} disabled={saving}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={handleSaveBrand} disabled={saving}>
-                            {saving ? 'Saving…' : 'Save brand profile'}
-                        </button>
-                    </div>
-                ) : (
-                    <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
-                        {isLiveEmptyBrand ? 'Configure brand' : 'Edit brand'}
-                    </button>
-                )}
-            </div>
+            {isLiveEmptyBrand && !editing && !overviewLoading && (
+                <p className="brand-intel-module__empty">
+                    No brand profile yet — add your website or a file to auto-build it, or edit manually.
+                </p>
+            )}
 
             {saveError && <p className="brand-intel-module__error" role="alert">{saveError}</p>}
 
@@ -899,7 +863,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                             {icps.length === 0 ? 'No ICPs saved yet' : `${icps.length} saved`}
                         </span>
                     </div>
-                    <button type="button" className="btn btn-primary" onClick={() => setShowIcpForm((s) => !s)}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowIcpForm((s) => !s)}>
                         {showIcpForm ? 'Close' : 'Add ICP'}
                     </button>
                 </div>
@@ -1158,14 +1122,93 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
         }
     };
 
+    const isOverview = subTab === 'overview';
+
     return (
-        <div className="brand-intel-module module-kepler">
+        <ModuleScreen
+            className="brand-intel-module module-kepler"
+            moduleKey={`brand-intel-${subTab}`}
+            /* The health strip's four numbers as a status line. They are context
+               for the profile, not a section of their own. */
+            status={isOverview && brandHealth ? (
+                <>
+                    <span>
+                        <strong>
+                            {brandHealth.avgConfidence === null ? '—' : `${Math.round(brandHealth.avgConfidence * 100)}%`}
+                        </strong>{' '}
+                        confidence
+                    </span>
+                    {brandHealth.staleCount > 0 && <span>{brandHealth.staleCount} stale (90d+)</span>}
+                    {brandHealth.unknownCount > 0 && <span>{brandHealth.unknownCount} unscored</span>}
+                    {brandHealth.lastSyncedAt && <span>Synced {formatRelativeTime(brandHealth.lastSyncedAt)}</span>}
+                    {editing && <span className="brand-intel-module__editing-flag">Editing</span>}
+                </>
+            ) : null}
+            actions={isOverview && editing ? (
+                <button type="button" className="btn btn-secondary" onClick={handleCancelEdit} disabled={saving}>
+                    Cancel
+                </button>
+            ) : null}
+            primary={subTab === 'audience' ? (
+                <button type="button" className="btn btn-primary" onClick={() => setShowIcpForm((v) => !v)}>
+                    {showIcpForm ? 'Close ICP form' : 'Add ICP'}
+                </button>
+            ) : isOverview ? (
+                editing ? (
+                    <button type="button" className="btn btn-primary" onClick={handleSaveBrand} disabled={saving}>
+                        {saving ? 'Saving…' : 'Save brand profile'}
+                    </button>
+                ) : (
+                    <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
+                        {isLiveEmptyBrand ? 'Configure brand' : 'Edit brand'}
+                    </button>
+                )
+            ) : null}
+            railLabel="Sources &amp; learning"
+            rail={isOverview ? (
+                <ToolRail>
+                    <ToolGroup label="Keep it current">
+                        <ToolCard
+                            title="Refresh from sources"
+                            state={popStatus === 'running' ? 'Running' : (sourcesUsed.length ? `${sourcesUsed.length} sources` : null)}
+                            tone={popStatus === 'running' ? 'warn' : 'ok'}
+                            defaultOpen
+                        >
+                            <BrandPopulationBanner
+                                status={popStatus}
+                                stage={popStage}
+                                errors={popErrors}
+                                sourcesUsed={sourcesUsed}
+                                fieldsUpdated={fieldsUpdated}
+                                onRefresh={handleRefreshPopulation}
+                                refreshing={refreshing}
+                            />
+                        </ToolCard>
+                        <ToolCard
+                            title="Learned updates"
+                            state={fieldSuggestions.length ? `${fieldSuggestions.length} proposed` : null}
+                            tone={fieldSuggestions.length ? 'ok' : 'idle'}
+                        >
+                            <LearnedUpdatesCard
+                                items={fieldSuggestions}
+                                onAccept={handleAcceptLearned}
+                                onDismiss={handleDismissLearned}
+                                onScan={handleScanLearnings}
+                                scanning={learnScanning}
+                                busyId={learnBusyId}
+                                notice={learnNotice}
+                            />
+                        </ToolCard>
+                    </ToolGroup>
+                </ToolRail>
+            ) : null}
+        >
             {loading ? (
-                <p className="brand-intel-module__loading">Loading brand intelligence…</p>
+                <EmptyState loading message="Loading brand intelligence…" />
             ) : (
-                <Panel className="module-panel">{renderSubContent()}</Panel>
+                <Panel variant="quiet">{renderSubContent()}</Panel>
             )}
-        </div>
+        </ModuleScreen>
     );
 };
 

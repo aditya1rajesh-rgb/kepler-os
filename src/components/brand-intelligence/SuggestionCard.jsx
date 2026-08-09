@@ -18,7 +18,7 @@ const SuggestionCard = ({ suggestion, onAccept, onDismiss, accepting }) => {
                     <p className="suggestion-card__rationale">{payload.rationale}</p>
                 )}
                 <div className="suggestion-card__actions">
-                    <button type="button" className="btn btn-primary" onClick={onAccept} disabled={accepting}>
+                    <button type="button" className="btn btn-secondary" onClick={onAccept} disabled={accepting}>
                         Accept
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={onDismiss} disabled={accepting}>
@@ -47,7 +47,7 @@ const SuggestionCard = ({ suggestion, onAccept, onDismiss, accepting }) => {
                 </p>
             )}
             <div className="suggestion-card__actions">
-                <button type="button" className="btn btn-primary" onClick={onAccept} disabled={accepting}>
+                <button type="button" className="btn btn-secondary" onClick={onAccept} disabled={accepting}>
                     Accept as ICP
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={onDismiss} disabled={accepting}>

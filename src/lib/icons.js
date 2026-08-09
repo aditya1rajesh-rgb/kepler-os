@@ -37,6 +37,8 @@ export {
     Speaker as Megaphone,
     Sidebar as PanelLeft,
     SidebarMinimalistic as PanelLeftClose,
+    SidebarCode as PanelRight,
+    Tuning2 as Sliders,
     PlugCircle as Plug,
     AddSquare as Plus,
     Magnifer as Search,

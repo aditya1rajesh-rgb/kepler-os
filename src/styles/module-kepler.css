@@ -26,8 +26,44 @@
 .module-kepler .intel-input:focus,
 .module-kepler .intel-textarea:focus,
 .module-kepler select.intel-input:focus {
-    border-color: rgba(var(--accent-rgb), 0.5);
-    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Honest edit mode.
+   Brand Intelligence has always had a real edit mode — the fields carry
+   `readOnly={!editing}` — but a read-only input was styled identically to an
+   editable one, so the screen showed a page of editable-looking fields next to
+   an "Edit brand" button and nobody could tell which state they were in.
+   Outside edit mode the fields now read as values; entering edit mode gives
+   them a well and a border, and the change is visible at a glance. */
+.module-kepler .intel-input[readonly],
+.module-kepler .intel-textarea[readonly] {
+    background-color: transparent;
+    border-color: transparent;
+    padding-left: 0;
+    padding-right: 0;
+    color: var(--text-secondary);
+    cursor: default;
+}
+
+.module-kepler .intel-input[readonly]:hover,
+.module-kepler .intel-textarea[readonly]:hover {
+    border-color: transparent;
+}
+
+.module-kepler .intel-input[readonly]:focus,
+.module-kepler .intel-textarea[readonly]:focus {
+    border-color: transparent;
+    box-shadow: none;
+}
+
+/* Empty read-only fields still need to show they exist, or the profile looks
+   truncated rather than incomplete. */
+.module-kepler .intel-input[readonly]::placeholder,
+.module-kepler .intel-textarea[readonly]::placeholder {
+    color: var(--text-dim);
+    font-style: italic;
 }
 
 .module-kepler .data-label,
@@ -122,35 +158,50 @@
    Extracted from Overview.css (now removed) so its consumers — Measurement,
    Prospecting, SocialMedia, BrandHealthStrip, CompetitorAdsPanel, Ga4Panel —
    keep these styles. */
+/* Stat strip. Matches the dashboard's KPI strip so the two read as the same
+   idea: auto-fit cells with hairline separators, not a row of boxes. v3 had
+   four unrelated stat-strip implementations across the app. */
 .cockpit__intel-facts {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.85rem;
-    margin-top: 0.4rem;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0;
+    padding: var(--sp-1) 0;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .cockpit__intel-fact {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--sp-1);
+    padding: var(--sp-3) var(--sp-4);
+    min-width: 0;
+}
+
+.cockpit__intel-fact + .cockpit__intel-fact {
+    box-shadow: inset 1px 0 0 0 var(--border-subtle);
 }
 
 .cockpit__intel-value {
-    font-size: 1.35rem;
-    line-height: 1;
+    font-size: var(--fs-xl);
+    line-height: var(--lh-xl);
+    letter-spacing: var(--tr-xl);
+    font-weight: var(--fw-semibold);
     color: var(--text);
+    font-variant-numeric: tabular-nums;
 }
 
 .cockpit__intel-label {
-    font-size: 0.74rem;
-    letter-spacing: 0.02em;
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-2xs);
+    letter-spacing: var(--tr-2xs);
     color: var(--text-muted);
 }
 
 .cockpit__intel-hint {
-    margin: 0.9rem 0 0;
-    font-size: 0.82rem;
-    line-height: 1.5;
+    margin: var(--sp-2) 0 0;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
     color: var(--text-muted);
 }
 
@@ -178,7 +229,7 @@
 }
 
 @media (max-width: 960px) {
-    .cockpit__intel-facts {
-        grid-template-columns: repeat(2, 1fr);
+    .cockpit__intel-fact + .cockpit__intel-fact {
+        box-shadow: inset 0 1px 0 0 var(--border-subtle);
     }
 }

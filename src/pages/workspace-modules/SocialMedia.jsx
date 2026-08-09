@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Tabs from '../../components/ui/Tabs';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
 import EmptyState from '../../components/ui/EmptyState';
 import SetupRequired from '../../components/workspace/SetupRequired';
 import CampaignStepBanner from '../../components/campaigns/CampaignStepBanner';
@@ -347,11 +348,14 @@ const SocialMedia = ({ workspaceId }) => {
         );
     }
 
-    const renderPlanner = () => (
-        <div className="planner-view">
-            <Panel className="module-panel">
-                <PanelHeader title="Plan a content calendar" meta="One run generates every post for your timeline and platforms" />
-                <div className="builder-grid">
+    /* The form "Run calendar" submits. It briefly lived in the tool rail while
+       its own button sat in the screen bar — a primary action whose inputs are
+       behind a toggle is incoherent, so it is back on the canvas, compact and
+       above the calendar it produces. */
+    const plannerSetup = (
+        <Panel variant="quiet" className="planner-setup">
+            <PanelHeader title="Calendar setup" meta={`${cfg.weeks}w · ${cfg.postsPerWeek}/wk`} />
+            <div className="builder-grid">
                     <div className="input-group">
                         <label className="label-text">Start date</label>
                         <input className="intel-input" type="date" value={cfg.startDate} onChange={(e) => setCfg({ ...cfg, startDate: e.target.value })} />
@@ -388,29 +392,13 @@ const SocialMedia = ({ workspaceId }) => {
                         <label className="label-text">Monthly theme (optional)</label>
                         <input className="intel-input" placeholder="e.g. AI cost control for engineering leaders" value={cfg.topic} onChange={(e) => setCfg({ ...cfg, topic: e.target.value })} />
                     </div>
-                    <div className="input-group" style={{ alignSelf: 'flex-end' }}>
-                        <button type="button" className="btn btn-primary" onClick={handleRunCalendar} disabled={generating}>
-                            {generating ? 'Generating calendar…' : 'Run calendar'}
-                        </button>
-                    </div>
-                </div>
-            </Panel>
-
-            <div className="planner-controls">
-                <div className="view-toggle kepler-tile">
-                    <button type="button" className={viewMode === 'calendar' ? 'active' : ''} onClick={() => setViewMode('calendar')}>Calendar</button>
-                    <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
-                </div>
-                {viewMode === 'calendar' && (
-                    <div className="view-toggle kepler-tile">
-                        <button type="button" onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}>‹</button>
-                        <span className="label-text" style={{ padding: '0 12px' }}>{viewMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                        <button type="button" onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}>›</button>
-                    </div>
-                )}
-                <span className="brand-intel-module__source-label">{items.length} posts planned</span>
             </div>
+        </Panel>
+    );
 
+    const renderPlanner = () => (
+        <div className="planner-view">
+            {plannerSetup}
             {viewMode === 'calendar' ? (
                 <div className="calendar-grid kepler-tile">
                     {WEEKDAY_LABELS.map((d) => <div key={d} className="calendar-day-header">{d}</div>)}
@@ -518,35 +506,67 @@ const SocialMedia = ({ workspaceId }) => {
     };
 
     return (
-        <div className="social-media-module module-kepler">
-            {campaignCtx.campaignId && (
-                <CampaignStepBanner
-                    workspaceId={workspaceId}
-                    campaignId={campaignCtx.campaignId}
-                    stepId={campaignCtx.stepId}
-                    brief={campaignCtx.brief}
-                />
-            )}
-            <FeedbackInsight workspaceId={workspaceId} module="social" refreshKey={feedbackVersion} />
-            <Panel>
-                <PanelHeader title="Social Content Studio" meta="Plan a calendar, then design each post." />
-                <Tabs
-                    tabs={[
-                        { id: 'planner', label: 'Content Planner' },
-                        { id: 'generator', label: 'Design Generator' },
-                        { id: 'history', label: 'Account History' },
-                    ]}
-                    activeTab={view}
-                    onTabChange={setView}
-                    variant="kepler"
-                />
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
-                {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
-            </Panel>
+        <ModuleScreen
+            className="social-media-module module-kepler"
+            moduleKey={`social-${view}`}
+            banner={
+                <>
+                    {campaignCtx.campaignId && (
+                        <CampaignStepBanner
+                            workspaceId={workspaceId}
+                            campaignId={campaignCtx.campaignId}
+                            stepId={campaignCtx.stepId}
+                            brief={campaignCtx.brief}
+                        />
+                    )}
+                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    <FeedbackInsight workspaceId={workspaceId} module="social" refreshKey={feedbackVersion} />
+                </>
+            }
+            /* v3 stacked THREE chrome rows before content: a panel holding the
+               sub-view tabs, then a row with two view toggles, then a count.
+               They are all screen controls, so they share one row. */
+            status={
+                <>
+                    <Tabs
+                        tabs={[
+                            { id: 'planner', label: 'Content Planner' },
+                            { id: 'generator', label: 'Design Generator' },
+                            { id: 'history', label: 'Account History' },
+                        ]}
+                        activeTab={view}
+                        onTabChange={setView}
+                        variant="kepler"
+                    />
+                    {view === 'planner' && (
+                        <>
+                            <div className="view-toggle kepler-tile">
+                                <button type="button" className={viewMode === 'calendar' ? 'active' : ''} onClick={() => setViewMode('calendar')}>Calendar</button>
+                                <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
+                            </div>
+                            {viewMode === 'calendar' && (
+                                <div className="view-toggle kepler-tile">
+                                    <button type="button" onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))} aria-label="Previous month">‹</button>
+                                    <span className="social-month">{viewMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
+                                    <button type="button" onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))} aria-label="Next month">›</button>
+                                </div>
+                            )}
+                            <span>{items.length} posts planned</span>
+                        </>
+                    )}
+                </>
+            }
+            primary={view === 'planner' ? (
+                <button type="button" className="btn btn-primary" onClick={handleRunCalendar} disabled={generating}>
+                    {generating ? 'Generating calendar…' : 'Run calendar'}
+                </button>
+            ) : null}
+        >
             <div className="studio-viewport">
                 {view === 'planner' ? renderPlanner() : view === 'history' ? renderHistory() : renderGenerator()}
             </div>
-        </div>
+        </ModuleScreen>
     );
 };
 

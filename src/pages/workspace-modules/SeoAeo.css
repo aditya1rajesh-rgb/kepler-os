@@ -8,42 +8,74 @@
     margin-bottom: 0;
 }
 
+/* The pipeline board is now the screen's canvas rather than the 7th panel in a
+   stack, so it fills the available height and each column scrolls
+   independently — you can work a long queue without losing the other stages. */
 .pipeline-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    align-items: start;
+    /* A stage column below ~250px can't hold a title, its facts and two
+       actions, so the board scrolls sideways rather than crushing them —
+       which is what happens on narrow windows with the tool rail open. */
+    grid-template-columns: repeat(3, minmax(250px, 1fr));
+    gap: var(--sp-4);
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: var(--sp-1);
 }
 
 .pipeline-column {
-    padding: 16px;
-    border-radius: 12px;
+    padding: var(--sp-4);
+    border-radius: var(--r-lg);
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    min-height: 600px;
+    gap: var(--sp-3);
+    min-height: 0;
 }
 
 .column-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    gap: var(--sp-2);
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .header-title h3 {
-    font-size: 13px;
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: 0.03em;
-    color: var(--kepler-text);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-sm);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tr-2xs);
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+/* The count reads as a quiet tally beside the stage name, not as data. */
+.pipeline-column .column-header .brand-intel-module__source-label {
+    min-width: 20px;
+    padding: 1px var(--sp-2);
+    border-radius: var(--r-full);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    font-size: var(--fs-2xs);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
 }
 
 .column-cards {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--sp-3);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Room for the scrollbar so cards don't sit under it. */
+    margin-right: calc(var(--sp-2) * -1);
+    padding-right: var(--sp-2);
 }
 
 .add-card-btn {
@@ -89,8 +121,28 @@
     color: var(--kepler-muted);
 }
 
+/* Each fact is its own line. These are inline <span>s, so without an explicit
+   column they ran together into one wall of text ("Vol 1,900 · KD 19 · Opp
+   100Seasonal spike term with…") — unreadable, and worse now that the board is
+   the canvas and columns are narrower. */
 .card-meta {
-    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    margin-top: var(--sp-1);
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-2xs);
+    color: var(--text-muted);
+}
+
+/* The rationale is prose; everything else is a short fact. Clamp it so one
+   verbose idea can't push the card's actions off screen. */
+.card-meta > span {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* ---- Search Console pulled queries ---- */

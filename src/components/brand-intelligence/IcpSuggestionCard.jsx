@@ -62,7 +62,7 @@ const IcpSuggestionCard = ({ suggestion, onAccept, onDismiss, onSaveEdit, accept
                 <input className="intel-input" placeholder="Messaging hooks (comma-separated)" value={draft.messagingHooks} onChange={setField('messagingHooks')} />
                 <input className="intel-input" placeholder="Preferred channels (comma-separated)" value={draft.channels} onChange={setField('channels')} />
                 <div className="suggestion-card__actions">
-                    <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                    <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={saving}>
                         {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)} disabled={saving}>
@@ -102,7 +102,7 @@ const IcpSuggestionCard = ({ suggestion, onAccept, onDismiss, onSaveEdit, accept
             )}
 
             <div className="suggestion-card__actions">
-                <button type="button" className="btn btn-primary" onClick={onAccept} disabled={accepting}>
+                <button type="button" className="btn btn-secondary" onClick={onAccept} disabled={accepting}>
                     {accepting ? 'Accepting…' : 'Accept'}
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={startEdit} disabled={accepting}>

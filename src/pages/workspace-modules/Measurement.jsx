@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Check } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
+import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail';
 import EmptyState from '../../components/ui/EmptyState';
 import Ga4Panel from '../../components/measurement/Ga4Panel';
 import { getModule } from '../../constants/moduleRegistry';
@@ -167,68 +169,48 @@ const Measurement = ({ workspaceId }) => {
     const active = MEASUREMENT.children.some((c) => c.id === subModuleId) ? subModuleId : MEASUREMENT.defaultChild;
     const go = (id) => navigate(workspacePath(workspaceId, 'measurement', id));
 
+    /* The three "connect X for the Y rail" hints were the entire body of v3's
+       near-empty Performance panel. They are setup guidance, so they belong with
+       the other setup in the rail — not above the numbers they qualify. */
+    const setupHints = [
+        !gaReady && { key: 'ga4', text: <>Connect Google Analytics 4 and pick a property in <strong>Integrations</strong> for the traffic/conversion rail.</> },
+        !zohoConnected && { key: 'zoho', text: <>Connect Zoho for the CRM lead rail — push a campaign-linked sequence from <strong>Outreach</strong> and it attributes back here.</> },
+        !baseUrl && { key: 'url', text: <>Add your site URL in <strong>Brand Intelligence</strong> so tracked links can be generated.</> },
+    ].filter(Boolean);
+
     const renderPerformance = () => (
         <>
-            <Panel>
-                <PanelHeader
-                    title="Performance"
-                    meta="Per-campaign outcomes, attributed via UTM. Ship the tracked links below and GA4 reports back here."
-                    action={(
-                        <button type="button" className="btn btn-primary" onClick={pull} disabled={pulling}>
-                            <RefreshCw size={15} strokeWidth={1.8} /> {pulling ? 'Pulling…' : 'Pull latest'}
-                        </button>
-                    )}
-                />
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
-                {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
-                {!gaReady && (
-                    <p className="cockpit__intel-hint">Connect Google Analytics 4 and pick a property in <strong>Integrations</strong> for the traffic/conversion rail.</p>
-                )}
-                {!zohoConnected && (
-                    <p className="cockpit__intel-hint">Connect Zoho for the CRM lead rail — push a campaign-linked sequence from <strong>Outreach</strong> and it attributes back here.</p>
-                )}
-                {!baseUrl && (
-                    <p className="cockpit__intel-hint">Add your site URL in <strong>Brand Intelligence</strong> so tracked links can be generated.</p>
-                )}
-            </Panel>
-
+            {/* One stat strip, not two. v3 rendered this one and a second inside
+                Ga4Panel in the same scroll, with no relationship between them. */}
             <div className="cockpit__intel-facts measurement-totals">
                 <div className="cockpit__intel-fact">
-                    <span className="cockpit__intel-value font-heading">{fmt(totals.sessions)}</span>
+                    <span className="cockpit__intel-value">{fmt(totals.sessions)}</span>
                     <span className="cockpit__intel-label">Sessions (28d)</span>
                 </div>
                 <div className="cockpit__intel-fact">
-                    <span className="cockpit__intel-value font-heading">{fmt(totals.conversions)}</span>
+                    <span className="cockpit__intel-value">{fmt(totals.conversions)}</span>
                     <span className="cockpit__intel-label">Conversions</span>
                 </div>
                 <div className="cockpit__intel-fact">
-                    <span className="cockpit__intel-value font-heading">{fmt(totals.crmRecords)}</span>
+                    <span className="cockpit__intel-value">{fmt(totals.crmRecords)}</span>
                     <span className="cockpit__intel-label">CRM leads</span>
                 </div>
                 <div className="cockpit__intel-fact">
-                    <span className="cockpit__intel-value font-heading">{fmt(totals.meetings)}</span>
+                    <span className="cockpit__intel-value">{fmt(totals.meetings)}</span>
                     <span className="cockpit__intel-label">Meetings</span>
                 </div>
                 <div className="cockpit__intel-fact">
-                    <span className="cockpit__intel-value font-heading">{money(totals.revenue)}</span>
+                    <span className="cockpit__intel-value">{money(totals.revenue)}</span>
                     <span className="cockpit__intel-label">Revenue (won)</span>
                 </div>
-                <button type="button" className="cockpit__intel-fact measurement-fact-link" onClick={() => go('ai-visibility')} title="Open AI Visibility">
-                    <span className="cockpit__intel-value font-heading">{visibility ? pct(visibility.shareOfVoice) : '—'}</span>
-                    <span className="cockpit__intel-label">AI share of voice ↗</span>
-                </button>
                 <div className="cockpit__intel-fact">
-                    <span className="cockpit__intel-value font-heading">{campaigns.length}</span>
+                    <span className="cockpit__intel-value">{campaigns.length}</span>
                     <span className="cockpit__intel-label">Campaigns</span>
-                </div>
-                <div className="cockpit__intel-fact">
-                    <span className="cockpit__intel-value font-heading">{lastPulled ? formatRelativeTime(lastPulled) : '—'}</span>
-                    <span className="cockpit__intel-label">Last pulled</span>
                 </div>
             </div>
 
-            <Panel className="module-panel">
-                <PanelHeader title="Campaign performance" meta="Assets → sessions → conversions, matched by UTM" />
+            <Panel variant="quiet">
+                <PanelHeader title="Campaign performance" meta={`${campaigns.length} campaigns · matched by UTM`} />
                 {campaigns.length === 0 ? (
                     <EmptyState message="No campaigns yet. Create one in Campaigns, then ship its tracked links to attribute outcomes." />
                 ) : (
@@ -286,27 +268,11 @@ const Measurement = ({ workspaceId }) => {
                     </p>
                 )}
             </Panel>
-
-            <Ga4Panel workspaceId={workspaceId} />
         </>
     );
 
     const renderAiVisibility = () => (
-        <Panel className="module-panel">
-            <PanelHeader
-                title="AI Visibility (AEO)"
-                meta="Share of voice when buyers ask AI assistants — ChatGPT, Claude, Perplexity & Google AI Overviews"
-                action={(
-                    <div className="measurement-scan-actions">
-                        <button type="button" className="btn btn-primary" onClick={() => runScan(false)} disabled={scanning}>
-                            <RefreshCw size={15} strokeWidth={1.8} /> {scanning ? 'Scanning…' : 'Run visibility scan'}
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => runScan(true)} disabled={scanning}>
-                            Run sample
-                        </button>
-                    </div>
-                )}
-            />
+        <Panel variant="quiet">
             {!visibility ? (
                 <EmptyState message="No visibility scans yet. Run a scan to see whether AI assistants mention your brand when buyers ask category questions — connect providers for live data, or run a sample to preview the loop." />
             ) : (
@@ -318,24 +284,20 @@ const Measurement = ({ workspaceId }) => {
                     )}
                     <div className="cockpit__intel-facts">
                         <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{pct(visibility.shareOfVoice)}</span>
+                            <span className="cockpit__intel-value">{pct(visibility.shareOfVoice)}</span>
                             <span className="cockpit__intel-label">Share of voice</span>
                         </div>
                         <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{pct(visibility.brandPresenceRate)}</span>
+                            <span className="cockpit__intel-value">{pct(visibility.brandPresenceRate)}</span>
                             <span className="cockpit__intel-label">Answer presence</span>
                         </div>
                         <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{fmt(visibility.promptCount)}</span>
+                            <span className="cockpit__intel-value">{fmt(visibility.promptCount)}</span>
                             <span className="cockpit__intel-label">Prompts tracked</span>
                         </div>
                         <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{visibility.surfaces.length}</span>
+                            <span className="cockpit__intel-value">{visibility.surfaces.length}</span>
                             <span className="cockpit__intel-label">Surfaces</span>
-                        </div>
-                        <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{visibility.capturedAt ? formatRelativeTime(visibility.capturedAt) : '—'}</span>
-                            <span className="cockpit__intel-label">Last scan</span>
                         </div>
                     </div>
                     {visibility.perCompetitor?.length > 0 && (
@@ -372,10 +334,80 @@ const Measurement = ({ workspaceId }) => {
         </Panel>
     );
 
+    const isVisibility = active === 'ai-visibility';
+
     return (
-        <div className="measurement-module module-kepler">
-            {active === 'ai-visibility' ? renderAiVisibility() : renderPerformance()}
-        </div>
+        <ModuleScreen
+            className="measurement-module module-kepler"
+            moduleKey={`measurement-${active}`}
+            banner={
+                <>
+                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                </>
+            }
+            /* v3 had NO in-screen way to move between Performance and AI
+               Visibility — only the sidebar, plus one stat tile that was
+               secretly a link. These are the screen's two modes, so they get
+               one honest switch. */
+            status={
+                <>
+                    <div className="measurement-modes" role="tablist" aria-label="Measurement view">
+                        {MEASUREMENT.children.map((c) => (
+                            <button
+                                key={c.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={active === c.id}
+                                className={`measurement-modes__opt ${active === c.id ? 'is-active' : ''}`}
+                                onClick={() => go(c.id)}
+                            >
+                                {c.label}
+                            </button>
+                        ))}
+                    </div>
+                    {!isVisibility && lastPulled && <span>Last pulled {formatRelativeTime(lastPulled)}</span>}
+                    {isVisibility && visibility?.capturedAt && (
+                        <span>Last scan {formatRelativeTime(visibility.capturedAt)}</span>
+                    )}
+                </>
+            }
+            actions={isVisibility ? (
+                <button type="button" className="btn btn-ghost" onClick={() => runScan(true)} disabled={scanning}>
+                    Run sample
+                </button>
+            ) : null}
+            primary={isVisibility ? (
+                <button type="button" className="btn btn-primary" onClick={() => runScan(false)} disabled={scanning}>
+                    <RefreshCw size={15} strokeWidth={1.8} /> {scanning ? 'Scanning…' : 'Run visibility scan'}
+                </button>
+            ) : (
+                <button type="button" className="btn btn-primary" onClick={pull} disabled={pulling}>
+                    <RefreshCw size={15} strokeWidth={1.8} /> {pulling ? 'Pulling…' : 'Pull latest'}
+                </button>
+            )}
+            railLabel="Sources"
+            rail={!isVisibility ? (
+                <ToolRail>
+                    <ToolGroup label="Data sources">
+                        <ToolCard title="Google Analytics 4" state={gaReady ? 'Connected' : 'Not connected'} tone={gaReady ? 'ok' : 'warn'}>
+                            <Ga4Panel workspaceId={workspaceId} chrome={false} />
+                        </ToolCard>
+                    </ToolGroup>
+                    {setupHints.length > 0 && (
+                        <ToolGroup label="To measure more">
+                            {setupHints.map((h) => (
+                                <ToolCard key={h.key} title={h.key === 'ga4' ? 'Traffic & conversions' : h.key === 'zoho' ? 'CRM leads' : 'Tracked links'} defaultOpen>
+                                    <p className="cockpit__intel-hint">{h.text}</p>
+                                </ToolCard>
+                            ))}
+                        </ToolGroup>
+                    )}
+                </ToolRail>
+            ) : null}
+        >
+            {isVisibility ? renderAiVisibility() : renderPerformance()}
+        </ModuleScreen>
     );
 };
 

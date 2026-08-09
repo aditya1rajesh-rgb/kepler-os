@@ -20,6 +20,8 @@ import {
     CalendarClock,
 } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
+import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail';
 import Tabs from '../../components/ui/Tabs';
 import Modal from '../../components/ui/Modal';
 import EmptyState from '../../components/ui/EmptyState';
@@ -354,14 +356,45 @@ const Campaigns = ({ workspaceId }) => {
         const steps = detail.plan?.steps ?? [];
         const stepsByDate = {};
         for (const s of steps) if (s.scheduledDate) (stepsByDate[s.scheduledDate] ??= []).push(s);
-        return (
-            <div className="campaigns module-kepler">
-                <button type="button" className="campaigns__back" onClick={backToList}>
-                    <ArrowLeft size={15} strokeWidth={1.8} /> All campaigns
-                </button>
 
-                <Panel className="campaigns__detail-head">
-                    <div className="campaigns__detail-headtop">
+        // Linked assets are a record of what the plan produced, not something you
+        // act on here — every asset already links back from its own step row. It
+        // was a full third Panel in v3.
+        const linkedAssetsTool = (
+            <ToolGroup label="Output">
+                <ToolCard title="Linked assets" state={`${assets.length}`} tone={assets.length ? 'ok' : 'idle'}>
+                    {assets.length === 0 ? (
+                        <p>No assets generated yet — generate a step from the plan.</p>
+                    ) : (
+                        <ul className="campaigns__assets">
+                            {assets.map((a) => (
+                                <li key={a.id} className="campaigns__asset">
+                                    <span className="campaigns__asset-title">{a.title || 'Untitled'}</span>
+                                    <span className="campaigns__asset-meta">
+                                        {MODULE_META[`${a.type === 'seo' ? 'seo-aeo' : a.type === 'ads' ? 'ad-campaigns' : a.type === 'social' ? 'social-media' : a.type}`]?.label ?? a.type}
+                                        {' · '}{formatRelativeTime(a.createdAt)}
+                                    </span>
+                                    <StatusPill status={a.status} variant={a.status === 'completed' ? 'completed' : undefined} />
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </ToolCard>
+            </ToolGroup>
+        );
+
+        return (
+            <ModuleScreen
+                className="campaigns module-kepler"
+                moduleKey="campaign-detail"
+                /* The campaign's identity and progress are screen STATE, so they
+                   sit in the bar. v3 gave them a full Panel of their own above
+                   the plan — the thing you actually came to work on. */
+                status={
+                    <>
+                        <button type="button" className="campaigns__back" onClick={backToList}>
+                            <ArrowLeft size={15} strokeWidth={1.8} /> All campaigns
+                        </button>
                         <span className="campaigns__type-chip">
                             {CAMPAIGN_TEMPLATES[detail.campaignType]?.label ?? detail.campaignType}
                         </span>
@@ -371,8 +404,21 @@ const Campaigns = ({ workspaceId }) => {
                                 <CalendarClock size={12} strokeWidth={1.8} /> {detail.plan.anchorLabel || 'Event'} · {detail.plan.anchorDate}
                             </span>
                         )}
-                    </div>
-                    <h2 className="campaigns__detail-title font-section">{detail.title || detail.goal}</h2>
+                        <span className="campaigns__progress">{done}/{total} steps done</span>
+                    </>
+                }
+                primary={detail.status === 'draft' ? (
+                    <button type="button" className="btn btn-primary" onClick={confirmPlan}>
+                        <Check size={16} strokeWidth={1.9} /> Confirm plan
+                    </button>
+                ) : null}
+                rail={<ToolRail>{linkedAssetsTool}</ToolRail>}
+                railLabel="Linked assets"
+            >
+                {/* What this campaign is FOR. It briefly sat in the rail, which
+                    hid the campaign's own definition while you worked its plan. */}
+                <Panel variant="quiet" className="campaigns__brief">
+                    <h2 className="campaigns__detail-title">{detail.title || detail.goal}</h2>
                     {detail.plan?.strategySummary && (
                         <p className="campaigns__detail-summary">{detail.plan.strategySummary}</p>
                     )}
@@ -383,20 +429,12 @@ const Campaigns = ({ workspaceId }) => {
                             ))}
                         </ul>
                     )}
-                    <div className="campaigns__detail-actions">
-                        <span className="campaigns__progress">{done}/{total} steps done</span>
-                        {detail.status === 'draft' && (
-                            <button type="button" className="btn btn-primary" onClick={confirmPlan}>
-                                <Check size={16} strokeWidth={1.9} /> Confirm plan
-                            </button>
-                        )}
-                    </div>
                 </Panel>
 
-                <Panel>
+                <Panel variant="quiet">
                     <PanelHeader
                         title="Plan"
-                        meta="Generate each step into its specialist - the asset links back here"
+                        meta={`${done}/${total} steps done`}
                         action={
                             <div className="campaigns__plan-tools">
                                 <button
@@ -568,27 +606,7 @@ const Campaigns = ({ workspaceId }) => {
                     </ol>
                     )}
                 </Panel>
-
-                <Panel>
-                    <PanelHeader title="Linked assets" meta={`${assets.length} generated for this campaign`} />
-                    {assets.length === 0 ? (
-                        <EmptyState message="No assets generated yet - generate a step above." />
-                    ) : (
-                        <ul className="campaigns__assets">
-                            {assets.map((a) => (
-                                <li key={a.id} className="campaigns__asset">
-                                    <span className="campaigns__asset-title">{a.title || 'Untitled'}</span>
-                                    <span className="campaigns__asset-meta">
-                                        {MODULE_META[`${a.type === 'seo' ? 'seo-aeo' : a.type === 'ads' ? 'ad-campaigns' : a.type === 'social' ? 'social-media' : a.type}`]?.label ?? a.type}
-                                        {' · '}{formatRelativeTime(a.createdAt)}
-                                    </span>
-                                    <StatusPill status={a.status} variant={a.status === 'completed' ? 'completed' : undefined} />
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Panel>
-            </div>
+            </ModuleScreen>
         );
     }
 
@@ -684,15 +702,19 @@ const Campaigns = ({ workspaceId }) => {
     // ---- Conversational intake ----
     if (showIntake) {
         return (
-            <div className="campaigns module-kepler">
-                <button type="button" className="campaigns__back" onClick={() => setShowIntake(false)}>
-                    <ArrowLeft size={15} strokeWidth={1.8} /> All campaigns
-                </button>
-                <Panel className="campaigns__intake-panel">
+            <ModuleScreen
+                className="campaigns module-kepler"
+                status={
+                    <button type="button" className="campaigns__back" onClick={() => setShowIntake(false)}>
+                        <ArrowLeft size={15} strokeWidth={1.8} /> All campaigns
+                    </button>
+                }
+            >
+                <Panel variant="quiet" className="campaigns__intake-panel">
                     <div className="campaigns__intake-head">
                         <div>
-                            <h2 className="campaigns__heading font-section">New campaign</h2>
-                            <p className="campaigns__subheading">Chat with the strategist - it designs a plan grounded in your brand.</p>
+                            <h2 className="campaigns__heading">New campaign</h2>
+                            <p className="campaigns__subheading">Chat with the strategist — it designs a plan grounded in your brand.</p>
                         </div>
                         <button type="button" className="campaigns__quicklink" onClick={() => setModalOpen(true)}>
                             Prefer a quick form?
@@ -704,41 +726,44 @@ const Campaigns = ({ workspaceId }) => {
                     />
                 </Panel>
                 {newCampaignModal}
-            </div>
+            </ModuleScreen>
         );
     }
 
     // ---- List view ----
     return (
-        <div className="campaigns module-kepler">
-            <div className="campaigns__toolbar">
-                <div>
-                    <h2 className="campaigns__heading font-section">Campaigns</h2>
-                    <p className="campaigns__subheading">Turn a goal into a coordinated plan across every module.</p>
-                </div>
-                <div className="campaigns__toolbar-actions">
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => setEventModalOpen(true)}
-                        disabled={!canCreate}
-                        title={canCreate ? '' : 'Complete your brand profile and an ICP first'}
-                    >
-                        <CalendarClock size={16} strokeWidth={1.8} /> Plan around an event
-                    </button>
-                    <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={() => setShowIntake(true)}
-                        disabled={!canCreate}
-                        title={canCreate ? '' : 'Complete your brand profile and an ICP first'}
-                    >
-                        <Plus size={16} strokeWidth={2} /> New campaign
-                    </button>
-                </div>
-            </div>
-
-            {!canCreate && (
+        <ModuleScreen
+            className="campaigns module-kepler"
+            /* The tab strip is the screen's own filter, so it sits in the bar
+               rather than as a third stacked chrome row. v3 also rendered an
+               <h2>Campaigns</h2> here directly beneath the app header's own
+               "Campaigns" title, plus a sentence explaining the feature. */
+            status={
+                <Tabs tabs={LIST_TABS} activeTab={listTab} onTabChange={setListTab} variant="kepler" />
+            }
+            actions={
+                <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setEventModalOpen(true)}
+                    disabled={!canCreate}
+                    title={canCreate ? '' : 'Complete your brand profile and an ICP first'}
+                >
+                    <CalendarClock size={16} strokeWidth={1.8} /> Plan around an event
+                </button>
+            }
+            primary={
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setShowIntake(true)}
+                    disabled={!canCreate}
+                    title={canCreate ? '' : 'Complete your brand profile and an ICP first'}
+                >
+                    <Plus size={16} strokeWidth={2} /> Plan with the strategist
+                </button>
+            }
+            banner={!canCreate ? (
                 <SetupRequired
                     title="Set up your brand before planning a campaign"
                     summary="The strategist grounds every plan in your brand and audience. Add these to start building campaigns."
@@ -748,22 +773,23 @@ const Campaigns = ({ workspaceId }) => {
                         { label: 'At least one ICP', done: readiness.hasIcps, prereq: 'icp' },
                     ]}
                 />
-            )}
-
-            <Tabs tabs={LIST_TABS} activeTab={listTab} onTabChange={setListTab} variant="kepler" />
-
+            ) : null}
+        >
             {loading ? (
                 <EmptyState loading message="Loading campaigns…" />
             ) : visibleCampaigns.length === 0 ? (
                 <EmptyState
                     message={
                         campaigns.length === 0
-                            ? 'No campaigns yet - turn a goal into a coordinated, multi-channel plan.'
+                            ? 'No campaigns yet — turn a goal into a coordinated, multi-channel plan.'
                             : `No ${listTab === 'completed' ? 'past' : listTab} campaigns.`
                     }
+                    /* v3 labelled this "New campaign" — identical to the toolbar
+                       button, but it opens the quick form while the toolbar one
+                       opens the strategist chat. Two labels, two destinations. */
                     action={canCreate && campaigns.length === 0 ? (
-                        <button type="button" className="btn btn-primary" onClick={() => setModalOpen(true)}>
-                            <Plus size={16} strokeWidth={2} /> New campaign
+                        <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(true)}>
+                            <Plus size={16} strokeWidth={2} /> Create from a quick form
                         </button>
                     ) : null}
                 />
@@ -811,7 +837,7 @@ const Campaigns = ({ workspaceId }) => {
 
             {newCampaignModal}
             {eventModal}
-        </div>
+        </ModuleScreen>
     );
 };
 

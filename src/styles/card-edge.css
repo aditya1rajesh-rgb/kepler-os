@@ -1,39 +1,29 @@
-/* Gradient card border — the reference "glass edge" treatment.
-   A 1.5px ring, brightest white at the top-left corner, fading to transparent by
-   mid-card. Panel-based cards get this via .kepler-panel::before (kepler-materials.css);
-   this file mirrors it for the card surfaces that don't go through <Panel>: the
-   dashboard cards, the Home KPI tiles, and the connector cards. Keep the gradient in
-   sync with .kepler-panel::before. */
+/* Card edge treatment — RETIRED in v4.
+ *
+ * This file drew a 1.5px specular gradient ring on .card-edge, .db-card,
+ * .kpi-card and .connector-card, hand-mirroring the identical ring on
+ * .kepler-panel::before (its own comment admitted the two had to be kept in
+ * sync manually).
+ *
+ * Both rings are gone. They were one of four stacked weight signals per card,
+ * and a bright top-left highlight on every box is what made a screen of eight
+ * containers read as eight competing objects instead of one composition.
+ * Grouping is now carried by the surface ladder in styles/surfaces.css.
+ *
+ * The selectors survive as no-ops so the classes stay valid where they are
+ * still applied in markup; the positioning context is preserved because some
+ * of these cards absolutely-position a badge or overlay inside themselves. */
 
 .card-edge,
 .db-card,
 .kpi-card,
 .connector-card {
-    position: relative;
+  position: relative;
 }
 
 .card-edge::before,
 .db-card::before,
 .kpi-card::before,
 .connector-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1.5px;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.8) 0%,
-        rgba(255, 255, 255, 0.2) 22%,
-        rgba(255, 255, 255, 0) 50%
-    );
-    -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-    mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  content: none;
 }

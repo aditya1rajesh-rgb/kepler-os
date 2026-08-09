@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Telescope, Sparkles, Download } from '../../lib/icons';
-import Panel, { PanelHeader } from '../../components/ui/Panel';
+import Panel from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
 import EmptyState from '../../components/ui/EmptyState';
 import UploadZone from '../../components/ui/UploadZone';
 import FeedbackInsight from '../../components/ui/FeedbackInsight';
@@ -224,32 +225,22 @@ const AbmResearch = ({ workspaceId }) => {
         } finally { setSavingBulk(false); }
     };
 
-    return (
-        <div className="abm-research-module module-kepler">
-            <Panel>
-                <PanelHeader
-                    title="ABM Research"
-                    meta="Research a target account, classify it against your ICP, and surface validated contacts."
-                />
-                <FeedbackInsight workspaceId={workspaceId} module="abm" refreshKey={feedbackVersion} />
-            </Panel>
-
-            {/* Bulk research */}
-            <Panel className="module-panel abm-bulk">
-                <PanelHeader
-                    title="Bulk research"
-                    meta={`Upload a .csv/.txt or paste a list — one company per line (name, or name,website). Up to ${MAX_COMPANIES} per run.`}
-                    action={doneEntries.length > 0 && (
-                        <div className="module-toolbar module-toolbar--inline">
-                            <button type="button" className="btn btn-ghost" onClick={downloadAllReport} title="Download a print-ready report of every researched company">
-                                <Download size={15} strokeWidth={1.8} /> Report ({doneEntries.length})
-                            </button>
-                            <button type="button" className="btn btn-secondary" onClick={saveAllQualifying} disabled={savingBulk || pending}>
-                                {savingBulk ? 'Saving…' : `Save qualifying (fit ≥ ${FIT_THRESHOLD})`}
-                            </button>
-                        </div>
-                    )}
-                />
+    /* Bulk research is a second way in, not the main one — the analyst chat is.
+       v3 gave it a full panel above the chat, so the screen opened with an
+       upload zone and a paste box before you could see any research. */
+    /* Bulk research is a main way in, not an aside — it sat in the rail briefly,
+       which hid one of the two ways to start work on this screen. It is a
+       collapsible strip on the canvas: visible, but subordinate to the chat. */
+    const bulkSection = (
+        <details className="abm-bulk" open={parsed.length > 0 || pending}>
+            <summary className="abm-bulk__summary">
+                Bulk research
+                {parsed.length > 0 && <span className="abm-bulk__count">{parsed.length} queued</span>}
+            </summary>
+            <div className="abm-bulk__body">
+                <p className="brand-intel-module__source-label">
+                    One company per line — name, or name,website. Up to {MAX_COMPANIES} per run.
+                </p>
                 <input ref={fileInputRef} type="file" accept=".csv,.txt" hidden onChange={onFile} />
                 <UploadZone
                     title="Upload a company list (.csv / .txt)"
@@ -258,36 +249,59 @@ const AbmResearch = ({ workspaceId }) => {
                 />
                 <textarea
                     className="intel-input abm-bulk__paste"
-                    rows={4}
+                    rows={3}
                     placeholder={'Acme Corp\nGlobex, globex.com\nInitech'}
                     value={bulkText}
                     onChange={(e) => setBulkText(e.target.value)}
                     disabled={pending}
                 />
-                <div className="module-toolbar module-toolbar--inline">
-                    <button type="button" className="btn btn-primary" onClick={runBulk} disabled={pending || !parsed.length}>
-                        <Telescope size={16} strokeWidth={1.8} /> {pending ? 'Researching…' : `Research ${parsed.length || ''} compan${parsed.length === 1 ? 'y' : 'ies'}`}
+                <div className="row row--wrap">
+                    <button type="button" className="btn btn-secondary" onClick={runBulk} disabled={pending || !parsed.length}>
+                        <Telescope size={15} strokeWidth={1.8} /> {pending ? 'Researching…' : `Research ${parsed.length || ''}`}
                     </button>
                     {pending && (
-                        <button type="button" className="btn btn-secondary" onClick={() => { cancelRef.current = true; }}>
-                            Cancel
-                        </button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { cancelRef.current = true; }}>Cancel</button>
                     )}
                     {!pending && failedCount > 0 && (
-                        <button type="button" className="btn btn-secondary" onClick={retryFailed}>Retry {failedCount} failed</button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={retryFailed}>Retry {failedCount} failed</button>
+                    )}
+                    {doneEntries.length > 0 && (
+                        <>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={downloadAllReport}>
+                                <Download size={14} strokeWidth={1.8} /> Report ({doneEntries.length})
+                            </button>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={saveAllQualifying} disabled={savingBulk || pending}>
+                                {savingBulk ? 'Saving…' : `Save qualifying (fit ≥ ${FIT_THRESHOLD})`}
+                            </button>
+                        </>
                     )}
                 </div>
-                {pending && remaining > 0 && (
-                    <p className="brand-intel-module__source-label" role="status">
-                        Researching… {remaining} remaining (~{Math.ceil((remaining * PACE_MS) / 60000)} min). You can keep this tab open.
-                    </p>
-                )}
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
-                {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
-            </Panel>
+            </div>
+        </details>
+    );
 
-            {/* Chat + results */}
-            <Panel className="module-panel abm-chat">
+    return (
+        <ModuleScreen
+            className="abm-research-module module-kepler mscreen--fill"
+            moduleKey="abm"
+            banner={
+                <>
+                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    <FeedbackInsight workspaceId={workspaceId} module="abm" refreshKey={feedbackVersion} />
+                </>
+            }
+            status={
+                <>
+                    {doneEntries.length > 0 && <span><strong>{doneEntries.length}</strong> researched</span>}
+                    {pending && remaining > 0 && <span className="text-accent">{remaining} in progress</span>}
+                    {failedCount > 0 && !pending && <span className="text-error">{failedCount} failed</span>}
+                </>
+            }
+        >
+            {bulkSection}
+            {/* Chat + results — the canvas */}
+            <Panel variant="quiet" className="abm-chat">
                 <SelectionBar
                     total={allRows.length}
                     selectedCount={bulk.size}
@@ -307,14 +321,15 @@ const AbmResearch = ({ workspaceId }) => {
                                 <Sparkles size={13} strokeWidth={1.8} /> ABM analyst
                             </span>
                             <p className="abm-bubble__content">
-                                Name a company below (or bulk-upload a list above) and I'll research it live, grade the ICP
-                                fit against your saved brand &amp; ICP, and pull the leaders worth pitching.
+                                Name a company below — or open <strong>Bulk research</strong> to upload a list — and I'll
+                                research it live, grade the ICP fit against your saved brand &amp; ICP, and pull the
+                                leaders worth pitching.
                             </p>
                         </div>
                     </div>
 
                     {transcript.length === 0 && (
-                        <EmptyState message="No research yet. Enter a company below or upload a list above." />
+                        <EmptyState message="No research yet. Enter a company below, or open Bulk research to upload a list." />
                     )}
 
                     {transcript.map((e) => (
@@ -375,7 +390,7 @@ const AbmResearch = ({ workspaceId }) => {
                     bulk.clear();
                 }}
             />
-        </div>
+        </ModuleScreen>
     );
 };
 

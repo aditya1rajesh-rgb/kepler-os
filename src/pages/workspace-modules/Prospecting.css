@@ -34,20 +34,31 @@
     background: var(--card-hover);
 }
 
+/* `flex: 1` is load-bearing: without it the row's `justify-content:
+   space-between` pushed the checkbox and the delete button to the edges and
+   squeezed this column to its shrink width, so every name wrapped mid-phrase
+   ("Meera / Krishnan") and floated in the middle of the row. */
 .prospect-row__main {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: var(--sp-1);
+    flex: 1;
     min-width: 0;
+    text-align: left;
 }
 
 .prospect-row__name {
-    font-weight: 600;
+    font-weight: var(--fw-semibold);
+    color: var(--text);
 }
 
 .prospect-row__sub {
-    font-size: 0.82rem;
-    opacity: 0.7;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .prospect-row__select {
@@ -71,4 +82,32 @@
     font-size: 0.8rem;
     opacity: 0.8;
     white-space: nowrap;
+}
+
+/* Search sits on the canvas above the saved list. It is compact — a filter bar,
+   not a wall of stacked fields — so it stays subordinate to the prospects
+   without being hidden. The rail experiment crushed this into 320px and
+   truncated every placeholder; a form feeding the screen's primary action
+   belongs on the canvas. */
+.prospecting__search {
+    padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.prospecting__search-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+.prospecting__search .builder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--sp-3);
+}
+
+.prospecting__search .platform-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
 }

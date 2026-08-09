@@ -1,11 +1,12 @@
 /* Content Library - one cross-module view of everything generated. */
+/* The filter row now lives in the ModuleScreen bar rather than as a third
+   stacked strip above the list, so it drops its own margins. */
 .library__toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 0.4rem 0 1rem;
+    gap: var(--sp-3);
+    margin: 0;
 }
 
 .library__filters {
@@ -50,16 +51,15 @@
 }
 
 .library__search {
-    flex: 1;
-    min-width: 200px;
-    max-width: 320px;
-    height: 36px;
-    padding: 0 14px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: var(--kepler-panel, rgba(18, 19, 23, 0.6));
-    font-size: 13px;
-    color: var(--kepler-text, #f0f0f6);
+    width: 240px;
+    min-width: 160px;
+    height: 34px;
+    padding: 0 var(--sp-3);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--layer-inset);
+    font-size: var(--fs-sm);
+    color: var(--text);
     outline: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }

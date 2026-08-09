@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Search, TrendingUp } from '../../lib/icons';
+import { Target, Search, TrendingUp, RefreshCw, Download } from '../../lib/icons';
+import ModuleScreen from '../../components/layout/ModuleScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useActivation } from '../../context/ActivationContext';
 import { useDashboardData } from '../../hooks/useDashboardData';
@@ -9,7 +10,6 @@ import { integrationService } from '../../services/integrationService';
 import { computeBrandCompleteness } from '../../lib/brandCompleteness';
 import { pickSpotlight } from '../../lib/spotlight';
 import { downloadCsv } from '../../lib/exportCsv';
-import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import KpiCard from '../../components/dashboard/KpiCard';
 import SpotlightCard from '../../components/dashboard/SpotlightCard';
 import LeadConversionCard from '../../components/dashboard/LeadConversionCard';
@@ -83,15 +83,39 @@ const Dashboard = ({ workspaceId, workspace }) => {
     };
 
     return (
-        <div className="db">
-            <DashboardHeader
-                firstName={firstName}
-                subtitle={`Here's what's happening across ${workspace?.name || 'your workspace'}.`}
-                onRefresh={refresh}
-                refreshing={refreshing}
-                onExport={exportAll}
+        <ModuleScreen
+            className="db"
+            /* The greeting is the screen's context, not a second page title —
+               v3 rendered it as a 28px <h1> directly under the app header's own
+               "Dashboard", so the screen opened with two competing headings. */
+            status={
+                <span className="db__greeting">
+                    Hello, {firstName} — here’s what’s happening across {workspace?.name || 'your workspace'}.
+                </span>
+            }
+            actions={
+                <button type="button" className="btn btn-ghost" onClick={refresh} disabled={refreshing}>
+                    <RefreshCw size={15} strokeWidth={1.8} /> {refreshing ? 'Refreshing…' : 'Refresh'}
+                </button>
+            }
+            primary={
+                <button type="button" className="btn btn-primary" onClick={exportAll}>
+                    <Download size={15} strokeWidth={1.8} /> Export
+                </button>
+            }
+        >
+            {/* Next best action — one row, read first, then out of the way. */}
+            <SpotlightCard
+                icon={spotlight.icon}
+                title={spotlight.title}
+                body={spotlight.body}
+                progress={spotlight.progress}
+                ctaLabel={spotlight.ctaLabel}
+                onCta={runSpotlight}
             />
 
+            {/* KPI strip: context for the work below, so it auto-fits and never
+                leaves the hole v3's fixed 3-plus-1 grid left at narrow widths. */}
             <div className="db__kpis">
                 <KpiCard
                     label="Active Campaigns"
@@ -114,14 +138,6 @@ const Dashboard = ({ workspaceId, workspace }) => {
                     value={pct(trends?.conversionRate?.value)}
                     delta={trends?.conversionRate?.delta}
                     empty={{ ctaLabel: 'Connect GA4', message: 'for conversion tracking', onCta: () => connect('ga4') }}
-                />
-                <SpotlightCard
-                    icon={spotlight.icon}
-                    title={spotlight.title}
-                    body={spotlight.body}
-                    progress={spotlight.progress}
-                    ctaLabel={spotlight.ctaLabel}
-                    onCta={runSpotlight}
                 />
             </div>
 
@@ -148,7 +164,7 @@ const Dashboard = ({ workspaceId, workspace }) => {
                 loading={loading}
                 onViewAll={() => navigate(workspacePath(workspaceId, 'measurement'))}
             />
-        </div>
+        </ModuleScreen>
     );
 };
 

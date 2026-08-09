@@ -5,15 +5,35 @@
 }
 
 /* The AI-share fact on the Performance strip cross-links to the AI Visibility screen. */
-.measurement-fact-link {
-    cursor: pointer;
-    text-align: left;
-    transition: border-color var(--t-fast), background var(--t-fast);
+/* Segmented switch between the module's two views. v3 offered no in-screen way
+   to move between Performance and AI Visibility at all — the only affordance
+   was a stat tile that was secretly a link, which is a weak mapping (a number
+   that navigates does not look like a control). That tile is gone. */
+.measurement-modes {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: var(--r-md);
+    background: var(--layer-inset);
+    border: 1px solid var(--border-subtle);
 }
 
-.measurement-fact-link:hover {
-    border-color: rgba(var(--accent-rgb), 0.4);
-    background: rgba(var(--accent-rgb), 0.06);
+.measurement-modes__opt {
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    color: var(--text-muted);
+    transition: var(--t-tint);
+}
+
+.measurement-modes__opt:hover {
+    color: var(--text);
+}
+
+.measurement-modes__opt.is-active {
+    background: var(--accent-soft);
+    color: var(--accent-text);
 }
 
 .measurement-list {

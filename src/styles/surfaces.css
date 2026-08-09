@@ -1,0 +1,227 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SURFACES — the single container system
+
+   v3 shipped nine container abstractions (.kepler-panel, .kepler-tile,
+   .ai-card, .content-card, .pcard, .db-card, .kpi-card, .workspace-card,
+   .header__panel) across six radii and three shadow recipes. Identical-looking
+   things behaved differently and different-looking things were the same thing.
+
+   There is now ONE system, with four roles. Pick by what the thing IS:
+
+     .surface            a content container sitting on the canvas
+     .surface--inset     a well recessed INTO a container (fields, tracks, tiles)
+     .surface--float     something that genuinely floats (popover, modal, rail)
+     .surface--quiet     a group boundary with no chrome at all — tone only
+
+   The default is deliberately near-weightless: one tone step up the ladder and
+   a hairline. v3 stacked FOUR weight signals on every panel (a 3-stop
+   gradient, a 1.5px specular ring, a 4-layer shadow and a backdrop blur) which
+   is precisely why eight panels on one screen felt crushing. Shadow and blur
+   are now reserved for --float, so when something lifts, it means something.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.surface {
+  position: relative;
+  background-color: var(--layer-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--pad-card);
+}
+
+/* A container the user can click through to something else. Only these get
+   hover affordance — a static panel that lights up on hover is noise. */
+.surface--interactive {
+  cursor: pointer;
+  transition: var(--t-tint), var(--t-lift);
+}
+
+.surface--interactive:hover {
+  background-color: var(--layer-raised-hover);
+  border-color: var(--border);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.surface--interactive:active {
+  transform: translateY(-2px) scale(0.994);
+  transition: transform var(--dur-instant) var(--ease-out);
+}
+
+/* Recessed. Darker than its parent, never lighter — a lighter child reads as
+   another floating box, which is how v3's tiles-inside-panels went wrong. */
+.surface--inset {
+  background-color: var(--layer-inset);
+  border-color: var(--border-subtle);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+/* Genuinely floating. Materialises rather than fades: blur and scale move
+   together so it reads as a real material arriving. */
+.surface--float {
+  background-color: var(--layer-overlay-thin);
+  backdrop-filter: var(--blur-thick);
+  -webkit-backdrop-filter: var(--blur-thick);
+  border-color: var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Group boundary carried entirely by tone and spacing. This is the workhorse
+   for "these things belong together" — reach for it before .surface, because
+   a screen of eight bordered boxes is the problem we are solving. */
+.surface--quiet {
+  background-color: transparent;
+  border-color: transparent;
+  padding: 0;
+}
+
+/* Size variants. Padding scales with the container's importance, not its
+   contents. */
+.surface--sm { padding: var(--sp-3); border-radius: var(--r-md); }
+.surface--lg { padding: var(--pad-section); border-radius: var(--r-xl); }
+.surface--flush { padding: 0; }
+
+/* Accent-tinted container — for a single highlighted item, never for a whole
+   region. Uses the defined --accent-soft pair rather than ad-hoc rgba(). */
+.surface--accent {
+  background-color: var(--accent-soft);
+  border-color: var(--border-accent);
+}
+
+/* ── Section header ──────────────────────────────────────────────────────────
+   ONE header pattern. v3 instantiated PanelHeader 41 times, each with a title
+   plus an explanatory sentence plus a right-aligned button, so SEO & AEO made
+   you read seven titles and seven sentences before reaching any content.
+
+   `meta` is for STATE ("Connected · synced 2h ago", "4 queued"), not for
+   explaining what the section is. If a section needs a sentence to say what it
+   is, the grouping or the label is wrong — fix that instead.               */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--stack-tight);
+}
+
+.section-head__text {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.section-head__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: var(--lh-lg);
+  letter-spacing: var(--tr-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+/* Sub-sections inside a canvas step down one rung rather than repeating the
+   same 15px/600 title at every depth. */
+.section-head--sub .section-head__title {
+  font-size: var(--fs-sm);
+  letter-spacing: var(--tr-2xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.section-head__meta {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-xs);
+  letter-spacing: var(--tr-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.section-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+/* ── Stacks ──────────────────────────────────────────────────────────────────
+   Vertical rhythm as a class instead of a per-file gap value. v3 had four
+   sibling values (26/22/22/24px) for the same "space between sections"
+   concept in four different stylesheets.                                    */
+.stack { display: flex; flex-direction: column; gap: var(--stack); }
+.stack--tight { gap: var(--stack-tight); }
+.stack--loose { gap: var(--stack-loose); }
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.row--between { justify-content: space-between; }
+.row--wrap { flex-wrap: wrap; }
+.row--end { justify-content: flex-end; }
+
+/* ── Divider ─────────────────────────────────────────────────────────────────
+   Separating rows INSIDE one container. Never use a divider where a tone step
+   or spacing would do. */
+.divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  border: 0;
+  margin: var(--sp-4) 0;
+}
+
+/* ── Scroll edge ─────────────────────────────────────────────────────────────
+   Apple's scroll edge effect: where scrolling content meets floating chrome,
+   fade it out instead of drawing a 1px rule. Applied to the scroll container. */
+.scroll-edge {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--sp-4),
+    #000 calc(100% - var(--sp-6)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--sp-4),
+    #000 calc(100% - var(--sp-6)),
+    transparent 100%
+  );
+}
+
+/* ── Motion primitives ───────────────────────────────────────────────────────
+   v3 defined the SAME `to { transform: rotate(360deg) }` spinner nine times
+   under nine different names (empty-state-spin, population-banner-spin,
+   auth-loading-spin, oauth-spin, profile-spin, campaigns-spin, …). One
+   keyframe, one class; the old names are aliased below so existing markup
+   keeps animating. */
+@keyframes kepler-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes kepler-blink {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 0.9; }
+}
+
+/* Enter transition for content arriving after a load. Materialises — scale and
+   opacity together — rather than a flat fade. */
+@keyframes kepler-rise {
+  from { opacity: 0; transform: translateY(6px) scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+
+.spin {
+  animation: kepler-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* A spinner still needs to convey "working", so it steps instead of
+     sweeping — motion without the continuous rotation. */
+  .spin {
+    animation-duration: 2.4s;
+    animation-timing-function: steps(8, end);
+  }
+}

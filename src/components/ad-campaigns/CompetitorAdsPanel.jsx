@@ -21,7 +21,9 @@ const COUNTRIES = [
 // Competitor intelligence from the Meta Ad Library → a structured read (per the
 // competitor-profiling skill) that grounds differentiated creative. Reports the
 // grounding brief up via onGroundingChange so the generator can use it.
-const CompetitorAdsPanel = ({ workspaceId, onGroundingChange }) => {
+// `chrome={false}` drops the Panel wrapper for callers that already name the
+// section — the Ad Creative tool rail. See docs/UX-SYSTEM.md.
+const CompetitorAdsPanel = ({ workspaceId, onGroundingChange, chrome = true }) => {
     const [connected, setConnected] = useState(null); // null = loading
     const [form, setForm] = useState({ searchTerms: '', country: 'US' });
     const [read, setRead] = useState(null);
@@ -84,22 +86,23 @@ const CompetitorAdsPanel = ({ workspaceId, onGroundingChange }) => {
 
     if (connected === null || connected === false) {
         // Hidden until connected — Meta Ad Library is optional pure-upside.
-        return connected === false ? (
+        if (connected !== false) return null;
+        const hint = (
+            <p className="cockpit__intel-hint">
+                Connect Meta Ad Library in <strong>Profile &amp; settings → Connectors</strong> to search competitors' live ads and ground your creative in them.
+            </p>
+        );
+        if (!chrome) return hint;
+        return (
             <Panel className="module-panel">
-                <PanelHeader title="Competitor Intelligence · Meta Ad Library" meta="Ground creative in rivals' live ads" />
-                <p className="cockpit__intel-hint">
-                    Connect Meta Ad Library in <strong>Profile &amp; settings → Connectors</strong> to search competitors' live ads and ground your creative in them.
-                </p>
+                <PanelHeader title="Competitor Intelligence · Meta Ad Library" meta="Not connected" />
+                {hint}
             </Panel>
-        ) : null;
+        );
     }
 
-    return (
-        <Panel className="module-panel">
-            <PanelHeader
-                title="Competitor Intelligence · Meta Ad Library"
-                meta="Search rivals' live ads → a structured read that grounds differentiated creative"
-            />
+    const body = (
+        <>
             {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
             <div className="builder-grid">
                 <div className="input-group">
@@ -115,7 +118,7 @@ const CompetitorAdsPanel = ({ workspaceId, onGroundingChange }) => {
                 </div>
             </div>
             <div className="module-toolbar module-toolbar--inline">
-                <button type="button" className="btn btn-primary" onClick={run} disabled={busy}>
+                <button type="button" className={`btn ${chrome ? 'btn-primary' : 'btn-secondary'}`} onClick={run} disabled={busy}>
                     <Megaphone size={16} strokeWidth={1.8} /> {busy ? 'Analyzing…' : 'Analyze competitor ads'}
                 </button>
                 {read && (
@@ -161,6 +164,18 @@ const CompetitorAdsPanel = ({ workspaceId, onGroundingChange }) => {
                     {read.ads?.length === 0 && <EmptyState message="No structured angles extracted from this set." />}
                 </div>
             )}
+        </>
+    );
+
+    if (!chrome) return body;
+
+    return (
+        <Panel className="module-panel">
+            <PanelHeader
+                title="Competitor Intelligence · Meta Ad Library"
+                meta={read ? 'Read available' : 'Not run yet'}
+            />
+            {body}
         </Panel>
     );
 };

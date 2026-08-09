@@ -11,7 +11,9 @@ const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
 // Overview measurement widget: connect GA4 → pick a property → pull last-28-day
 // traffic. Self-contained (loads its own status); renders nothing heavy until
 // connected. Consumption for the ga4 connector (see [[connector-architecture]]).
-const Ga4Panel = ({ workspaceId }) => {
+// `chrome={false}` drops the panel wrapper + header for callers that already
+// name the section (the Measurement tool rail). See docs/UX-SYSTEM.md.
+const Ga4Panel = ({ workspaceId, chrome = true }) => {
     // undefined = loading, null = not connected, object = connected status row.
     const [status, setStatus] = useState(undefined);
     const [properties, setProperties] = useState([]);
@@ -93,22 +95,20 @@ const Ga4Panel = ({ workspaceId }) => {
     const channelRows = (report?.rows ?? []).slice(0, 8);
     const maxSessions = Math.max(1, ...channelRows.map((r) => r.sessions));
 
-    return (
-        <Panel className="cockpit__intel">
-            <PanelHeader
-                title="Measurement · Google Analytics 4"
-                meta="Live traffic from your GA4 property - last 28 days"
-                action={status?.propertyUrl && (
-                    <div className="module-toolbar module-toolbar--inline">
-                        <button type="button" className="dash-chip-btn" onClick={openPicker} disabled={busy}>
-                            Change property
-                        </button>
-                        <button type="button" className="dash-chip-btn" onClick={() => pull()} disabled={busy}>
-                            <RefreshCw size={15} strokeWidth={1.8} /> {busy ? 'Pulling…' : 'Refresh'}
-                        </button>
-                    </div>
-                )}
-            />
+    const controls = status?.propertyUrl ? (
+        <div className="module-toolbar module-toolbar--inline">
+            <button type="button" className="dash-chip-btn" onClick={openPicker} disabled={busy}>
+                Change property
+            </button>
+            <button type="button" className="dash-chip-btn" onClick={() => pull()} disabled={busy}>
+                <RefreshCw size={15} strokeWidth={1.8} /> {busy ? 'Pulling…' : 'Refresh'}
+            </button>
+        </div>
+    ) : null;
+
+    const body = (
+        <>
+            {!chrome && controls}
             {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
 
             {status === undefined && <EmptyState loading message="Checking connection…" />}
@@ -151,15 +151,15 @@ const Ga4Panel = ({ workspaceId }) => {
                 <>
                     <div className="cockpit__intel-facts">
                         <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{fmt(report.totals?.sessions)}</span>
+                            <span className="cockpit__intel-value">{fmt(report.totals?.sessions)}</span>
                             <span className="cockpit__intel-label">Sessions</span>
                         </div>
                         <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{fmt(report.totals?.users)}</span>
+                            <span className="cockpit__intel-value">{fmt(report.totals?.users)}</span>
                             <span className="cockpit__intel-label">Users</span>
                         </div>
                         <div className="cockpit__intel-fact">
-                            <span className="cockpit__intel-value font-heading">{fmt(report.totals?.pageViews)}</span>
+                            <span className="cockpit__intel-value">{fmt(report.totals?.pageViews)}</span>
                             <span className="cockpit__intel-label">Page views</span>
                         </div>
                     </div>
@@ -190,6 +190,19 @@ const Ga4Panel = ({ workspaceId }) => {
                     {busy ? 'Pulling…' : 'Pull latest'}
                 </button>
             )}
+        </>
+    );
+
+    if (!chrome) return body;
+
+    return (
+        <Panel className="cockpit__intel">
+            <PanelHeader
+                title="Measurement · Google Analytics 4"
+                meta={status?.lastSyncAt ? `Last 28 days · pulled ${formatRelativeTime(status.lastSyncAt)}` : 'Last 28 days'}
+                action={controls}
+            />
+            {body}
         </Panel>
     );
 };

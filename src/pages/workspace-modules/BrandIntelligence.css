@@ -42,20 +42,49 @@
     gap: var(--sp-6);
 }
 
+/* A field and its per-section "Generate" belong together. v3 stacked the button
+   below the field, which read fine while every field had a visible box around
+   it — but once the read-only fields stopped looking like inputs, the buttons
+   floated unattached to anything. Anchoring the action to the label puts the
+   control next to what it changes (proximity implies relationship). */
 .data-section {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--sp-2);
 }
 
 .data-label {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.035em;
-    text-transform: none;
-    color: #8e90a3;
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-2xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--tr-2xs);
+    color: var(--text-muted);
     display: block;
-    margin-bottom: 4px;
+    /* Reserve the label row's right side for the section action. */
+    padding-right: 96px;
+    margin-bottom: 0;
+}
+
+.data-section > .intel-section-action {
+    position: absolute;
+    top: calc(var(--sp-1) * -1);
+    right: 0;
+    margin: 0;
+}
+
+/* The action only earns its place while the field it acts on is hovered or
+   focused within — otherwise a column of six fields shows six buttons. */
+.data-section > .intel-section-action {
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.data-section:hover > .intel-section-action,
+.data-section:focus-within > .intel-section-action,
+.data-section > .intel-section-action:focus-within,
+.data-section > .intel-section-action.is-running {
+    opacity: 1;
 }
 
 /* Form elements - base sizing; Kepler colors from module-kepler.css */
@@ -553,4 +582,16 @@
 .learned-updates__evidence {
     font-size: 0.78rem;
     color: var(--kepler-text-muted, rgba(255, 255, 255, 0.55));
+}
+
+/* Edit-mode flag in the screen status line — pairs with the read-only field
+   styling in module-kepler.css so the mode is stated as well as shown. */
+.brand-intel-module__editing-flag {
+    padding: 2px var(--sp-2);
+    border-radius: var(--r-full);
+    background: var(--accent-soft);
+    border: 1px solid var(--border-accent);
+    color: var(--accent-text);
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-medium);
 }

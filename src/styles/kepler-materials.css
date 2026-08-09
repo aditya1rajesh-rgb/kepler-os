@@ -1,142 +1,102 @@
 /**
- * KEPLER OS material system - acrylic panels, shell chrome, buttons, nav.
- * Ported from kepler-os-dashboard/app/globals.css (Tailwind-free).
+ * KEPLER material classes — now a COMPATIBILITY LAYER over styles/surfaces.css.
+ *
+ * These class names are referenced from ~30 stylesheets and components, so
+ * rather than a risky sweeping rename, each one is redefined here in terms of
+ * the v4 surface ladder. Untouched screens therefore inherit the refresh
+ * automatically. New code should use .surface / .surface--inset / .btn-* from
+ * surfaces.css and index.css directly.
+ *
+ * What changed and why: v3's .kepler-panel layered a 3-stop gradient, a 1.5px
+ * specular ring (::before), a 4-layer shadow AND a 20px backdrop blur onto
+ * every single panel. That is four weight signals per box, on screens holding
+ * up to eight boxes — the direct cause of the "cluttered, disconnected"
+ * feedback. The panel is now one tone step and a hairline; weight is reserved
+ * for surfaces that actually float.
  */
 
-/* Dark-acrylic panel material - layered translucent surface with a soft
-   top sheen and a grounded base shadow so cards read as physical slabs
-   of frosted glass rather than flat bordered boxes. */
+/* Was: acrylic slab with gradient ring + 4-layer shadow + blur. */
 .kepler-panel {
   position: relative;
-  background: var(--card-grad);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  backdrop-filter: blur(20px) saturate(135%);
-  -webkit-backdrop-filter: blur(20px) saturate(135%);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.015),
-    0 1px 1px 0 rgba(0, 0, 0, 0.3),
-    0 18px 40px -24px rgba(0, 0, 0, 0.7);
+  background: var(--layer-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow: none;
 }
 
-/* Gradient border ring — a bright specular edge caught at the top-left corner,
-   fading to transparent by mid-card. Shared across every card surface (see the
-   .card-edge rule in card-edge.css that mirrors this for non-Panel cards). */
+/* The specular edge ring is retired. Keeping the selector as an explicit no-op
+   documents the removal for anyone diffing against v3 and stops the rule from
+   being resurrected by styles/card-edge.css, which mirrored it. */
 .kepler-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.8) 0%,
-    rgba(255, 255, 255, 0.2) 22%,
-    rgba(255, 255, 255, 0) 50%
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  content: none;
 }
 
-/* Inset sub-surface tile - sits inside panels, reads recessed not raised */
+/* Recessed sub-surface. v3 duplicated this exact recipe verbatim in three
+   files (here, ui/ContentCard.css, ui/AnalyticsStrip.css); those now defer. */
 .kepler-tile {
-  background:
-    linear-gradient(
-      160deg,
-      rgba(12, 13, 24, 0.5) 0%,
-      rgba(20, 21, 38, 0.55) 100%
-    );
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
-    inset 0 -8px 18px -12px rgba(0, 0, 0, 0.5);
+  background: var(--layer-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
-/* Slightly more present shell material (sidebar / topbar) */
+/* Persistent shell chrome (sidebar, header) — one rung above the canvas so the
+   content plane reads as inset between them. */
 .kepler-shell {
-  background: var(--bg);
+  background: var(--layer-chrome);
 }
 
-/* Action button system - integrated into the acrylic material, no gloss */
+/* Button aliases → the canonical .btn-* system in index.css. v3 defined three
+   parallel button systems with identical declarations; these now inherit so a
+   change to the primary button is a one-line change. */
 .kepler-btn-primary {
-  background:
-    linear-gradient(
-      180deg,
-      #6d8bff 0%,
-      #4a6cf7 100%
-    );
+  background: var(--highlight-grad);
   color: #ffffff;
-  border: 1px solid rgba(var(--accent-rgb), 0.5);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
-    0 6px 18px -8px rgba(var(--accent-rgb), 0.7);
-  transition:
-    background 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.1s ease;
+  border: 1px solid var(--border-accent);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2), var(--shadow-accent);
+  transition: var(--t-tint), transform var(--dur-instant) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .kepler-btn-primary:hover {
-  background: linear-gradient(180deg, #7d97ff 0%, #3a56d4 100%);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
-    0 8px 22px -8px rgba(var(--accent-rgb), 0.85);
+  background: linear-gradient(140deg, #7e99ff 0%, #5878f8 44%, #3346c4 100%);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.26),
+              0 8px 24px -8px rgba(var(--accent-rgb), 0.78);
 }
 
 .kepler-btn-primary:active {
-  transform: translateY(0.5px);
+  transform: scale(0.975);
 }
 
 .kepler-btn-secondary {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(34, 35, 58, 0.85) 0%,
-      rgba(24, 25, 44, 0.85) 100%
-    );
-  color: #f0f0f6;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 2px 8px -4px rgba(0, 0, 0, 0.4);
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+  background: var(--layer-overlay);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: var(--t-tint), transform var(--dur-instant) var(--ease-out);
 }
 
 .kepler-btn-secondary:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(42, 43, 70, 0.92) 0%,
-    rgba(30, 31, 54, 0.92) 100%
-  );
-  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--layer-raised-hover);
+  border-color: var(--border-strong);
+}
+
+.kepler-btn-secondary:active {
+  transform: scale(0.975);
 }
 
 .kepler-btn-ghost {
-  color: #b6b7c6;
+  color: var(--text-muted);
   border: 1px solid transparent;
-  transition:
-    color 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease;
+  transition: var(--t-tint);
 }
 
 .kepler-btn-ghost:hover {
-  color: #f0f0f6;
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.055);
 }
 
-/* Softly illuminated active nav item - lit from within, no hard box */
+/* Active nav item — lit from within rather than boxed. */
 .kepler-nav-active {
   background: linear-gradient(
     100deg,
@@ -148,14 +108,5 @@
     inset 0 0 24px 0 rgba(var(--accent-rgb), 0.14);
 }
 
-/* Accessibility - honor reduced-motion preferences app-wide. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* The app-wide prefers-reduced-motion block moved to index.css so it lives
+   next to the other accessibility media queries. */

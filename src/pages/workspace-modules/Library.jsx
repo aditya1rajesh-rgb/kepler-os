@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from '../../lib/icons';
-import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
 import StatusPill from '../../components/ui/StatusPill';
 import EmptyState from '../../components/ui/EmptyState';
 import { contentService } from '../../services/contentService';
@@ -72,13 +72,12 @@ const Library = ({ workspaceId }) => {
     };
 
     return (
-        <div className="library module-kepler">
-            <Panel>
-                <PanelHeader
-                    title="Content library"
-                    meta="Everything you've generated across every module, in one place."
-                />
-
+        <ModuleScreen
+            className="library module-kepler"
+            /* Library is a browse surface: there is nothing to generate here, so
+               it has no primary action. The filter row IS the screen's control,
+               so it sits in the bar rather than as a third stacked strip. */
+            status={
                 <div className="library__toolbar">
                     <div className="library__filters">
                         {FILTERS.map((f) => (
@@ -93,15 +92,19 @@ const Library = ({ workspaceId }) => {
                             </button>
                         ))}
                     </div>
-                    <input
-                        type="text"
-                        className="library__search"
-                        placeholder="Search content…"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                    />
                 </div>
-
+            }
+            actions={
+                <input
+                    type="text"
+                    className="library__search"
+                    placeholder="Search content…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                />
+            }
+        >
+            <>
                 {loading ? (
                     <EmptyState loading message="Loading library…" />
                 ) : visible.length === 0 ? (
@@ -149,8 +152,8 @@ const Library = ({ workspaceId }) => {
                         })}
                     </ul>
                 )}
-            </Panel>
-        </div>
+            </>
+        </ModuleScreen>
     );
 };
 

@@ -1,124 +1,128 @@
-/* Dashboard — reference-matched cockpit. Own .db-* namespace (Home keeps dashboard.css). */
+/* Dashboard — the workspace overview. Own .db-* namespace (Home keeps dashboard.css). */
 .db {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-    padding-bottom: 8px;
+    padding-bottom: var(--sp-2);
 }
 
-/* Row 1 — greeting + actions */
-.db__head {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
+.db__greeting {
+    color: var(--text-secondary);
 }
 
-.db__hello {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text);
-}
-
-.db__sub {
-    margin-top: 4px;
-    font-size: 14px;
-    color: var(--text-muted);
-}
-
-.db__head-actions {
-    display: flex;
-    gap: 10px;
-    flex-shrink: 0;
-}
-
-/* Shared card */
+/* Shared card. v3 declared its own surface here (a third private container
+   system alongside .pcard and Panel); it now sits on the shared ladder. */
 .db-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--r-card);
-    padding: 20px;
+    background: var(--layer-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    padding: var(--pad-card);
 }
 
+/* When the title and its controls can't share a line, the whole row wraps so
+   the title gets a line of its own. Without this the title itself broke
+   mid-phrase ("Lead / Conversion") while the segmented control kept its width. */
 .db-card__head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
+    margin-bottom: var(--sp-3);
 }
 
 .db-card__title {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--fs-lg);
+    line-height: var(--lh-lg);
+    letter-spacing: var(--tr-lg);
+    font-weight: var(--fw-semibold);
     color: var(--text);
+    white-space: nowrap;
+}
+
+.db-card__head-right {
+    flex-wrap: wrap;
 }
 
 .db-card__head-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--sp-2);
 }
 
-/* Row 2 — KPI grid */
+/* KPI strip — auto-fit, so any number of KPIs fills the row evenly. v3 hard-coded
+   `repeat(3, 1fr) minmax(0, 1.12fr)` for exactly three KPIs plus the spotlight,
+   which left a visible empty cell once the spotlight moved out. */
 .db__kpis {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.12fr);
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--sp-3);
+    padding: var(--sp-1) 0;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Each KPI is a cell in a strip, not a card — no surface of its own. Only the
+   hairline separators between them do the grouping. */
 .kpi {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    min-height: 132px;
+    gap: var(--sp-1);
+    padding: var(--sp-3) var(--sp-4);
+    min-width: 0;
+}
+
+.kpi + .kpi {
+    box-shadow: inset 1px 0 0 0 var(--border-subtle);
 }
 
 .kpi__head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: var(--sp-2);
 }
 
 .kpi__label {
-    font-size: 13.5px;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    letter-spacing: var(--tr-xs);
     color: var(--text-muted);
 }
 
 .kpi__icon {
     color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+/* Value, trend and comparison sit on one baseline instead of stacking, which is
+   what let v3's three numbers eat a whole screen. */
+.kpi__foot {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
 }
 
 .kpi__value {
-    font-size: 34px;
-    font-weight: 700;
-    line-height: 1;
+    font-size: var(--fs-2xl);
+    line-height: var(--lh-2xl);
+    letter-spacing: var(--tr-2xl);
+    font-weight: var(--fw-bold);
     color: var(--text);
     font-variant-numeric: tabular-nums;
-    margin: 14px 0 8px;
-}
-
-.kpi__foot {
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .kpi__vs {
-    font-size: 12px;
+    font-size: var(--fs-2xs);
     color: var(--text-dim);
 }
 
 .kpi__empty {
-    margin-top: 16px;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
 }
 
 .kpi__empty-msg {
-    font-size: 12px;
+    font-size: var(--fs-2xs);
     color: var(--text-dim);
 }
 
@@ -146,89 +150,105 @@
     color: var(--negative);
 }
 
-/* Spotlight card */
+/* Next-best-action bar.
+   v3 made this a full-height gradient slab with a radial sheen sitting in the
+   KPI row, so the loudest thing on the dashboard was a nudge. It is now an
+   accent-tinted row: still first, no longer dominant. */
 .db-spotlight {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow: hidden;
-    cursor: pointer;
-    background: var(--highlight-grad);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    color: #ffffff;
-}
-
-.db-spotlight::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(120% 100% at 100% 0%, rgba(255, 255, 255, 0.28), transparent 55%);
-    pointer-events: none;
-}
-
-.db-spotlight__corner {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 30px;
-    height: 30px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-    z-index: 1;
-    transition: background var(--t-fast);
+    gap: var(--sp-3);
+    width: 100%;
+    padding: var(--sp-3) var(--sp-4);
+    text-align: left;
+    border-radius: var(--r-md);
+    background: var(--accent-soft);
+    border: 1px solid var(--border-accent);
+    color: var(--text);
+    transition: var(--t-tint), transform var(--dur-instant) var(--ease-out);
 }
 
-.db-spotlight__corner:hover {
-    background: rgba(255, 255, 255, 0.3);
+.db-spotlight:hover {
+    background: var(--accent-soft-hover);
+}
+
+.db-spotlight:active {
+    transform: scale(0.995);
 }
 
 .db-spotlight__icon {
-    width: 40px;
-    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 11px;
-    background: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: var(--r-sm);
+    background: rgba(var(--accent-rgb), 0.22);
+    color: var(--accent-text);
+}
+
+.db-spotlight__text {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    flex: 1;
+    min-width: 0;
 }
 
 .db-spotlight__title {
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 1.25;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text);
+    white-space: nowrap;
 }
 
 .db-spotlight__body {
-    font-size: 12.5px;
-    line-height: 1.45;
-    color: rgba(255, 255, 255, 0.85);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    color: var(--text-muted);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .db-spotlight__progress {
-    height: 5px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.22);
+    width: 96px;
+    height: 4px;
+    flex-shrink: 0;
+    border-radius: var(--r-full);
+    background: rgba(255, 255, 255, 0.12);
     overflow: hidden;
 }
 
 .db-spotlight__progress-fill {
     display: block;
     height: 100%;
-    border-radius: 3px;
-    background: #ffffff;
+    border-radius: var(--r-full);
+    background: var(--accent);
+    transition: width var(--dur-slow) var(--ease-spring);
 }
 
 .db-spotlight__cta {
-    margin-top: auto;
-    font-size: 13px;
-    font-weight: 600;
-    color: #ffffff;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--accent-text);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.db-spotlight__go {
+    color: var(--accent-text);
+    flex-shrink: 0;
+}
+
+@media (max-width: 860px) {
+    .db-spotlight__body,
+    .db-spotlight__progress {
+        display: none;
+    }
 }
 
 /* Row 3 — chart + updates */
@@ -487,16 +507,8 @@
     font-size: 13px;
 }
 
-/* Responsive */
-@media (max-width: 1280px) {
-    .db__kpis {
-        grid-template-columns: 1fr 1fr;
-    }
-    .db-spotlight {
-        grid-column: 1 / -1;
-    }
-}
-
+/* Responsive. The KPI strip is auto-fit so it needs no breakpoints of its own;
+   only the separator has to move from vertical to horizontal when cells wrap. */
 @media (max-width: 1024px) {
     .db__mid {
         grid-template-columns: 1fr;
@@ -504,11 +516,7 @@
 }
 
 @media (max-width: 680px) {
-    .db__kpis {
-        grid-template-columns: 1fr;
-    }
-    .db__head {
-        flex-direction: column;
-        align-items: flex-start;
+    .kpi + .kpi {
+        box-shadow: inset 0 1px 0 0 var(--border-subtle);
     }
 }

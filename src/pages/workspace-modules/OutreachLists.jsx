@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Trash2, ArrowUpRight } from '../../lib/icons';
-import Panel, { PanelHeader } from '../../components/ui/Panel';
+import ModuleScreen from '../../components/layout/ModuleScreen';
 import EmptyState from '../../components/ui/EmptyState';
 import ListDetail from '../../components/outreach/ListDetail';
 import { prospectListsService } from '../../services/prospectListsService';
@@ -53,13 +53,14 @@ const OutreachLists = ({ workspaceId }) => {
     }
 
     return (
-        <div className="module-kepler">
-            <Panel>
-                <PanelHeader
-                    title={`Lists${lists.length ? ` · ${lists.length}` : ''}`}
-                    meta="Named audiences — open one to view its contacts, export, and (soon) enrich."
-                />
-                {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+        <ModuleScreen
+            className="module-kepler"
+            banner={error ? <p className="brand-intel-module__error" role="alert">{error}</p> : null}
+            status={lists.length ? (
+                <span><strong>{lists.length}</strong> list{lists.length === 1 ? '' : 's'}</span>
+            ) : null}
+        >
+            <>
                 {loading ? (
                     <EmptyState loading message="Loading lists…" />
                 ) : lists.length === 0 ? (
@@ -91,8 +92,8 @@ const OutreachLists = ({ workspaceId }) => {
                         ))}
                     </ul>
                 )}
-            </Panel>
-        </div>
+            </>
+        </ModuleScreen>
     );
 };
 

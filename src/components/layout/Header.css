@@ -1,14 +1,31 @@
-/* ── Header - Kepler OS topbar ─────────────────────────────── */
+/* ── Header — Kepler OS topbar ─────────────────────────────────────────────
+   A translucent material with content scrolling underneath, rather than an
+   opaque strip that consumes a fixed band. The bottom edge is a soft fade, not
+   a 1px rule — a hard divider under floating chrome reads as a seam. */
 .header {
     position: sticky;
     top: 0;
     z-index: 10;
     flex-shrink: 0;
-    height: 64px;
+    height: var(--header-height);
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 0 24px;
+    gap: var(--sp-4);
+    padding: 0 var(--gutter);
+    background: var(--layer-chrome-thin);
+    backdrop-filter: var(--blur-thick);
+    -webkit-backdrop-filter: var(--blur-thick);
+}
+
+.header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -16px;
+    height: 16px;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(10, 11, 15, 0.55), rgba(10, 11, 15, 0));
 }
 
 /* Hamburger — mobile only (the sidebar becomes an overlay ≤1024px) */

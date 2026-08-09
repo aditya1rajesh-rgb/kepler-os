@@ -1,0 +1,199 @@
+/* ToolRail — see ToolRail.jsx. Everything here is deliberately quieter than the
+   canvas: no primary buttons, no shadows, one tone step below the rail's own
+   translucent surface. */
+
+.tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.tool-group + .tool-group {
+    margin-top: var(--sp-3);
+}
+
+.tool-group__label {
+    margin: 0;
+    padding: 0 var(--sp-1);
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-2xs);
+    letter-spacing: var(--tr-2xs);
+    font-weight: var(--fw-semibold);
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.tool-group__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.tool-card {
+    border-radius: var(--r-md);
+    background: var(--layer-inset);
+    border: 1px solid var(--border-subtle);
+    transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.tool-card--open {
+    border-color: var(--border);
+}
+
+.tool-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    min-height: 38px;
+    padding: 0 var(--sp-2) 0 var(--sp-3);
+}
+
+.tool-card__toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex: 1;
+    min-width: 0;
+    padding: var(--sp-2) 0;
+    text-align: left;
+    color: var(--text-secondary);
+    transition: color var(--dur-fast) var(--ease-out);
+}
+
+.tool-card__toggle:hover { color: var(--text); }
+
+.tool-card__chevron {
+    flex-shrink: 0;
+    color: var(--text-dim);
+    transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.tool-card--open .tool-card__chevron { transform: rotate(180deg); }
+
+.tool-card__title {
+    font-size: var(--fs-sm);
+    line-height: var(--lh-sm);
+    font-weight: var(--fw-medium);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tool-card__title--static {
+    padding: var(--sp-2) 0;
+    color: var(--text-secondary);
+}
+
+.tool-card__right {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-shrink: 0;
+}
+
+.tool-card__state {
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-2xs);
+    letter-spacing: var(--tr-2xs);
+    padding: 2px var(--sp-2);
+    border-radius: var(--r-full);
+    white-space: nowrap;
+}
+
+.tool-card__state--ok {
+    color: var(--positive);
+    background: var(--positive-soft);
+}
+
+.tool-card__state--warn {
+    color: var(--warning);
+    background: var(--warning-soft);
+}
+
+.tool-card__state--idle {
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.tool-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-1) var(--sp-3) var(--sp-3);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    color: var(--text-muted);
+}
+
+/* Rail tools are compact by default — they are the quiet layer. */
+.tool-card__body .btn {
+    height: 28px;
+    padding: 0 var(--sp-3);
+    font-size: var(--fs-xs);
+}
+
+/* A rail tool must never render a primary button; there is one primary action
+   per screen and it lives in the screen bar. Downgrade defensively so a stray
+   .btn-primary in a migrated tool cannot re-open the competing-CTA problem. */
+.tool-card__body .btn-primary,
+.tool-card__head .btn-primary {
+    background: var(--layer-overlay);
+    color: var(--text);
+    border-color: var(--border);
+    box-shadow: none;
+}
+
+.tool-card__body .btn-primary:hover:not(:disabled),
+.tool-card__head .btn-primary:hover:not(:disabled) {
+    background: var(--layer-raised-hover);
+    border-color: var(--border-strong);
+    box-shadow: none;
+}
+
+.tool-card__body input,
+.tool-card__body select,
+.tool-card__body textarea {
+    font-size: var(--fs-xs);
+    padding: var(--sp-2);
+    background: var(--layer-canvas);
+}
+
+/* Result lists inside a tool — scroll rather than growing the rail unbounded. */
+.tool-card__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    max-height: 280px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tool-card__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    padding: var(--sp-2);
+    border-radius: var(--r-sm);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.tool-card__row-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.tool-rail__note {
+    margin: var(--sp-1) var(--sp-1) 0;
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-2xs);
+    color: var(--text-dim);
+}

@@ -1,39 +1,73 @@
-/* Layout on top of .kepler-panel material (defined in kepler-materials.css) */
+/* Panel layout on top of the .kepler-panel material (styles/kepler-materials.css),
+   which in v4 resolves to the shared surface ladder in styles/surfaces.css. */
+
 .panel {
-    padding: 24px;
-    border-radius: 1rem;
+    padding: var(--pad-card);
+    border-radius: var(--r-lg);
+}
+
+/* A panel that only groups — no chrome, tone and spacing do the work. This is
+   the variant screens should reach for once they have a single dominant
+   canvas, so secondary groups stop competing with it for attention. */
+.panel--quiet {
+    background: transparent;
+    border-color: transparent;
+    padding: 0;
+}
+
+.panel--flush {
+    padding: 0;
+}
+
+.panel--lg {
+    padding: var(--pad-section);
 }
 
 .panel-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
+    gap: var(--sp-4);
+    margin-bottom: var(--stack-tight);
 }
 
+/* Title and meta sit on one baseline rather than stacking. v3 stacked them,
+   so each of the seven panels on SEO & AEO cost two lines of vertical space
+   plus 20px of margin before any content appeared. */
 .panel-header__text {
     display: flex;
+    align-items: baseline;
+    gap: var(--sp-3);
+    min-width: 0;
+}
+
+.panel-header--stacked .panel-header__text {
     flex-direction: column;
-    gap: 6px;
+    align-items: flex-start;
+    gap: var(--sp-1);
 }
 
 .panel-header__title {
     margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.01em;
-    color: #f4f4f9;
+    font-size: var(--fs-lg);
+    line-height: var(--lh-lg);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tr-lg);
+    color: var(--text);
 }
 
 .panel-header__meta {
     margin: 0;
-    font-size: 12.5px;
-    line-height: 1.625;
-    color: #8e90a3;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+    letter-spacing: var(--tr-xs);
+    color: var(--text-muted);
+    min-width: 0;
 }
 
 .panel-header__action {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
 }

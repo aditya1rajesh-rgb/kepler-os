@@ -70,7 +70,7 @@ const CompetitorSuggestionCard = ({
                     onChange={(e) => setDraft({ ...draft, reasonSuggested: e.target.value })}
                 />
                 <div className="suggestion-card__actions">
-                    <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                    <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={saving}>
                         {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)} disabled={saving}>
@@ -108,7 +108,7 @@ const CompetitorSuggestionCard = ({
                 <p className="suggestion-card__placeholder">Messaging summary - available after enrichment</p>
             )}
             <div className="suggestion-card__actions">
-                <button type="button" className="btn btn-primary" onClick={onAccept} disabled={accepting}>
+                <button type="button" className="btn btn-secondary" onClick={onAccept} disabled={accepting}>
                     {accepting ? 'Accepting…' : 'Accept'}
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={startEdit} disabled={accepting}>
