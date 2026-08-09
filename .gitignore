@@ -40,3 +40,6 @@ kepler-os-dashboard/
 *.njsproj
 *.sln
 *.sw?
+
+# Generated knowledge-graph output (graphify skill) — rebuildable, ~5MB
+graphify-out/
