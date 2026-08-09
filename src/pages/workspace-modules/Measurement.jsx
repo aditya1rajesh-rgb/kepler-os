@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TrendingUp, RefreshCw, Check } from '../../lib/icons';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import ModuleScreen from '../../components/layout/ModuleScreen';
 import ToolRail, { ToolCard, ToolGroup } from '../../components/layout/ToolRail';
 import EmptyState from '../../components/ui/EmptyState';
 import Ga4Panel from '../../components/measurement/Ga4Panel';
+import ChannelDetail from '../../components/measurement/ChannelDetail';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { campaignService } from '../../services/campaignService';
 import { measurementService } from '../../services/measurementService';
 import { integrationService } from '../../services/integrationService';
+import { goalsService } from '../../services/goalsService';
+import { workspacePath } from '../../constants/routes';
 import { buildTrackedUrl, campaignUtm, TRACKING_SOURCES } from '../../lib/tracking';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import '../../styles/module-kepler.css';
@@ -24,7 +28,24 @@ const money = (n) => `$${new Intl.NumberFormat().format(Math.round(Number(n) || 
 // parent so the Performance strip can still surface the AI-share fact and link across.
 const Measurement = ({ workspaceId }) => {
     const { brand } = useWorkspaceConfig(workspaceId);
+    const navigate = useNavigate();
     const baseUrl = brand?.url || '';
+
+    // L1 · the drill target. The cockpit links here with the compound key and the
+    // goal that was in context, so the thread survives the click.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const channelKey = searchParams.get('channel');
+    const goalId = searchParams.get('goal');
+    const [channelDetail, setChannelDetail] = useState(null);
+    const [channelGoal, setChannelGoal] = useState(null);
+    // Clear during render when the drilled channel changes, so the previous
+    // channel's numbers never paint under the new channel's heading.
+    const [lastChannelKey, setLastChannelKey] = useState(channelKey);
+    if (channelKey !== lastChannelKey) {
+        setLastChannelKey(channelKey);
+        setChannelDetail(null);
+        setChannelGoal(null);
+    }
 
     const [gaReady, setGaReady] = useState(null); // null = loading, then boolean
     const [zohoConnected, setZohoConnected] = useState(false);
@@ -64,6 +85,30 @@ const Measurement = ({ workspaceId }) => {
         })();
         return () => { cancelled = true; };
     }, [workspaceId]);
+
+    // Load the drilled channel. Scoped to the goal's campaigns when one came with
+    // the link — a workspace-wide view here would credit the goal with every
+    // campaign, which is the inflation the goals engine refuses.
+    useEffect(() => {
+        if (!workspaceId || !channelKey) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const goal = goalId ? await goalsService.get(workspaceId, goalId).catch(() => null) : null;
+                const goalCampaigns = goal ? await goalsService.campaignsFor(workspaceId, goal.id).catch(() => []) : null;
+                const detail = await measurementService.getChannelDetail(workspaceId, {
+                    key: channelKey,
+                    goalCampaignIds: goalCampaigns ? goalCampaigns.map((c) => c.id) : null,
+                });
+                if (cancelled) return;
+                setChannelGoal(goal);
+                setChannelDetail(detail);
+            } catch (e) {
+                if (!cancelled) setError(e?.message || 'Could not load that channel.');
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [workspaceId, channelKey, goalId]);
 
     const pull = async () => {
         setPulling(true);
@@ -235,6 +280,11 @@ const Measurement = ({ workspaceId }) => {
             moduleKey="measurement"
             banner={
                 <>
+                    {channelKey && (
+                        <button type="button" className="campaigns__back" onClick={() => setSearchParams({})}>
+                            ← All channels
+                        </button>
+                    )}
                     {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                     {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                 </>
@@ -267,7 +317,18 @@ const Measurement = ({ workspaceId }) => {
                 </ToolRail>
             )}
         >
-            {renderPerformance()}
+            {channelKey && !channelDetail ? (
+                /* Not "no readings" — that is a different, and much more
+                   alarming, sentence than "still loading". */
+                <EmptyState loading message="Loading channel…" />
+            ) : channelKey ? (
+                <ChannelDetail
+                    detail={channelDetail}
+                    goalName={channelGoal?.name ?? ''}
+                    onBack={() => setSearchParams({})}
+                    onOpenCampaign={(c) => navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?campaign=${c.id}`)}
+                />
+            ) : renderPerformance()}
         </ModuleScreen>
     );
 };

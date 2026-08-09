@@ -73,9 +73,17 @@ export const normalizeSource = (source, medium) => {
         // "google / organic" is Organic Search; a bare "(organic)" has no engine.
         return s && !s.startsWith('(') ? `Organic ${titleCase(s)}` : 'Organic';
     }
-    if (s === 'linkedin.com' || s === 'lnkd.in') return 'LinkedIn';
-    if (s === 'facebook.com' || s === 'l.facebook.com' || s === 'instagram.com') return titleCase(s.replace(/^l\./, '').replace(/\.com$/, ''));
-    if (s) return titleCase(s.replace(/\.com$/, ''));
+    // One platform is one source however it was spelled. GA4 reports the same
+    // destination as `linkedin` from our own tagged links and `linkedin.com` as
+    // a referrer, and two rows called LinkedIn and Linkedin would split a real
+    // channel in half on a screen whose whole job is comparing channels.
+    const bare = s.replace(/^(l|m|www)\./, '').replace(/\.(com|in|co)$/, '');
+    const PLATFORM = {
+        linkedin: 'LinkedIn', 'lnkd': 'LinkedIn', facebook: 'Facebook', instagram: 'Instagram',
+        youtube: 'YouTube', twitter: 'X', x: 'X', google: 'Google', bing: 'Bing',
+    };
+    if (PLATFORM[bare]) return PLATFORM[bare];
+    if (bare) return titleCase(bare);
     return titleCase(m);
 };
 
@@ -248,9 +256,12 @@ export const contributionCaveats = ({ paidConnected = false, hasSourceBreakdown 
         });
     }
     if (!paidConnected) {
+        // Precise, because the imprecise version is wrong on screen: paid rows
+        // DO appear here whenever our own tagged links used a paid medium. What
+        // is missing is the money, and with it any cost-per-outcome.
         out.push({
             id: 'no-paid',
-            text: 'No ad platform is connected, so paid contribution and spend are missing from this picture entirely.',
+            text: 'No ad platform is connected. Paid rows count sessions only — spend, CPC and cost per outcome are not measured, and ad clicks that never reached a tagged link are absent entirely.',
         });
     }
     // Stated always, because it never stops being true while attribution is

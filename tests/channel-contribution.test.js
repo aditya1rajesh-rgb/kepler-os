@@ -49,6 +49,15 @@ describe('normalizeSource', () => {
         expect(normalizeSource('l.facebook.com', 'referral')).toBe('Facebook');
     });
 
+    it('folds our own utm spelling into the same source as the referrer', () => {
+        // Found on screen: `linkedin` (from a tagged link) and `linkedin.com` (as
+        // a referrer) rendered as "Linkedin" and "LinkedIn" — two rows for one
+        // channel on a table whose entire job is comparing channels.
+        expect(normalizeSource('linkedin', 'paid_social')).toBe('LinkedIn');
+        expect(normalizeSource('linkedin', 'paid_social')).toBe(normalizeSource('linkedin.com', 'referral'));
+        expect(normalizeSource('www.facebook.com', 'referral')).toBe('Facebook');
+    });
+
     it('says Unknown rather than inventing a source', () => {
         expect(normalizeSource('', '')).toBe('Unknown');
     });

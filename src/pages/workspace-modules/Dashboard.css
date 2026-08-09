@@ -1,522 +1,346 @@
-/* Dashboard — the workspace overview. Own .db-* namespace (Home keeps dashboard.css). */
-.db {
+/* The cockpit (E5, roadmap S2) — replaces the old .db-* dashboard.
+ *
+ * One thing is large: the goal. Everything else is deliberately quieter than it,
+ * because the previous screen gave a KPI strip, a chart, a feed and a table the
+ * same visual weight and so said nothing about what mattered. Weight here IS the
+ * ranking. */
+
+.cockpit {
     padding-bottom: var(--sp-2);
 }
 
-.db__greeting {
+.cockpit__greeting {
     color: var(--text-secondary);
 }
 
-/* Shared card. v3 declared its own surface here (a third private container
-   system alongside .pcard and Panel); it now sits on the shared ladder. */
-.db-card {
-    background: var(--layer-raised);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--r-lg);
-    padding: var(--pad-card);
-}
-
-/* When the title and its controls can't share a line, the whole row wraps so
-   the title gets a line of its own. Without this the title itself broke
-   mid-phrase ("Lead / Conversion") while the segmented control kept its width. */
-.db-card__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: var(--sp-2) var(--sp-3);
-    margin-bottom: var(--sp-3);
-}
-
-.db-card__title {
-    font-size: var(--fs-lg);
-    line-height: var(--lh-lg);
-    letter-spacing: var(--tr-lg);
-    font-weight: var(--fw-semibold);
-    color: var(--text);
-    white-space: nowrap;
-}
-
-.db-card__head-right {
-    flex-wrap: wrap;
-}
-
-.db-card__head-right {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-}
-
-/* KPI strip — auto-fit, so any number of KPIs fills the row evenly. v3 hard-coded
-   `repeat(3, 1fr) minmax(0, 1.12fr)` for exactly three KPIs plus the spotlight,
-   which left a visible empty cell once the spotlight moved out. */
-.db__kpis {
+/* Two zones side by side: the queue and the gap. Both are "what now" questions,
+   so they share a row and neither outranks the other. */
+.cockpit__row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--sp-3);
-    padding: var(--sp-1) 0;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: var(--stack);
+    align-items: start;
 }
 
-/* Each KPI is a cell in a strip, not a card — no surface of its own. Only the
-   hairline separators between them do the grouping. */
-.kpi {
+@media (max-width: 1000px) {
+    .cockpit__row { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── Zone 1 · the hero ──────────────────────────────────────────────────── */
+.cockpit-hero {
+    background: var(--layer-raised);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--r-card);
+    padding: var(--pad-card);
     display: flex;
     flex-direction: column;
-    gap: var(--sp-1);
-    padding: var(--sp-3) var(--sp-4);
-    min-width: 0;
+    gap: var(--sp-3);
 }
 
-.kpi + .kpi {
-    box-shadow: inset 1px 0 0 0 var(--border-subtle);
-}
-
-.kpi__head {
+.cockpit-hero__head {
     display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-}
-
-.kpi__label {
-    font-size: var(--fs-xs);
-    line-height: var(--lh-xs);
-    letter-spacing: var(--tr-xs);
-    color: var(--text-muted);
-}
-
-.kpi__icon {
-    color: var(--text-dim);
-    flex-shrink: 0;
-}
-
-/* Value, trend and comparison sit on one baseline instead of stacking, which is
-   what let v3's three numbers eat a whole screen. */
-.kpi__foot {
-    display: flex;
-    align-items: baseline;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-3);
     flex-wrap: wrap;
-    gap: var(--sp-2);
 }
 
-.kpi__value {
+.cockpit-hero__eyebrow {
+    font-size: var(--fs-2xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 4px;
+}
+
+.cockpit-hero__name {
     font-size: var(--fs-2xl);
     line-height: var(--lh-2xl);
     letter-spacing: var(--tr-2xl);
     font-weight: var(--fw-bold);
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
+    margin: 0;
+    text-wrap: balance;
 }
 
-.kpi__vs {
+.cockpit-hero__link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.cockpit-hero__link:hover { color: var(--accent); }
+
+.cockpit-hero__verdict {
+    flex: none;
     font-size: var(--fs-2xs);
-    color: var(--text-dim);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.03em;
+    padding: 4px 10px;
+    border-radius: var(--r-full);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
 }
+.cockpit-hero__verdict--ok   { color: var(--positive); border-color: rgba(var(--positive-rgb), .35); background: var(--positive-soft); }
+.cockpit-hero__verdict--warn { color: var(--warning);  border-color: rgba(var(--warning-rgb), .35);  background: var(--warning-soft); }
+.cockpit-hero__verdict--bad  { color: var(--negative); border-color: rgba(var(--negative-rgb), .35); background: var(--negative-soft); }
 
-.kpi__empty {
+.cockpit-hero__inferred {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: var(--sp-2);
-}
-
-.kpi__empty-msg {
-    font-size: var(--fs-2xs);
-    color: var(--text-dim);
-}
-
-/* Trend pill */
-.trend-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 3px 7px;
-    border-radius: 7px;
-    font-size: 12px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    background: rgba(255, 255, 255, 0.06);
+    flex-wrap: wrap;
+    margin: 0;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
 }
 
-.trend-pill--up {
-    background: rgba(var(--positive-rgb), 0.12);
-    color: var(--positive);
+.cockpit-hero__directional {
+    margin: 0;
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    max-width: 70ch;
 }
 
-.trend-pill--down {
-    background: rgba(var(--negative-rgb), 0.12);
-    color: var(--negative);
+/* Progress is the number the screen exists to show. */
+.cockpit-hero__figure { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; }
+.cockpit-hero__pct {
+    font-size: var(--fs-4xl, var(--fs-3xl));
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tr-3xl);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.cockpit-hero__of { font-size: var(--fs-sm); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.cockpit-hero__track {
+    height: 8px;
+    border-radius: var(--r-full);
+    background: var(--layer-inset);
+    overflow: hidden;
+}
+.cockpit-hero__fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    border-radius: var(--r-full);
+    transition: width var(--t-fast, 160ms) ease-out;
 }
 
-/* Next-best-action bar.
-   v3 made this a full-height gradient slab with a radial sheen sitting in the
-   KPI row, so the loudest thing on the dashboard was a nudge. It is now an
-   accent-tinted row: still first, no longer dominant. */
-.db-spotlight {
+.cockpit-hero__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--sp-2) var(--sp-4);
+    margin: 0;
+}
+.cockpit-hero__facts dt { font-size: var(--fs-2xs); color: var(--text-muted); margin: 0; }
+.cockpit-hero__facts dd {
+    margin: 2px 0 0;
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+}
+
+.cockpit-hero__basis {
+    margin: 0;
+    font-size: var(--fs-2xs);
+    color: var(--text-muted);
+    text-wrap: pretty;
+}
+
+/* What moved — attached to the goal, never a separate feed. */
+.cockpit-hero__moved {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--sp-3);
-    width: 100%;
-    padding: var(--sp-3) var(--sp-4);
-    text-align: left;
-    border-radius: var(--r-md);
-    background: var(--accent-soft);
-    border: 1px solid var(--border-accent);
-    color: var(--text);
-    transition: var(--t-tint), transform var(--dur-instant) var(--ease-out);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--border-subtle);
 }
-
-.db-spotlight:hover {
-    background: var(--accent-soft-hover);
-}
-
-.db-spotlight:active {
-    transform: scale(0.995);
-}
-
-.db-spotlight__icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    flex-shrink: 0;
-    border-radius: var(--r-sm);
-    background: rgba(var(--accent-rgb), 0.22);
-    color: var(--accent-text);
-}
-
-.db-spotlight__text {
+.cockpit-hero__moved-text {
     display: flex;
     align-items: baseline;
     gap: var(--sp-2);
-    flex: 1;
-    min-width: 0;
-}
-
-.db-spotlight__title {
-    font-size: var(--fs-sm);
-    line-height: var(--lh-sm);
-    font-weight: var(--fw-semibold);
-    color: var(--text);
-    white-space: nowrap;
-}
-
-.db-spotlight__body {
+    flex-wrap: wrap;
     font-size: var(--fs-xs);
-    line-height: var(--lh-xs);
-    color: var(--text-muted);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: var(--text-secondary);
+    text-wrap: pretty;
 }
-
-.db-spotlight__progress {
-    width: 96px;
-    height: 4px;
-    flex-shrink: 0;
-    border-radius: var(--r-full);
-    background: rgba(255, 255, 255, 0.12);
-    overflow: hidden;
-}
-
-.db-spotlight__progress-fill {
-    display: block;
-    height: 100%;
-    border-radius: var(--r-full);
-    background: var(--accent);
-    transition: width var(--dur-slow) var(--ease-spring);
-}
-
-.db-spotlight__cta {
-    font-size: var(--fs-xs);
+.cockpit-hero__moved-delta {
     font-weight: var(--fw-semibold);
-    color: var(--accent-text);
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.db-spotlight__go {
-    color: var(--accent-text);
-    flex-shrink: 0;
-}
-
-@media (max-width: 860px) {
-    .db-spotlight__body,
-    .db-spotlight__progress {
-        display: none;
-    }
-}
-
-/* Row 3 — chart + updates */
-.db__mid {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    gap: 16px;
-    align-items: stretch;
-}
-
-.db-chart__dl {
-    padding: 6px 12px;
-}
-
-.db-chart__note {
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--text-dim);
-    text-align: center;
-}
-
-/* Segmented control */
-.segmented {
-    display: inline-flex;
-    padding: 3px;
-    gap: 2px;
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border);
-}
-
-.segmented__opt {
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 12.5px;
-    font-weight: 500;
+    font-variant-numeric: tabular-nums;
     color: var(--text-muted);
-    transition: background var(--t-fast), color var(--t-fast);
 }
+.cockpit-hero__moved-delta.is-up { color: var(--positive); }
+.cockpit-hero__moved-delta.is-down { color: var(--negative); }
 
-.segmented--sm .segmented__opt {
-    padding: 4px 10px;
-    font-size: 12px;
-}
+.cockpit-hero__spark { flex: none; color: var(--accent); }
 
-.segmented__opt:hover {
-    color: var(--text);
-}
+.cockpit-hero__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 
-.segmented__opt--active {
-    background: var(--accent);
-    color: #ffffff;
-}
+/* ── Zone 2 · the queue ─────────────────────────────────────────────────── */
+.cockpit-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
-/* Latest Updates */
-.db-updates {
-    display: flex;
-    flex-direction: column;
-}
-
-.db-updates__search {
+.cockpit-queue__row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    height: 36px;
-    padding: 0 10px;
-    border-radius: 9px;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    margin-bottom: 4px;
+    gap: var(--sp-3);
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.cockpit-queue__row:last-child { border-bottom: none; }
+
+.cockpit-queue__count {
+    flex: none;
+    min-width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--r-md);
+    background: var(--layer-inset);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-semibold);
+}
+/* Sending that has actually stopped is the one row allowed to shout. */
+.cockpit-queue__row--sequence-stopped .cockpit-queue__count {
+    background: var(--negative-soft);
+    color: var(--negative);
 }
 
-.db-updates__input {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-size: 13px;
-    font-family: inherit;
+.cockpit-queue__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cockpit-queue__title { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+.cockpit-queue__detail { font-size: var(--fs-2xs); color: var(--text-muted); text-wrap: pretty; }
+
+/* ── Zone 3 · the gap ───────────────────────────────────────────────────── */
+.cockpit-next { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.cockpit-next__lead { margin: 0; font-size: var(--fs-md); text-wrap: pretty; }
+.cockpit-next__sub { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; max-width: 60ch; }
+
+/* ── Zone 4 · the funnel ────────────────────────────────────────────────── */
+.cockpit-funnel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--sp-3);
 }
 
-.db-updates__input::placeholder {
-    color: var(--text-dim);
+.cockpit-funnel__stage {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: var(--sp-3);
+    border-radius: var(--r-md);
+    background: var(--layer-inset);
+}
+.cockpit-funnel__stage.is-empty { background: transparent; border: 1px dashed var(--border-subtle); }
+
+.cockpit-funnel__label { font-size: var(--fs-2xs); color: var(--text-muted); }
+.cockpit-funnel__value {
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.cockpit-funnel__value--muted { color: var(--text-dim); }
+
+.cockpit-funnel__trend { display: flex; align-items: center; gap: var(--sp-2); color: var(--accent); }
+.cockpit-funnel__delta { font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.cockpit-funnel__delta.is-up { color: var(--positive); }
+.cockpit-funnel__delta.is-down { color: var(--negative); }
+.cockpit-funnel__unlock { align-self: flex-start; padding-left: 0; }
+
+/* ── Zone 5 · contribution ──────────────────────────────────────────────── */
+.cockpit-contrib__summary {
+    margin: 0 0 var(--sp-3);
+    font-size: var(--fs-sm);
+    color: var(--text-secondary);
+    text-wrap: pretty;
 }
 
-.db-updates__divider {
-    height: 1px;
-    margin: 8px 0;
-    border-top: 1px dashed var(--border-light);
-}
+.cockpit-contrib { display: flex; flex-direction: column; }
 
-.db-updates__list {
+.cockpit-contrib__row {
+    display: grid;
+    grid-template-columns: minmax(120px, 200px) minmax(0, 1fr) 80px 64px 76px;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.cockpit-contrib__row:last-child { border-bottom: none; }
+
+/* Work Kepler did not produce is present and legible, but visibly not ours. */
+.cockpit-contrib__row.is-other { color: var(--text-muted); }
+.cockpit-contrib__row.is-other .cockpit-contrib__fill { background: var(--border-strong, var(--border-subtle)); }
+
+.cockpit-contrib__key { display: flex; flex-direction: column; min-width: 0; }
+.cockpit-contrib__production { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+.cockpit-contrib__source { font-size: var(--fs-2xs); color: var(--text-muted); }
+
+.cockpit-contrib__bar { height: 8px; border-radius: var(--r-full); background: var(--layer-inset); overflow: hidden; }
+.cockpit-contrib__fill { display: block; height: 100%; background: var(--accent); border-radius: var(--r-full); }
+
+.cockpit-contrib__num,
+.cockpit-contrib__share { font-size: var(--fs-xs); font-variant-numeric: tabular-nums; text-align: right; }
+
+.cockpit-contrib__caveats {
+    margin: var(--sp-3) 0 0;
+    padding: var(--sp-3) 0 0;
+    border-top: 1px solid var(--border-subtle);
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    overflow-y: auto;
-}
-
-.db-updates__row {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 8px 6px;
-    border-radius: 9px;
-    transition: background var(--t-fast);
-}
-
-.db-updates__row:hover {
-    background: rgba(255, 255, 255, 0.04);
-}
-
-.db-updates__icon {
-    flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9px;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    gap: 6px;
+    font-size: var(--fs-2xs);
     color: var(--text-muted);
+    text-wrap: pretty;
 }
 
-.db-updates__body {
-    flex: 1;
-    min-width: 0;
+@media (max-width: 760px) {
+    .cockpit-contrib__row { grid-template-columns: minmax(0, 1fr) 70px 60px; }
+    .cockpit-contrib__bar, .cockpit-contrib__spacer { display: none; }
+}
+
+/* ── Zone 6 · other goals ───────────────────────────────────────────────── */
+.cockpit-others {
     display: flex;
-    flex-direction: column;
-}
-
-.db-updates__title {
-    font-size: 13px;
-    color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.db-updates__time {
-    font-size: 11.5px;
-    color: var(--text-dim);
-}
-
-.db-updates__loading {
-    padding: 16px;
-    color: var(--text-muted);
-    font-size: 13px;
-}
-
-/* Campaign table */
-.db-table__scroll {
-    overflow-x: auto;
-}
-
-.db-table__table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.db-table__table th {
-    text-align: left;
-    padding: 10px 12px;
-    font-size: 11.5px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-}
-
-.db-table__table td {
-    padding: 14px 12px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border);
-}
-
-.db-table__table tr:last-child td {
-    border-bottom: none;
-}
-
-.db-table__num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-
-.db-table__check-col {
-    width: 40px;
-}
-
-.db-table__id {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text-muted);
-}
-
-.db-table__name {
-    color: var(--text);
-    font-weight: 500;
-}
-
-.db-table__chips {
-    display: flex;
-    gap: 4px;
+    align-items: baseline;
+    gap: var(--sp-3);
     flex-wrap: wrap;
+    padding-top: var(--sp-2);
 }
-
-.db-table__chip {
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 11.5px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-}
-
-.db-table__filter {
-    position: relative;
-}
-
-.db-table__filter-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    z-index: 20;
-    min-width: 160px;
-    padding: 6px;
-    border-radius: 10px;
-    border: 1px solid var(--border-light);
-    background: var(--elevated);
-    box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
-}
-
-.db-table__filter-opt {
-    display: block;
-    width: 100%;
-    padding: 8px 10px;
-    border-radius: 7px;
-    text-align: left;
-    font-size: 13px;
+.cockpit-others__label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); }
+.cockpit-others__list { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.cockpit-others__item { display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-xs); }
+.cockpit-others__name {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
     color: var(--text-secondary);
-    transition: background var(--t-fast);
+    cursor: pointer;
 }
+.cockpit-others__name:hover { color: var(--accent); }
+.cockpit-others__meta { color: var(--text-dim); }
+.cockpit-others__promote {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: var(--fs-2xs);
+    color: var(--text-dim);
+    cursor: pointer;
+    text-decoration: underline;
+}
+.cockpit-others__promote:hover { color: var(--accent); }
 
-.db-table__filter-opt:hover,
-.db-table__filter-opt.is-active {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text);
-}
+/* ── Shared empty state ─────────────────────────────────────────────────── */
+.cockpit-empty { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; padding: var(--sp-2) 0; }
+.cockpit-empty__lead { margin: 0; font-size: var(--fs-md); font-weight: var(--fw-medium); }
+.cockpit-empty__sub { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); max-width: 62ch; text-wrap: pretty; }
 
-.db-table__loading {
-    padding: 16px 12px;
-    color: var(--text-muted);
-    font-size: 13px;
-}
-
-/* Responsive. The KPI strip is auto-fit so it needs no breakpoints of its own;
-   only the separator has to move from vertical to horizontal when cells wrap. */
-@media (max-width: 1024px) {
-    .db__mid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 680px) {
-    .kpi + .kpi {
-        box-shadow: inset 0 1px 0 0 var(--border-subtle);
-    }
-}
+/* The sparkline inherits its stroke from whatever it sits inside. */
+.sparkline { display: block; }
+.sparkline polyline { stroke: currentColor; }
+.sparkline circle { fill: currentColor; }

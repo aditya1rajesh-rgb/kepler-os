@@ -1,97 +1,143 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Search, TrendingUp, RefreshCw, Download } from '../../lib/icons';
+import { RefreshCw } from '../../lib/icons';
 import ModuleScreen from '../../components/layout/ModuleScreen';
-import { useAuth } from '../../context/AuthContext';
-import { useActivation } from '../../context/ActivationContext';
-import { useDashboardData } from '../../hooks/useDashboardData';
-import { workspacePath } from '../../constants/routes';
+import Panel, { PanelHeader } from '../../components/ui/Panel';
+import EmptyState from '../../components/ui/EmptyState';
+import GoalHero from '../../components/cockpit/GoalHero';
+import NeedsYou from '../../components/cockpit/NeedsYou';
+import FunnelSnapshot from '../../components/cockpit/FunnelSnapshot';
+import ChannelContribution from '../../components/cockpit/ChannelContribution';
+import OtherGoals from '../../components/cockpit/OtherGoals';
+import { cockpitService } from '../../services/cockpitService';
+import { dashboardService } from '../../services/dashboardService';
 import { integrationService } from '../../services/integrationService';
-import { computeBrandCompleteness } from '../../lib/brandCompleteness';
-import { pickSpotlight } from '../../lib/spotlight';
-import { downloadCsv } from '../../lib/exportCsv';
-import KpiCard from '../../components/dashboard/KpiCard';
-import SpotlightCard from '../../components/dashboard/SpotlightCard';
-import LeadConversionCard from '../../components/dashboard/LeadConversionCard';
-import LatestUpdates from '../../components/dashboard/LatestUpdates';
-import CampaignTable from '../../components/dashboard/CampaignTable';
+import { MEASURES } from '../../lib/goalFeasibility';
+import { workspacePath } from '../../constants/routes';
+import { toUserMessage } from '../../lib/errors';
+import { useAuth } from '../../context/AuthContext';
 import './Dashboard.css';
 
-const pct = (x) => `${((Number(x) || 0) * 100).toFixed(1)}%`;
-const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+// The cockpit (E5, roadmap S2) — this screen REPLACES the old dashboard.
+//
+// THE ADMISSION FILTER, which is the whole design:
+//
+//   Every card answers one of three questions: what changed since I last looked,
+//   what needs me now, or what should I do next. A card that only reports
+//   current state does not belong.
+//
+// That is what keeps this from drifting back into a tile grid. The KPI strip,
+// the campaign table and the activity feed that used to live here all failed it:
+// they reported, and reporting does not create return. The activity feed's
+// actionable half is now the demand queue; its notable half is attached to the
+// goal, where movement becomes direction instead of noise.
+//
+// COLD START IS A DESIGNED STATE, not a fallback. No goal → the screen becomes
+// the goal-setting path. No connected data → the funnel says what connecting
+// each source would unlock. It degrades into onboarding rather than blankness.
 
 const Dashboard = ({ workspaceId, workspace }) => {
     const navigate = useNavigate();
     const { displayName } = useAuth();
-    const { activation, brand } = useActivation();
-    const data = useDashboardData(workspaceId);
-    const { statuses, trends, series, granularity, setGranularity, tableRows, events, hasVisibility, loading, refreshing, refresh } = data;
 
-    const [range, setRange] = useState('today');
-    const [activityQuery, setActivityQuery] = useState('');
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState('');
 
-    const firstName = (displayName || 'there').split(' ')[0];
-    const ga4Connected = statuses?.ga4?.status === 'connected';
-    const gscConnected = statuses?.gsc?.status === 'connected';
-
-    // Connect flow: OAuth if the connector is configured, else route to Integrations.
-    const connect = (connector) => {
+    const load = useCallback(async () => {
+        if (!workspaceId) return;
         try {
-            window.location.assign(integrationService.buildAuthUrl(workspaceId, connector));
-        } catch {
-            navigate(workspacePath(workspaceId, 'integrations'));
+            setData(await cockpitService.load(workspaceId));
+            setError('');
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not load your workspace.'));
+        }
+    }, [workspaceId]);
+
+    // Switching workspace resets to loading during render rather than in an
+    // effect — React's documented prop-derived reset, and the same pattern
+    // ModuleScreen uses for its rail. An effect would paint the previous
+    // workspace's cockpit for one frame first, which is exactly the kind of
+    // wrong-but-plausible number this screen must never show.
+    const [lastWorkspaceId, setLastWorkspaceId] = useState(workspaceId);
+    if (workspaceId !== lastWorkspaceId) {
+        setLastWorkspaceId(workspaceId);
+        setData(null);
+        setLoading(true);
+    }
+
+    useEffect(() => {
+        let cancelled = false;
+        load().finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [load]);
+
+    // Refresh pulls fresh provider metrics first — otherwise "refresh" would
+    // re-read the same snapshots and look broken.
+    const refresh = async () => {
+        setRefreshing(true);
+        try {
+            await dashboardService.refreshAll(workspaceId, {
+                statuses: data?.statuses ?? {},
+                // Every campaign, not the hero goal's — the GA4 pull matches utm
+                // strings against this list, and a short list would dump other
+                // campaigns' traffic into the unattributed bucket.
+                campaigns: data?.campaigns ?? [],
+            }).catch(() => {});
+            await load();
+        } finally {
+            setRefreshing(false);
         }
     };
 
-    const brandCompleteness = useMemo(() => computeBrandCompleteness(brand ?? {})?.percent ?? 0, [brand]);
-    const spotlight = useMemo(
-        () => pickSpotlight({ activation, brandCompleteness, ga4Connected, hasVisibility }),
-        [activation, brandCompleteness, ga4Connected, hasVisibility],
-    );
-    const runSpotlight = () => {
-        const a = spotlight.action;
-        if (a.type === 'connect') return connect(a.connector);
-        if (a.to) return navigate(a.to);
-        return navigate(workspacePath(workspaceId, a.module, a.child));
+    const goTo = (module, child) => navigate(workspacePath(workspaceId, module, child));
+
+    const connect = (connector) => {
+        if (!connector) return goTo('integrations');
+        try {
+            window.location.assign(integrationService.buildAuthUrl(workspaceId, connector));
+        } catch {
+            goTo('integrations');
+        }
     };
 
-    // Client-side range + text filter over the loaded events.
-    const filteredEvents = useMemo(() => {
-        const q = activityQuery.trim().toLowerCase();
-        const since = range === 'today' ? startOfToday().getTime() : Date.now() - 7 * 86400000;
-        return events.filter((ev) => new Date(ev.createdAt).getTime() >= since && (!q || (ev.title || '').toLowerCase().includes(q)));
-    }, [events, range, activityQuery]);
-
-    const exportAll = () => {
-        downloadCsv(`${(workspace?.name || 'workspace').toLowerCase().replace(/\s+/g, '-')}-campaigns.csv`, tableRows, [
-            { key: 'id', label: 'ID' },
-            { key: 'title', label: 'Campaign' },
-            { key: 'status', label: 'Status' },
-            { key: 'channelMix', label: 'Channels', format: (v) => (Array.isArray(v) ? v.join(' / ') : '') },
-            { key: 'sessions', label: 'Sessions' },
-            { key: 'conversions', label: 'Conversions' },
-            { key: 'revenue', label: 'Revenue' },
-        ]);
+    const setPrimary = async (goal) => {
+        try {
+            await cockpitService.setPrimaryGoal(workspaceId, goal.id);
+            await load();
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not set the primary goal.'));
+        }
     };
 
-    const downloadSeries = () => {
-        downloadCsv(`lead-conversion-${granularity}.csv`, series?.points ?? [], [
-            { key: 'label', label: 'Period' },
-            { key: 'leads', label: 'Leads' },
-            { key: 'conversions', label: 'Conversions' },
-        ]);
-    };
+    // "What moved" for the hero: the goal's own measure, from the funnel stage
+    // that shares its metric. Real readings only — no detector is inventing a
+    // cause, and the hero says so.
+    const movement = useMemo(() => {
+        if (!data?.hero || data.hero.kind !== 'measured') return null;
+        const metricKey = MEASURES[data.hero.measure]?.metricKey;
+        return (data.funnel ?? []).find((s) => s.metricKey === metricKey) ?? null;
+    }, [data]);
+
+    const firstName = (displayName || 'there').split(' ')[0];
+
+    if (loading) {
+        return <div className="cockpit module-kepler"><EmptyState loading message="Loading your workspace…" /></div>;
+    }
+
+    const hero = data?.hero ?? null;
+    const contribution = data?.contribution ?? null;
 
     return (
         <ModuleScreen
-            moduleKey="dashboard"
-            className="db"
-            /* The greeting is the screen's context, not a second page title —
-               v3 rendered it as a 28px <h1> directly under the app header's own
-               "Dashboard", so the screen opened with two competing headings. */
+            moduleKey="cockpit"
+            className="cockpit module-kepler"
             status={
-                <span className="db__greeting">
-                    Hello, {firstName} — here’s what’s happening across {workspace?.name || 'your workspace'}.
+                <span className="cockpit__greeting">
+                    {hero
+                        ? `Hello, ${firstName} — here’s where ${workspace?.name || 'your workspace'} stands.`
+                        : `Hello, ${firstName} — ${workspace?.name || 'your workspace'} has no goal yet.`}
                 </span>
             }
             actions={
@@ -99,71 +145,126 @@ const Dashboard = ({ workspaceId, workspace }) => {
                     <RefreshCw size={15} strokeWidth={1.8} /> {refreshing ? 'Refreshing…' : 'Refresh'}
                 </button>
             }
+            banner={
+                <>
+                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {/* Name the zone that failed rather than letting it render as
+                        a convincing "nothing here". */}
+                    {data?.failures?.length > 0 && (
+                        <p className="brand-intel-module__source-label" role="status">
+                            Could not load: {data.failures.join(', ')}. The rest of the screen is current.
+                        </p>
+                    )}
+                </>
+            }
             primary={
-                <button type="button" className="btn btn-primary" onClick={exportAll}>
-                    <Download size={15} strokeWidth={1.8} /> Export
-                </button>
+                hero ? null : (
+                    <button type="button" className="btn btn-primary" onClick={() => goTo('goals')}>
+                        Set your first goal
+                    </button>
+                )
             }
         >
-            {/* Next best action — one row, read first, then out of the way. */}
-            <SpotlightCard
-                icon={spotlight.icon}
-                title={spotlight.title}
-                body={spotlight.body}
-                progress={spotlight.progress}
-                ctaLabel={spotlight.ctaLabel}
-                onCta={runSpotlight}
+            {hero ? (
+                <GoalHero
+                    goal={hero}
+                    projection={data.projection}
+                    inferred={data.heroInferred}
+                    movement={movement}
+                    campaignCount={data.goalCampaigns?.length ?? 0}
+                    onOpenGoal={(g) => navigate(`${workspacePath(workspaceId, 'goals')}?goal=${g.id}`)}
+                    onSetPrimary={setPrimary}
+                    onAddCampaign={(g) => navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?new=1&goal=${g.id}`)}
+                />
+            ) : (
+                /* Cold start: the screen IS the goal-setting path. */
+                <Panel className="module-panel">
+                    <PanelHeader title="Start with a goal" meta="Everything else ladders to it" />
+                    <div className="cockpit-empty">
+                        <p className="cockpit-empty__lead">
+                            Nothing here can tell you how you are doing until there is something to be doing well against.
+                        </p>
+                        <p className="cockpit-empty__sub">
+                            A goal gives campaigns a parent, gives generated assets something to serve, and gives this
+                            screen a number to hold you to. Kepler proposes a target from your own history rather than
+                            asking you to guess one.
+                        </p>
+                        <button type="button" className="btn btn-primary" onClick={() => goTo('goals')}>
+                            Set your first goal
+                        </button>
+                    </div>
+                </Panel>
+            )}
+
+            <div className="cockpit__row">
+                <NeedsYou
+                    rows={data?.needsYou ?? []}
+                    hasGoal={Boolean(hero)}
+                    onGo={(row) => goTo(row.module, row.child)}
+                    onNextBest={() => (hero
+                        ? navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?new=1&goal=${hero.id}`)
+                        : goTo('goals'))}
+                />
+
+                {/* Zone 3 — what to do next. E10 scores which work would close the
+                    gap; until it exists this states the size of the gap honestly
+                    and stops there rather than ranking work it has not measured. */}
+                <Panel className="module-panel">
+                    <PanelHeader title="What would close the gap" meta="Sized from the goal, not yet ranked" />
+                    {hero && hero.kind === 'measured' && data.projection?.requiredPerDay !== null && data.projection?.requiredPerDay !== undefined ? (
+                        <div className="cockpit-next">
+                            <p className="cockpit-next__lead">
+                                Landing this goal needs{' '}
+                                <strong>
+                                    {new Intl.NumberFormat().format(Math.round(data.projection.requiredPerDay))}
+                                </strong>{' '}
+                                {MEASURES[hero.measure]?.unit ?? ''} a day for the remaining{' '}
+                                {data.projection.daysRemaining ?? '—'} days.
+                            </p>
+                            <p className="cockpit-next__sub">
+                                {data.goalCampaigns?.length
+                                    ? `${data.goalCampaigns.length} campaign${data.goalCampaigns.length === 1 ? '' : 's'} currently ladder to it.`
+                                    : 'Nothing ladders to it yet, so nothing is working on it.'}
+                                {' '}Kepler does not yet estimate which campaign would close this gap — it will not rank
+                                work it has not measured.
+                            </p>
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?new=1&goal=${hero.id}`)}
+                            >
+                                Plan a campaign against it
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="cockpit-empty">
+                            <p className="cockpit-empty__lead">Not enough measured history to size a gap.</p>
+                            <p className="cockpit-empty__sub">
+                                {hero
+                                    ? 'Once campaigns under this goal have metric readings, the required pace appears here.'
+                                    : 'Set a measured goal and this fills in from your own rates.'}
+                            </p>
+                        </div>
+                    )}
+                </Panel>
+            </div>
+
+            <FunnelSnapshot stages={data?.funnel ?? []} onConnect={(stage) => connect(stage.connector)} />
+
+            <ChannelContribution
+                contribution={contribution}
+                caveats={data?.caveats ?? []}
+                goalName={hero?.name ?? ''}
+                onDrill={(row) => navigate(
+                    `${workspacePath(workspaceId, 'measurement')}?channel=${encodeURIComponent(row.key)}${hero ? `&goal=${hero.id}` : ''}`,
+                )}
             />
 
-            {/* KPI strip: context for the work below, so it auto-fits and never
-                leaves the hole v3's fixed 3-plus-1 grid left at narrow widths. */}
-            <div className="db__kpis">
-                <KpiCard
-                    label="Active Campaigns"
-                    icon={Target}
-                    value={trends?.activeCampaigns?.value ?? (loading ? '—' : 0)}
-                    delta={trends?.activeCampaigns?.delta}
-                />
-                <KpiCard
-                    label="Search CTR"
-                    icon={Search}
-                    state={gscConnected ? 'ready' : 'empty'}
-                    value={pct(trends?.searchCtr?.value)}
-                    delta={trends?.searchCtr?.delta}
-                    empty={{ ctaLabel: 'Connect Search Console', message: 'for search click-through', onCta: () => connect('gsc') }}
-                />
-                <KpiCard
-                    label="Conversion Rate"
-                    icon={TrendingUp}
-                    state={ga4Connected ? 'ready' : 'empty'}
-                    value={pct(trends?.conversionRate?.value)}
-                    delta={trends?.conversionRate?.delta}
-                    empty={{ ctaLabel: 'Connect GA4', message: 'for conversion tracking', onCta: () => connect('ga4') }}
-                />
-            </div>
-
-            <div className="db__mid">
-                <LeadConversionCard
-                    series={series}
-                    granularity={granularity}
-                    onGranularityChange={setGranularity}
-                    connected={ga4Connected || statuses?.zoho?.status === 'connected'}
-                    onDownload={downloadSeries}
-                />
-                <LatestUpdates
-                    events={filteredEvents}
-                    loading={loading}
-                    range={range}
-                    onRangeChange={setRange}
-                    query={activityQuery}
-                    onQueryChange={setActivityQuery}
-                />
-            </div>
-
-            <CampaignTable
-                rows={tableRows}
-                loading={loading}
-                onViewAll={() => navigate(workspacePath(workspaceId, 'measurement'))}
+            <OtherGoals
+                goals={data?.goals ?? []}
+                heroId={hero?.id}
+                onOpen={(g) => navigate(`${workspacePath(workspaceId, 'goals')}?goal=${g.id}`)}
+                onSetPrimary={setPrimary}
             />
         </ModuleScreen>
     );

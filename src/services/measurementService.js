@@ -85,6 +85,87 @@ export const measurementService = {
         };
     },
 
+    /**
+     * L1 — one channel's detail (E5's drill target).
+     *
+     * The cockpit summarises; this is where you drill. Two rules from the
+     * roadmap shape it:
+     *
+     * 1. CHANNEL-SHAPED, NOT A GENERIC TABLE. SEO has positions and impressions,
+     *    outreach has sends and replies, paid has spend. A one-size table would
+     *    be useless for all three, so the shared spine is contribution and the
+     *    rest is per-channel.
+     * 2. DRILLING PRESERVES GOAL CONTEXT. Landing in a workspace-wide view would
+     *    break the thread at the first click, so the goal's campaigns scope this
+     *    exactly as they scope the cockpit's table.
+     */
+    getChannelDetail: async (workspaceId, { key, goalCampaignIds = null } = {}) => {
+        assertWorkspaceId(workspaceId);
+        const contribution = await measurementService.getContribution(workspaceId, { goalCampaignIds });
+        const row = (contribution.contributions ?? []).find((c) => c.key === key) ?? null;
+        if (!row) return { row: null, contribution, campaigns: [], channel: null };
+
+        const campaigns = await campaignService.listCampaigns(workspaceId, { limit: 200 }).catch(() => []);
+        const behind = campaigns.filter((c) => row.campaignIds.includes(c.id));
+
+        // The channel-shaped half, from the providers that actually describe it.
+        const { data, error } = await supabase
+            .from('campaign_metrics')
+            .select('campaign_id, provider, metrics, captured_at')
+            .eq('workspace_id', workspaceId)
+            .order('captured_at', { ascending: false });
+        if (error) throw error;
+
+        const latest = {};
+        for (const r of data ?? []) {
+            const k = `${r.campaign_id ?? UNATTRIBUTED}|${r.provider}`;
+            if (!latest[k]) latest[k] = r;
+        }
+        const rowsFor = (provider, ids) => Object.values(latest)
+            .filter((r) => r.provider === provider && (ids === null || ids.includes(r.campaign_id)));
+        const sum = (rows, metric) => rows.reduce((s, r) => s + (Number(r.metrics?.[metric]) || 0), 0);
+
+        let channel = null;
+        if (row.production === 'SEO') {
+            // GSC is workspace-level (no campaign), so it describes the surface
+            // rather than these campaigns — labelled as such in the UI.
+            const gsc = rowsFor('gsc', null)[0];
+            channel = gsc
+                ? {
+                    kind: 'seo',
+                    scope: 'workspace',
+                    impressions: gsc.metrics?.impressions ?? null,
+                    clicks: gsc.metrics?.clicks ?? null,
+                    ctr: gsc.metrics?.ctr ?? null,
+                    position: gsc.metrics?.position ?? null,
+                    capturedAt: gsc.captured_at,
+                }
+                : { kind: 'seo', scope: 'workspace', missing: 'Search Console is not connected, so impressions and position are unavailable.' };
+        } else if (row.production === 'Outreach') {
+            const rows = rowsFor('outreach', row.campaignIds);
+            channel = {
+                kind: 'outreach',
+                scope: 'campaigns',
+                sent: sum(rows, 'sent'),
+                replied: sum(rows, 'replied'),
+                meetings: sum(rows, 'meetings'),
+                enrolled: sum(rows, 'enrolled'),
+            };
+        } else if (row.production === 'Paid') {
+            // The structural gap the roadmap insists is stated rather than
+            // charted around: contribution is real, spend does not exist here.
+            channel = {
+                kind: 'paid',
+                scope: 'campaigns',
+                missing: 'No ad platform is connected, so spend, CPC and CPA are not available. Sessions and conversions below are real; cost is not measured.',
+            };
+        } else if (row.production === 'Social') {
+            channel = { kind: 'social', scope: 'campaigns', missing: 'Post-level engagement lands here once social performance is ingested.' };
+        }
+
+        return { row, contribution, campaigns: behind, channel };
+    },
+
     /** Pull GA4 outcomes attributed by campaign, snapshot them, return a summary. */
     pullGa4: async (workspaceId, campaigns = []) => {
         assertWorkspaceId(workspaceId);

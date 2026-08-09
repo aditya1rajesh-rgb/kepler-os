@@ -50,8 +50,13 @@ export const buildPeriods = (granularity, count, now = new Date()) => {
  * For each period, sum (across campaigns) the latest `provider` snapshot whose
  * captured_at falls at or before the period end. Returns [{ ...period, value }].
  * `rows` are raw campaign_metrics rows: { campaign_id, provider, metrics, captured_at }.
+ *
+ * `nullWhenMissing` distinguishes "nobody had taken a reading yet" from "the
+ * reading was zero". The default stays 0 because the KPI cards were built on it,
+ * but anything that DRAWS the series wants null — a period with no snapshot
+ * plotted at the floor is a cliff that never happened.
  */
-export const latestPerPeriod = (rows, periods, { provider, metricKey }) => {
+export const latestPerPeriod = (rows, periods, { provider, metricKey, nullWhenMissing = false }) => {
     const relevant = (rows ?? []).filter((r) => r.provider === provider);
     return periods.map((p) => {
         const endMs = p.end.getTime();
@@ -63,6 +68,7 @@ export const latestPerPeriod = (rows, periods, { provider, metricKey }) => {
             const prev = latestByCampaign.get(key);
             if (!prev || t > prev.t) latestByCampaign.set(key, { t, value: Number(r.metrics?.[metricKey] ?? 0) });
         }
+        if (nullWhenMissing && latestByCampaign.size === 0) return { ...p, value: null };
         let value = 0;
         for (const entry of latestByCampaign.values()) value += entry.value;
         return { ...p, value };
