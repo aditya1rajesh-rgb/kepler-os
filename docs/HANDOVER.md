@@ -1,6 +1,6 @@
 # Handover — Kepler roadmap execution
 
-**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `4c0919e`
+**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `4d187c1`
 
 Written so a fresh session can pick this up without replaying the conversation.
 Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
@@ -11,27 +11,34 @@ Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
 
 **Everything is committed and pushed.** `origin/staging` == `staging`.
 
-- `370 tests pass` · production build clean · **lint 56 errors — that is the
+- `399 tests pass` · production build clean · **lint 56 errors — that is the
   accepted baseline** (it was 57; deleting the old dashboard components took one
   with them). CI runs `npm test` + `npm run build` deliberately, never lint.
-- **The staging database is current, but two edge functions are AHEAD of it.**
-  All 13 migrations (020–032) were applied manually on 2026-08-09 and all 9
-  functions deployed — then **E5 changed `oauth-proxy` and `metrics-snapshot`**
-  and they have not been redeployed (CI is still broken, see §5). No migration is
-  pending: E5 needed none. Until those two land, GA4 snapshots carry no
-  `bySource` key and the cockpit's channel table honestly reports that.
+- **The repo is now AHEAD of the deployed backend.** Migrations 020–032 were
+  applied manually on 2026-08-09 and all 9 functions deployed. Since then:
+
+  | Pending | From | Effect until deployed |
+  |---|---|---|
+  | `oauth-proxy`, `metrics-snapshot` (changed) | E5 | GA4 snapshots carry no `bySource`; the channel table says so |
+  | `033_change_events.sql` (new table) | E7 | `change_events` does not exist — detection fails, hero shows nothing moved |
+  | `034_detector_run_cron.sql` (new schedule) | E7 | No daily detection; the manual button still works once 033 lands |
+  | `detector-run` (new function) | E7 | pg_net posts 404 harmlessly |
+
+  All of it is blocked on the same expired Supabase token (§5). **033 is the one
+  that matters** — without it E7 is inert in production, including the manual
+  path.
 - **The email sender is NOT armed.** The Vault secrets for 023/028 were
   deliberately skipped, so `kepler-send-scheduler` and `kepler-inbox-monitor`
   are scheduled but no-op (401). See §5.
 
 ---
 
-## 2. What shipped — the whole NOW tier, plus E3 and E5
+## 2. What shipped — the whole NOW tier, plus E3, E5 and E7
 
 Roadmap NOW tier is **complete** (E27 excluded — the user owns the approvals),
-and two NEXT-tier epics are done: **E3** and **E5**. Neither needed a migration.
-E3 is client-side only; **E5 changed two edge functions** and those are the only
-undeployed code in the repo.
+and three NEXT-tier epics are done: **E3**, **E5** and **E7**. E3 is client-side
+only; E5 changed two edge functions; E7 adds a table, a schedule and a function.
+Everything undeployed is listed in §1.
 
 | Epic | What |
 |---|---|
@@ -44,6 +51,7 @@ undeployed code in the repo.
 | **E2** | Goals + feasibility engine — the spine |
 | **E3** | Goal-grounded generation — the spine, read (see §2b) |
 | **E5** | Goal cockpit — the return surface, replaces the Dashboard (see §2c) |
+| **E7** | Scheduled detectors — what moved, and the hero that shows it (see §2d) |
 
 **E2 is the important one.** Migration 032 adds `goals`, `goal_checkpoints`,
 `goal_target_history`, `goal_links` and `campaigns.goal_id`. The feasibility
@@ -209,6 +217,98 @@ each, which reads as missing data rather than as a different kind of thing.
 
 ---
 
+## 2d. E7 — scheduled detectors
+
+The roadmap files Kepler's jobs under **entropy**: "stateless jobs discard every
+run". Teardowns, visibility scans and Search Console pulls looked at the world,
+rendered once, and kept nothing — so the product could only say what IS, never
+what CHANGED. E7 is the kept half, and it fills the hole E5 left on the goal
+hero, which showed a level delta and admitted nothing was computing the cause.
+
+### The four detectors
+
+| Kind | Compares | Scope |
+|---|---|---|
+| `metric` | last two readings of a measure | per campaign **and** workspace-wide |
+| `search` | two Search Console windows, by query | workspace |
+| `visibility` | the last two scan runs, per prompt × surface | workspace |
+| `outreach` | last two readings of replies / meetings | workspace |
+
+Rules live in `src/lib/detectors.js` and are **mirrored** into
+`supabase/functions/_shared/detectors.ts` for the cron — the same duplication
+`_shared/googleData.ts` already carries, for the same reason (the scheduled
+function stays self-contained). **The JS copy is the one with the tests. Change
+it first, then bring it across.**
+
+### Most of it is refusals
+
+A detector's failure mode is not missing a change, it is announcing one that did
+not happen — and "+45% replies" reads identically whether it is true or an
+artefact of two readings on small numbers. `tests/detectors.test.js` pins:
+
+- **one reading is never a change** — no "new, +100%";
+- **both floors must clear**, absolute AND relative, so 2 replies becoming 3 is
+  not news at +50%;
+- **a lower Search Console position is a GAIN.** Written the obvious way the
+  detector reports every improvement as a decline, and the sentence reads
+  perfectly either way;
+- **a lost citation is reported as loudly as a gained one**, and sorted first —
+  a detector that only reports good news is a marketing feature;
+- a percentage against a zero base is **null**, not +100%;
+- **silence is a result.**
+
+### The sentence on the hero
+
+"Alongside", never "because". Kepler observes that three terms climbed while
+traffic rose in the same window; it has not established cause. Correlation
+stated as correlation is useful; correlation stated as cause is what every
+analytics vendor does and none of them can defend.
+
+Only the goal's **own account-level measure** may headline. Everything else —
+other measures, campaign-scoped moves — is a contributor that names itself.
+
+### Two paths, one dedupe key
+
+`detector-run` (pg_cron, 06:00 UTC) is the scheduled path;
+`changeEventsService.detectNow` is the manual "Check for changes" button. Both
+write through the same `dedupe_key`, so a manual run racing the cron produces one
+row. `detected_by` records which found it, because "nothing moved" means
+something different when the schedule has not run for three days.
+
+The button is not a nicety: until 033 and `detector-run` are deployed, it is the
+only path — and a feature that only works after an ops task is a feature nobody
+sees. `seoOperator` has the same manual-first shape.
+
+### Four bugs the harness found, none of which would have looked wrong
+
+1. **Workspace-wide and per-campaign events shared a dedupe key.** The unique
+   index kept one, and a real movement vanished with no error anywhere. The
+   campaign is now part of the key.
+2. **One prompt on two answer engines shared a key** the same way — the surface
+   is now part of the identity.
+3. **Search events were stamped `now`**, so pressing the button twice stored the
+   same ranking move twice. They are stamped with the window ends, which only
+   move once a day.
+4. **The hero headlined the wrong number** — first a campaign-scoped one
+   ("Sessions rose to 2,295" while the account read 8,136), then, after that fix,
+   a different measure entirely ("Revenue rose 5.1%" under a Sessions goal).
+
+Verified in the harness: 13 changes detected, a re-run writes nothing new, and
+the hero reads *"Also moved: Revenue up 160,803; 'admission management software'
+climbed 2 positions; 'ken42' climbed 2 positions."*
+
+### Not done, and it is a real gap
+
+S4 says "**E7 gains the native scanner on a schedule** (currently manual-only)".
+It has not. `detector-run` compares the last two visibility scan runs but never
+triggers one, so on an account where nobody presses Scan there is never a second
+run to compare and the visibility detector is permanently silent — correctly,
+but uselessly. Scheduling the scan itself is a separate decision because it
+spends money per run on every workspace, every day, whether or not anyone is
+looking. Worth pairing with E13, which reworks that surface anyway.
+
+---
+
 ## 3. E30 — the audit finding, and why it exists
 
 An audit of all 10 screen specs found that **screen-structure decisions were
@@ -258,6 +358,11 @@ content), Settings' three children (E9).
 - **`replies.raw_snippet` holds the email SUBJECT, not the body**, despite the
   name. The Replies screen labels it honestly; fixing it properly means
   `inbox-monitor` storing a body excerpt (a real gap, not yet built).
+- **A dedupe key must carry every axis the event varies on.** E7 shipped three
+  variants of one bug in a day: workspace-vs-campaign, prompt-vs-surface, and a
+  timestamp of "now" instead of the window it describes. Each let a unique index
+  silently drop a real row, or store the same one twice, with no error anywhere.
+  When adding a detector, ask what two different events could share this key.
 - **`campaign_metrics` has no `source` column and does not need one.** E5's
   source split lives in `metrics.bySource` (JSONB). Two writers produce it —
   `measurementService.pullGa4` and the `metrics-snapshot` cron — and they must
@@ -283,10 +388,12 @@ content), Settings' three children (E9).
 
 ## 5. Blocked / needs the user
 
-0. **Two edge functions are undeployed.** E5 changed `oauth-proxy` (the browser's
-   GA4 report) and `metrics-snapshot` (the cron's). Until both ship, no snapshot
-   carries `metrics.bySource` and the cockpit's channel table falls back to a
-   single `Other—Unknown` row and says why. Deploying needs the token in (1).
+0. **The backend is behind the repo — see the table in §1.** Two changed
+   functions (E5), two new migrations and one new function (E7). Deploying any of
+   it needs the token in (1). Order matters: **033 first** — until that table
+   exists E7 is inert in production, including the manual button, and the hero
+   just reports that nothing moved. 034 and `detector-run` only make detection
+   automatic.
 1. **CI `staging-backend` is broken.** It fails at `supabase link` with
    `{"message":"Unauthorized"}` — `SUPABASE_ACCESS_TOKEN` is expired or wrong.
    Deploys are manual until it is rotated. Full instructions in
@@ -310,15 +417,16 @@ content), Settings' three children (E9).
 
 The goal spine is now closed in both directions: E3 pushed the goal **down** into
 generation, E5 brought the outcome **back up** into a surface worth returning to.
-Two things E5 left as named holes, and they are the strongest candidates:
+E7 closed the first of the two holes E5 named. The other is the obvious next:
 
-1. **E7 · Scheduled detectors (7.7 — highest ICE, no dependencies).** E5 built
-   the surface its output lands on. The hero's "what moved" currently shows a
-   level change and admits nothing is computing the cause; E7 is the cause. This
-   is the smallest change that makes the cockpit worth opening daily.
-2. **E10 · Continuous goal recommendation (7.3).** Zone 3. The cockpit sizes the
-   gap and then deliberately stops, because it will not rank work it has not
-   measured. E10 is the ranking, and the zone is already framed for it.
+1. **E10 · Continuous goal recommendation (7.3).** Zone 3, still empty by
+   design: the cockpit sizes the gap and refuses to rank work it has not
+   measured. E10 is that ranking, the zone is already framed for it, and E7 now
+   supplies the change signal it would score against.
+2. **E17 · Outreach warnings (7.3).** Contains E1, which shipped; what remains is
+   the rest of the warning surface. The demand queue is already the place for it.
+3. **E15 · Revenue picture (7.3).** No dependencies, and the funnel's revenue
+   stage currently ends at a number with no honest cut line behind it.
 
 Then **E28 · Library as corpus (7.3)** — E3's PRIOR leg reads `content_items` by
 campaign; E28 makes the corpus first-class, which turns "do not repeat these"
@@ -369,3 +477,12 @@ E5 added one more, and set the demo up so the cockpit has something to show:
 - If another session is already on `5176`, add a second launch config on a spare
   port rather than fighting for it — a page reload there would reset the store
   you just set up.
+
+E7 adds one more, and it is the fastest way to exercise a detector:
+
+- **`change_events` is seeded EMPTY on purpose.** The demo's own metric history,
+  GSC fixtures and two visibility scan runs are what "Check for changes" runs
+  against, so the harness exercises real detection rather than pre-baked events.
+  Create a goal, ladder a campaign, then press the button (or call
+  `changeEventsService.detectNow` from the console) — 13 changes is the expected
+  count on the shipped dataset, and a second run must write none.
