@@ -237,22 +237,52 @@ const fromCurrent = (current, multiple, weekIndex) => {
     return Math.max(0, Math.round(base * (1 + (multiple - 1) * progress)));
 };
 
-const seriesFor = (campaignKey, campaignId, { sessions, users, conversions, crmRecords, outreach, revenue, seed }) => {
+/**
+ * Split a ga4 level across `source|medium` keys — the shape E5 zone 5 reads
+ * (`metrics.bySource`, written by measurementService.pullGa4 and the
+ * metrics-snapshot cron). Shares are of the campaign's own sessions; the
+ * remainder after rounding lands on the first source so the parts still sum to
+ * the whole, because a contribution table whose rows do not add up to the total
+ * is the exact failure this zone exists to avoid.
+ */
+const splitBySource = (sessions, users, conversions, sources) => {
+    const bySource = {};
+    let sessionsLeft = sessions;
+    let usersLeft = users;
+    let conversionsLeft = conversions;
+    sources.forEach((s, i) => {
+        const last = i === sources.length - 1;
+        const sess = last ? sessionsLeft : Math.round(sessions * s.share);
+        const usr = last ? usersLeft : Math.round(users * s.share);
+        const conv = last ? conversionsLeft : Math.round(conversions * s.share);
+        bySource[`${s.source}|${s.medium}`] = { sessions: sess, users: usr, conversions: conv };
+        sessionsLeft -= sess;
+        usersLeft -= usr;
+        conversionsLeft -= conv;
+    });
+    return bySource;
+};
+
+const seriesFor = (campaignKey, campaignId, { sessions, users, conversions, crmRecords, outreach, revenue, seed, sources }) => {
     const rows = [];
     for (let w = WEEKS - 1; w >= 0; w -= 1) {
         const weekIndex = WEEKS - 1 - w;
         const capturedAt = daysAgo(w * 7 + 0.5, { hour: 6 });
 
         if (sessions) {
+            const s = level(sessions, 2.5, weekIndex, seed);
+            const u = level(users, 2.4, weekIndex, seed + 1);
+            const c = level(conversions, 3.1, weekIndex, seed + 2);
             rows.push({
                 id: id(`metric-ga4-${campaignKey}-${w}`),
                 workspace_id: WS,
                 campaign_id: campaignId,
                 provider: 'ga4',
                 metrics: {
-                    sessions: level(sessions, 2.5, weekIndex, seed),
-                    users: level(users, 2.4, weekIndex, seed + 1),
-                    conversions: level(conversions, 3.1, weekIndex, seed + 2),
+                    sessions: s,
+                    users: u,
+                    conversions: c,
+                    ...(sources?.length ? { bySource: splitBySource(s, u, c, sources) } : {}),
                 },
                 captured_at: capturedAt,
             });
@@ -325,18 +355,30 @@ const gscSeries = () => {
 
 export const campaign_metrics = [
     ...gscSeries(),
+    // The `sources` mixes are what E5's production—source table reads. They are
+    // the mediums lib/tracking.js actually mints, so the demo exercises the real
+    // keying rules rather than a convenient fiction.
     ...seriesFor('intake', id('campaign-intake'), {
         sessions: 640, users: 512, conversions: 11,
         crmRecords: 6,
         outreach: { enrolled: 8, sent: 19, replied: 3, meetings: 2 },
         revenue: 480000,
         seed: 0.4,
+        sources: [
+            { source: 'linkedin', medium: 'paid_social', share: 0.46 },
+            { source: 'sendgrid', medium: 'email', share: 0.34 },
+            { source: 'linkedin.com', medium: 'social', share: 0.2 },
+        ],
     }),
     ...seriesFor('accreditation', id('campaign-accreditation'), {
         sessions: 910, users: 764, conversions: 17,
         crmRecords: 9,
         revenue: 260000,
         seed: 1.1,
+        sources: [
+            { source: 'google', medium: 'cpc', share: 0.58 },
+            { source: 'sendgrid', medium: 'email', share: 0.42 },
+        ],
     }),
     ...seriesFor('consolidation', id('campaign-consolidation'), {
         sessions: 210, users: 178, conversions: 3,
@@ -344,10 +386,21 @@ export const campaign_metrics = [
         outreach: { enrolled: 5, sent: 8, replied: 2, meetings: 1 },
         revenue: 0,
         seed: 2.3,
+        sources: [
+            { source: 'sendgrid', medium: 'email', share: 0.71 },
+            { source: 'linkedin.com', medium: 'referral', share: 0.29 },
+        ],
     }),
-    // Unattributed traffic — the honest "we cannot tie this to a campaign" bucket.
+    // Unattributed traffic — the honest "we cannot tie this to a campaign"
+    // bucket, and the biggest block in the table. Organic dominates precisely
+    // because pages published outside Kepler carry no campaign tag.
     ...seriesFor('unattributed', null, {
         sessions: 1480, users: 1210, conversions: 9,
         seed: 3.7,
+        sources: [
+            { source: 'google', medium: 'organic', share: 0.62 },
+            { source: '(direct)', medium: '(none)', share: 0.26 },
+            { source: 'bing', medium: 'organic', share: 0.12 },
+        ],
     }),
 ];

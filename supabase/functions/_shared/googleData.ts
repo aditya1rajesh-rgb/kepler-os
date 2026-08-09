@@ -28,7 +28,11 @@ export const googleAccessToken = async (refreshToken: string): Promise<string> =
   return data.access_token as string;
 };
 
-/** GA4 sessions/users/conversions by utm_campaign (sessionCampaignName), last 28d. */
+/**
+ * GA4 sessions/users/conversions by utm_campaign (sessionCampaignName) ×
+ * source/medium, last 28d — the two halves of E5's `production—source` key.
+ * Keep in sync with oauth-proxy's copy.
+ */
 export const ga4CampaignReport = async (accessToken: string, property: string) => {
   const run = (metrics: Array<{ name: string }>) =>
     fetch(`https://analyticsdata.googleapis.com/v1beta/${property}:runReport`, {
@@ -36,10 +40,10 @@ export const ga4CampaignReport = async (accessToken: string, property: string) =
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         dateRanges: [{ startDate: "28daysAgo", endDate: "today" }],
-        dimensions: [{ name: "sessionCampaignName" }],
+        dimensions: [{ name: "sessionCampaignName" }, { name: "sessionSource" }, { name: "sessionMedium" }],
         metrics,
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
-        limit: 100,
+        limit: 400,
       }),
     });
   let res = await run([{ name: "sessions" }, { name: "totalUsers" }, { name: "keyEvents" }]);
@@ -49,6 +53,8 @@ export const ga4CampaignReport = async (accessToken: string, property: string) =
   if (!res.ok) throw new Error(data?.error?.message || "GA4 campaign report failed");
   const rows = (data.rows ?? []).map((r: { dimensionValues?: Array<{ value?: string }>; metricValues?: Array<{ value?: string }> }) => ({
     campaign: r.dimensionValues?.[0]?.value || "(unattributed)",
+    source: r.dimensionValues?.[1]?.value || "",
+    medium: r.dimensionValues?.[2]?.value || "",
     sessions: gaNum(r.metricValues?.[0]?.value),
     users: gaNum(r.metricValues?.[1]?.value),
     conversions: hasConversions ? gaNum(r.metricValues?.[2]?.value) : 0,

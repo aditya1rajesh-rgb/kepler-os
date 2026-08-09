@@ -247,7 +247,11 @@ const ga4ListProperties = async (accessToken: string) => {
   }
   return out;
 };
-// GA4 attribution: sessions/users/conversions BY utm_campaign (sessionCampaignName).
+// GA4 attribution: sessions/users/conversions BY utm_campaign (sessionCampaignName)
+// × source/medium — the two halves of E5's `production—source` key. The campaign
+// dimension says whether KEPLER produced the traffic; source/medium says where it
+// actually came from. One report, because splitting them would give two totals
+// that never quite reconcile.
 // Tries keyEvents (GA4's post-2024 name for conversions); retries without it on
 // properties/API versions that reject it, returning conversions=null in that case.
 const ga4CampaignReport = async (accessToken: string, property: string) => {
@@ -256,10 +260,11 @@ const ga4CampaignReport = async (accessToken: string, property: string) => {
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       dateRanges: [{ startDate: "28daysAgo", endDate: "today" }],
-      dimensions: [{ name: "sessionCampaignName" }],
+      dimensions: [{ name: "sessionCampaignName" }, { name: "sessionSource" }, { name: "sessionMedium" }],
       metrics,
       orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
-      limit: 100,
+      // Three dimensions fan the row count out, so the cap rises with it.
+      limit: 400,
     }),
   });
   let res = await run([{ name: "sessions" }, { name: "totalUsers" }, { name: "keyEvents" }]);
@@ -269,6 +274,8 @@ const ga4CampaignReport = async (accessToken: string, property: string) => {
   if (!res.ok) throw new Error(data?.error?.message || "GA4 campaign report failed");
   const rows = (data.rows ?? []).map((r: { dimensionValues?: Array<{ value?: string }>; metricValues?: Array<{ value?: string }> }) => ({
     campaign: r.dimensionValues?.[0]?.value || "(unattributed)",
+    source: r.dimensionValues?.[1]?.value || "",
+    medium: r.dimensionValues?.[2]?.value || "",
     sessions: gaNum(r.metricValues?.[0]?.value),
     users: gaNum(r.metricValues?.[1]?.value),
     conversions: hasConversions ? gaNum(r.metricValues?.[2]?.value) : null,

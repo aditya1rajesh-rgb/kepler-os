@@ -16,14 +16,21 @@ const accreditation = byTitle('accreditation');
 const consolidation = byTitle('consolidation');
 
 /** GA4 rows, mode: byCampaign. */
+// One row per (utm_campaign × source × medium) — the shape the GA4 report returns
+// now that E5 needs both halves of the production—source key.
 export const GA4_BY_CAMPAIGN = [
-    { campaign: campaignUtm(intake), sessions: 2140, users: 1712, conversions: 34 },
-    { campaign: campaignUtm(accreditation), sessions: 3180, users: 2648, conversions: 52 },
-    { campaign: campaignUtm(consolidation), sessions: 640, users: 548, conversions: 8 },
+    { campaign: campaignUtm(intake), source: 'linkedin', medium: 'paid_social', sessions: 980, users: 784, conversions: 16 },
+    { campaign: campaignUtm(intake), source: 'sendgrid', medium: 'email', sessions: 730, users: 584, conversions: 12 },
+    { campaign: campaignUtm(intake), source: 'linkedin.com', medium: 'social', sessions: 430, users: 344, conversions: 6 },
+    { campaign: campaignUtm(accreditation), source: 'google', medium: 'cpc', sessions: 1845, users: 1536, conversions: 30 },
+    { campaign: campaignUtm(accreditation), source: 'sendgrid', medium: 'email', sessions: 1335, users: 1112, conversions: 22 },
+    { campaign: campaignUtm(consolidation), source: 'sendgrid', medium: 'email', sessions: 455, users: 389, conversions: 6 },
+    { campaign: campaignUtm(consolidation), source: 'linkedin.com', medium: 'referral', sessions: 185, users: 159, conversions: 2 },
     // Real traffic Kepler cannot claim — the honest unattributed bucket.
-    { campaign: '(organic)', sessions: 4820, users: 4104, conversions: 27 },
-    { campaign: '(direct)', sessions: 1960, users: 1712, conversions: 14 },
-    { campaign: 'linkedin-organic-brand', sessions: 880, users: 764, conversions: 6 },
+    { campaign: '(organic)', source: 'google', medium: 'organic', sessions: 4180, users: 3560, conversions: 23 },
+    { campaign: '(organic)', source: 'bing', medium: 'organic', sessions: 640, users: 544, conversions: 4 },
+    { campaign: '(direct)', source: '(direct)', medium: '(none)', sessions: 1960, users: 1712, conversions: 14 },
+    { campaign: 'linkedin-organic-brand', source: 'linkedin.com', medium: 'social', sessions: 880, users: 764, conversions: 6 },
 ];
 
 const zohoRecord = (id, name, company, campaign, daysBack, stage = 'Qualified') => ({

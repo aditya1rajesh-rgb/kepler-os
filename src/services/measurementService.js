@@ -3,6 +3,8 @@ import { isUuid } from '../lib/validation';
 import { integrationService } from './integrationService';
 import { matchCampaign, matchByText } from '../lib/tracking';
 import { attributeDeals, DEFAULT_WON_STAGES } from '../lib/revenueAttribution';
+import { buildContribution, hasSourceBreakdown, snapshotsToRows } from '../lib/channelContribution';
+import { campaignService } from './campaignService';
 
 const assertWorkspaceId = (workspaceId) => {
     if (!isUuid(workspaceId)) throw new Error('Invalid workspace id');
@@ -44,6 +46,45 @@ export const measurementService = {
         return merged;
     },
 
+    /**
+     * Channel contribution (E5 zone 5) — the `production—source` table.
+     *
+     * Reads the latest ga4 snapshot per campaign and rolls it up. Deliberately
+     * ga4-only: mixing GSC clicks in would double-count the same visit under two
+     * providers, and a contribution table whose rows are counted differently is
+     * worse than one that says what it covers.
+     *
+     * @param opts.goalCampaignIds scope to one goal's campaigns; everything else
+     *        folds into `Other` rather than widening the goal's claim.
+     */
+    getContribution: async (workspaceId, { goalCampaignIds = null } = {}) => {
+        assertWorkspaceId(workspaceId);
+        const { data, error } = await supabase
+            .from('campaign_metrics')
+            .select('campaign_id, provider, metrics, captured_at')
+            .eq('workspace_id', workspaceId)
+            .eq('provider', 'ga4')
+            .order('captured_at', { ascending: false });
+        if (error) throw error;
+
+        const latest = {};
+        for (const row of data ?? []) {
+            const key = row.campaign_id ?? UNATTRIBUTED;
+            if (!latest[key]) {
+                latest[key] = { campaignId: row.campaign_id ?? null, metrics: row.metrics ?? {}, capturedAt: row.captured_at };
+            }
+        }
+        const snapshots = Object.values(latest);
+        const rows = snapshotsToRows(snapshots);
+        const campaigns = await campaignService.listCampaigns(workspaceId, { limit: 200 }).catch(() => []);
+
+        return {
+            ...buildContribution(rows, campaigns, { goalCampaignIds }),
+            hasSourceBreakdown: hasSourceBreakdown(snapshots),
+            capturedAt: snapshots.reduce((max, s) => (!max || s.capturedAt > max ? s.capturedAt : max), null),
+        };
+    },
+
     /** Pull GA4 outcomes attributed by campaign, snapshot them, return a summary. */
     pullGa4: async (workspaceId, campaigns = []) => {
         assertWorkspaceId(workspaceId);
@@ -53,16 +94,29 @@ export const measurementService = {
         for (const r of rows) {
             const c = matchCampaign(r.campaign, campaigns);
             const key = c ? c.id : UNATTRIBUTED;
-            const a = agg[key] || (agg[key] = { campaignId: c ? c.id : null, sessions: 0, users: 0, conversions: 0 });
+            const a = agg[key] || (agg[key] = { campaignId: c ? c.id : null, sessions: 0, users: 0, conversions: 0, bySource: {} });
             a.sessions += r.sessions || 0;
             a.users += r.users || 0;
             a.conversions += r.conversions || 0;
+            // E5 zone 5 — keep the source/medium split alongside the totals. The
+            // raw GA4 spellings are stored, not normalized ones, so the display
+            // rules can change without a re-pull. No migration: campaign_metrics
+            // .metrics is JSONB and snapshots that predate this simply lack it.
+            if (r.source || r.medium) {
+                const sk = `${r.source ?? ''}|${r.medium ?? ''}`;
+                const s = a.bySource[sk] || (a.bySource[sk] = { sessions: 0, users: 0, conversions: 0 });
+                s.sessions += r.sessions || 0;
+                s.users += r.users || 0;
+                s.conversions += r.conversions || 0;
+            }
         }
         const inserts = Object.values(agg).map((a) => ({
             workspace_id: workspaceId,
             campaign_id: a.campaignId,
             provider: 'ga4',
-            metrics: { sessions: a.sessions, users: a.users, conversions: a.conversions },
+            metrics: Object.keys(a.bySource).length
+                ? { sessions: a.sessions, users: a.users, conversions: a.conversions, bySource: a.bySource }
+                : { sessions: a.sessions, users: a.users, conversions: a.conversions },
         }));
         if (inserts.length) {
             const { error } = await supabase.from('campaign_metrics').insert(inserts);

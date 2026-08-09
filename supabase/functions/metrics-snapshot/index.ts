@@ -95,18 +95,31 @@ Deno.serve(async (req) => {
         try {
           const token = await googleAccessToken(conns.ga4.refresh_token);
           const { rows } = await ga4CampaignReport(token, conns.ga4.property_url);
-          const agg: Record<string, { campaignId: string | null; sessions: number; users: number; conversions: number }> = {};
+          type SourceTotals = { sessions: number; users: number; conversions: number };
+          const agg: Record<string, { campaignId: string | null; sessions: number; users: number; conversions: number; bySource: Record<string, SourceTotals> }> = {};
           for (const r of rows) {
             const c = matchCampaign(r.campaign, camps);
             const key = c ? c.id : "__none__";
-            const a = agg[key] || (agg[key] = { campaignId: c ? c.id : null, sessions: 0, users: 0, conversions: 0 });
+            const a = agg[key] || (agg[key] = { campaignId: c ? c.id : null, sessions: 0, users: 0, conversions: 0, bySource: {} });
             a.sessions += r.sessions || 0;
             a.users += r.users || 0;
             a.conversions += r.conversions || 0;
+            // E5 zone 5 — the source/medium split, in raw GA4 spellings. Mirrors
+            // measurementService.pullGa4; both writers must agree or the cockpit
+            // reads a different shape depending on who took the snapshot.
+            if (r.source || r.medium) {
+              const sk = `${r.source ?? ""}|${r.medium ?? ""}`;
+              const s = a.bySource[sk] || (a.bySource[sk] = { sessions: 0, users: 0, conversions: 0 });
+              s.sessions += r.sessions || 0;
+              s.users += r.users || 0;
+              s.conversions += r.conversions || 0;
+            }
           }
           const inserts = Object.values(agg).map((a) => ({
             workspace_id: workspaceId, campaign_id: a.campaignId, provider: "ga4",
-            metrics: { sessions: a.sessions, users: a.users, conversions: a.conversions },
+            metrics: Object.keys(a.bySource).length
+              ? { sessions: a.sessions, users: a.users, conversions: a.conversions, bySource: a.bySource }
+              : { sessions: a.sessions, users: a.users, conversions: a.conversions },
           }));
           if (inserts.length) { await svc.from("campaign_metrics").insert(inserts); snapshots += inserts.length; }
         } catch (e) { errors.push({ workspaceId, provider: "ga4", error: String((e as Error).message) }); }
