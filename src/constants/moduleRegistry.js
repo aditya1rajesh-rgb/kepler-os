@@ -35,6 +35,10 @@ export const NAV_SECTIONS = [
 // scope 'workspace' → renders at /workspace/:id/<id>[/<child>]; 'global' → absolute `path`.
 export const MODULES = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, section: 'main', scope: 'workspace' },
+    // E2 · S1 puts Goals at the top of Main, above Campaigns. The mental model is
+    // goal = epic, campaign = the work under it, so the parent sits above the
+    // child in the nav as well as in the data.
+    { id: 'goals', label: 'Goals', icon: Target, section: 'main', scope: 'workspace' },
     // E30 · S3 keeps list/board/table behind a view switcher ("the same data in
     // different clothes") but gives Calendar its own child: "what's shipping this
     // month across everything" is a scheduling question, not a campaign question.

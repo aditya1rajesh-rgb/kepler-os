@@ -25,6 +25,8 @@ export const DEMO_TABLES = [
     'abm_accounts', 'abm_contacts',
     'visibility_scans', 'workspace_integrations', 'generation_feedback', 'channel_posts',
     'workspace_events',
+    // E2 · the goals spine.
+    'goals', 'goal_checkpoints', 'goal_target_history', 'goal_links',
     // E4: write-only in the demo — nothing reads it back, but the inserts must
     // land somewhere rather than warn on every screen the demo opens.
     'usage_events',

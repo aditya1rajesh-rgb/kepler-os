@@ -7,6 +7,7 @@ import { workspaceService } from '../services/workspaceService';
 import './Workspace.css';
 
 import Dashboard from './workspace-modules/Dashboard';
+import Goals from './workspace-modules/Goals';
 import Campaigns from './workspace-modules/Campaigns';
 import CampaignsCalendar from './workspace-modules/CampaignsCalendar';
 import Library from './workspace-modules/Library';
@@ -66,6 +67,8 @@ const Workspace = () => {
                 return <Dashboard workspaceId={workspaceId} workspace={workspaceData} />;
             case 'measurement':
                 return <Measurement workspaceId={workspaceId} />;
+            case 'goals':
+                return <Goals workspaceId={workspaceId} />;
             case 'campaigns':
                 // E30 · Calendar is its own child; everything else is the campaign
                 // list and its view switcher.
