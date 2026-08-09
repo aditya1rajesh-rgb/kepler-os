@@ -8,6 +8,7 @@ import './Workspace.css';
 
 import Dashboard from './workspace-modules/Dashboard';
 import Campaigns from './workspace-modules/Campaigns';
+import CampaignsCalendar from './workspace-modules/CampaignsCalendar';
 import Library from './workspace-modules/Library';
 import BrandIntelligence from './workspace-modules/BrandIntelligence';
 import SeoAeo from './workspace-modules/SeoAeo';
@@ -66,7 +67,11 @@ const Workspace = () => {
             case 'measurement':
                 return <Measurement workspaceId={workspaceId} />;
             case 'campaigns':
-                return <Campaigns workspaceId={workspaceId} />;
+                // E30 · Calendar is its own child; everything else is the campaign
+                // list and its view switcher.
+                return resolved.subModuleId === 'calendar'
+                    ? <CampaignsCalendar workspaceId={workspaceId} />
+                    : <Campaigns workspaceId={workspaceId} />;
             case 'brand-intelligence':
                 return <BrandIntelligence workspaceId={workspaceId} workspace={workspaceData} />;
             case 'seo-aeo':

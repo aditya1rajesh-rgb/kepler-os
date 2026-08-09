@@ -122,11 +122,24 @@ describe('resolveWorkspaceLocation — parents, flats, unknowns', () => {
     });
     it('flat module renders directly and drops junk subModuleId', () => {
         expect(resolveWorkspaceLocation({ moduleId: 'overview' })).toEqual({ moduleId: 'overview', subModuleId: null });
-        expect(resolveWorkspaceLocation({ moduleId: 'campaigns', subModuleId: 'junk' }).redirect)
-            .toMatchObject({ moduleId: 'campaigns', subModuleId: null });
+        expect(resolveWorkspaceLocation({ moduleId: 'library', subModuleId: 'junk' }).redirect)
+            .toMatchObject({ moduleId: 'library', subModuleId: null });
     });
     it('an invalid child under a parent redirects to the default child', () => {
         expect(resolveWorkspaceLocation({ moduleId: 'seo-aeo', subModuleId: 'junk' }).redirect.subModuleId).toBe('pipeline');
+    });
+});
+
+// E30 · Campaigns gained a Calendar child (S3): list/board/table stay behind a
+// view switcher, but "what ships this month across everything" is its own job.
+describe('resolveWorkspaceLocation — Campaigns Calendar', () => {
+    it('bare Campaigns lands on the campaign list', () => {
+        expect(resolveWorkspaceLocation({ moduleId: 'campaigns' }).redirect)
+            .toMatchObject({ moduleId: 'campaigns', subModuleId: 'all' });
+    });
+    it('renders the calendar child directly', () => {
+        expect(resolveWorkspaceLocation({ moduleId: 'campaigns', subModuleId: 'calendar' }))
+            .toEqual({ moduleId: 'campaigns', subModuleId: 'calendar' });
     });
 });
 

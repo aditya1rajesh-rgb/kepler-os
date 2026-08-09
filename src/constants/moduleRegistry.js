@@ -35,7 +35,21 @@ export const NAV_SECTIONS = [
 // scope 'workspace' → renders at /workspace/:id/<id>[/<child>]; 'global' → absolute `path`.
 export const MODULES = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, section: 'main', scope: 'workspace' },
-    { id: 'campaigns', label: 'Campaigns', icon: Target, section: 'main', scope: 'workspace' },
+    // E30 · S3 keeps list/board/table behind a view switcher ("the same data in
+    // different clothes") but gives Calendar its own child: "what's shipping this
+    // month across everything" is a scheduling question, not a campaign question.
+    {
+        id: 'campaigns',
+        label: 'Campaigns',
+        icon: Target,
+        section: 'main',
+        scope: 'workspace',
+        defaultChild: 'all',
+        children: [
+            { id: 'all', label: 'All campaigns' },
+            { id: 'calendar', label: 'Calendar' },
+        ],
+    },
     // E30 · Studio is dissolved. It was an umbrella with no job of its own, and
     // it cost a nav level these three screens needed back: S4 gives SEO & AEO
     // three children, and a child cannot have children when the router is
