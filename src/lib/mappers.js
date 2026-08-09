@@ -71,7 +71,11 @@ export const mapCampaignRow = (row) => ({
     id: row.id,
     workspaceId: row.workspace_id,
     title: row.title ?? '',
+    // `goal` is the LEGACY free-text column (012:19); `goalId` is the real ladder
+    // to a goals row (E2, migration 032). Both exist deliberately — the text is
+    // the campaign's own statement of intent, the id is its parent.
     goal: row.goal ?? '',
+    goalId: row.goal_id ?? null,
     campaignType: row.campaign_type ?? 'launch',
     status: row.status ?? 'draft',
     plan: row.plan ?? { goal: '', strategySummary: '', channelMix: [], steps: [] },
@@ -115,6 +119,7 @@ export const toCampaignInsert = (workspaceId, data) => ({
     workspace_id: workspaceId,
     title: data.title ?? '',
     goal: data.goal ?? '',
+    goal_id: data.goalId ?? null,
     campaign_type: data.campaignType ?? 'launch',
     status: data.status ?? 'draft',
     plan: data.plan ?? {},

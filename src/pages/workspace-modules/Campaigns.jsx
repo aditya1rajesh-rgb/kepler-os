@@ -30,6 +30,7 @@ import SetupRequired from '../../components/workspace/SetupRequired';
 import CampaignIntake from '../../components/campaign-intake/CampaignIntake';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { campaignService } from '../../services/campaignService';
+import { goalsService } from '../../services/goalsService';
 import { stepExecutorService } from '../../services/stepExecutorService';
 import { strategyService } from '../../services/strategyService';
 import { CAMPAIGN_TYPES, CAMPAIGN_TEMPLATES } from '../../lib/campaignPlan';
@@ -37,6 +38,7 @@ import { WEEKDAY_LABELS, monthCells, toIso, todayIso, addDays } from '../../lib/
 import { workspacePath } from '../../constants/routes';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import { toUserMessage } from '../../lib/errors';
+import CampaignGoalPicker from '../../components/campaigns/CampaignGoalPicker';
 import './Campaigns.css';
 
 const MODULE_META = {
@@ -77,6 +79,9 @@ const Campaigns = ({ workspaceId }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const { readiness } = useWorkspaceConfig(workspaceId);
     const activeId = searchParams.get('campaign');
+    // E2 · a campaign created from a goal screen arrives pre-parented. The id is
+    // carried on the URL rather than in state so a refresh keeps the ladder.
+    const parentGoalId = searchParams.get('goal');
 
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -91,6 +96,9 @@ const Campaigns = ({ workspaceId }) => {
     const [calMonth, setCalMonth] = useState(() => new Date());
 
     const [showIntake, setShowIntake] = useState(false);
+    // E2 · loaded once so the status-bar chip and the rail's picker cannot
+    // disagree about which goals exist.
+    const [goals, setGoals] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [goal, setGoal] = useState('');
     const [type, setType] = useState('launch');
@@ -127,6 +135,20 @@ const Campaigns = ({ workspaceId }) => {
                 if (!cancelled) setCampaigns([]);
             } finally {
                 if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [workspaceId]);
+
+    useEffect(() => {
+        if (!workspaceId) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const rows = await goalsService.list(workspaceId);
+                if (!cancelled) setGoals(rows);
+            } catch {
+                if (!cancelled) setGoals([]);
             }
         })();
         return () => { cancelled = true; };
@@ -191,6 +213,7 @@ const Campaigns = ({ workspaceId }) => {
                 title: res.title,
                 goal,
                 campaignType: type,
+                goalId: parentGoalId,
                 plan: res.plan,
                 source: 'strategy-engine',
             });
@@ -234,6 +257,7 @@ const Campaigns = ({ workspaceId }) => {
                 title: eventName,
                 goal: plan.goal,
                 campaignType: plan.campaignType,
+                goalId: parentGoalId,
                 plan,
                 source: 'event',
             });
@@ -405,6 +429,14 @@ const Campaigns = ({ workspaceId }) => {
                             </span>
                         )}
                         <span className="campaigns__progress">{done}/{total} steps done</span>
+                        {/* E2 · which goal this work ladders to. Unparented is
+                            named rather than left blank — the campaign's outcomes
+                            reach no forecast until it has a parent. */}
+                        <span className={`campaigns__goal-chip ${detail.goalId ? '' : 'is-orphan'}`}>
+                            {detail.goalId
+                                ? (goals.find((g) => g.id === detail.goalId)?.name ?? 'Goal')
+                                : 'No goal'}
+                        </span>
                     </>
                 }
                 primary={detail.status === 'draft' ? (
@@ -412,7 +444,26 @@ const Campaigns = ({ workspaceId }) => {
                         <Check size={16} strokeWidth={1.9} /> Confirm plan
                     </button>
                 ) : null}
-                rail={<ToolRail>{linkedAssetsTool}</ToolRail>}
+                rail={(
+                    <ToolRail>
+                        <ToolGroup label="Ladder">
+                            <ToolCard
+                                title="Goal"
+                                state={detail.goalId ? 'Laddered' : 'None'}
+                                tone={detail.goalId ? 'ok' : 'warn'}
+                                defaultOpen={!detail.goalId}
+                            >
+                                <CampaignGoalPicker
+                                    workspaceId={workspaceId}
+                                    campaign={detail}
+                                    goals={goals}
+                                    onChange={(goalId) => setDetail((d) => (d ? { ...d, goalId } : d))}
+                                />
+                            </ToolCard>
+                        </ToolGroup>
+                        {linkedAssetsTool}
+                    </ToolRail>
+                )}
                 railLabel="Linked assets"
             >
                 {/* What this campaign is FOR. It briefly sat in the rail, which

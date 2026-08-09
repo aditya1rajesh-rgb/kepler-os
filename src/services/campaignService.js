@@ -44,11 +44,14 @@ export const campaignService = {
     },
 
     /** Persist a (normalized) plan. Starts in 'draft' until the user confirms it. */
-    createCampaign: async (workspaceId, { title = '', goal = '', campaignType = 'launch', plan = {}, source = 'strategy-engine', status = 'draft' } = {}) => {
+    createCampaign: async (workspaceId, { title = '', goal = '', goalId = null, campaignType = 'launch', plan = {}, source = 'strategy-engine', status = 'draft' } = {}) => {
         assertWorkspaceId(workspaceId);
         const insert = toCampaignInsert(workspaceId, {
             title: title || goal.slice(0, 80) || 'Untitled campaign',
             goal,
+            // E2 · the ladder. A campaign has exactly ONE parent goal so rollup
+            // maths is unambiguous; extra relationships go through goal_links.
+            goalId,
             campaignType,
             plan,
             source,
@@ -71,6 +74,7 @@ export const campaignService = {
         const patch = {};
         if (updates.title !== undefined) patch.title = updates.title;
         if (updates.goal !== undefined) patch.goal = updates.goal;
+        if (updates.goalId !== undefined) patch.goal_id = updates.goalId;
         if (updates.status !== undefined) patch.status = updates.status;
         if (updates.campaignType !== undefined) patch.campaign_type = updates.campaignType;
         if (updates.plan !== undefined) patch.plan = updates.plan;

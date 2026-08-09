@@ -744,3 +744,29 @@
     gap: 6px;
     white-space: nowrap;
 }
+
+/* E2 · the ladder, as screen state. An unparented campaign is a real state that
+   gets named rather than left blank — its outcomes reach no forecast. */
+.campaigns__goal-chip {
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.02em;
+    padding: 3px 9px;
+    border-radius: var(--r-full);
+    border: 1px solid rgba(var(--accent-rgb), 0.32);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    white-space: nowrap;
+}
+
+.campaigns__goal-chip.is-orphan {
+    border-color: rgba(var(--warning-rgb), 0.32);
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.campaign-goal-picker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
