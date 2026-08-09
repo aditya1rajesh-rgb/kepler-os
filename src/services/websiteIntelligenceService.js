@@ -1,3 +1,6 @@
+import { DEMO_MODE } from '../demo/flag';
+import { fetchDemoWebsiteContent } from '../demo/website';
+
 const MAX_CONTENT_CHARS = 12000;
 const WEBSITE_FETCH_TIMEOUT_MS = 12000;
 
@@ -78,6 +81,10 @@ const buildCandidateUrls = (normalized) => {
 };
 
 export const fetchWebsiteContent = async (url) => {
+    // The demo build reads its own site snapshot instead of reaching the network,
+    // so website-grounded features work with no connectivity at all.
+    if (DEMO_MODE) return fetchDemoWebsiteContent(url);
+
     const normalized = normalizeUrl(url);
     if (!normalized) {
         return {

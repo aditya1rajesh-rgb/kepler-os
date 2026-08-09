@@ -4,14 +4,54 @@
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5175,
       "autoPort": true
     },
     {
+      "name": "demo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:demo"
+      ],
+      "port": 5176,
+      "autoPort": true
+    },
+    {
+      "name": "demo-build",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview:demo"
+      ],
+      "port": 5177,
+      "autoPort": true
+    },
+    {
+      "name": "cloudverse-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/apple/cloudverse_website",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
       "name": "techflu-deck",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8931", "--directory", "/private/tmp/claude-501/-Users-apple-ai-marketing-platform/32aa56f1-abf8-4a87-92d9-33e33d49bdc7/scratchpad/techflu-deck"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8931",
+        "--directory",
+        "/private/tmp/claude-501/-Users-apple-ai-marketing-platform/32aa56f1-abf8-4a87-92d9-33e33d49bdc7/scratchpad/techflu-deck"
+      ],
       "port": 8931
     }
   ]

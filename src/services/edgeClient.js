@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { DEMO_MODE } from '../demo/flag';
+import { callDemoEdgeFunction } from '../demo/edge';
 
 /** Thrown when there is no signed-in user to authenticate an edge request. */
 export class EdgeAuthError extends Error {
@@ -37,6 +39,8 @@ const buildHeaders = async (anonKey) => {
  *   or Error with the function's error message on a non-2xx response.
  */
 export const callEdgeFunction = async (fnName, body = {}, { timeoutMs = 30000 } = {}) => {
+    if (DEMO_MODE) return callDemoEdgeFunction(fnName, body);
+
     const { baseUrl, anonKey } = getConfig();
     const headers = await buildHeaders(anonKey);
     const controller = new AbortController();

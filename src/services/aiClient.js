@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { getAiModelConfig } from '../lib/aiModelConfig'
+import { DEMO_MODE } from '../demo/flag'
+import { callDemoAI } from '../demo/ai'
 
 const MODEL_CONFIG = getAiModelConfig()
 
@@ -257,6 +259,9 @@ const isRetryableModelFailure = (status, message) => {
 }
 
 export async function callAI(prompt, config = {}) {
+  // The demo build has no proxy and no model — generation is answered locally.
+  if (DEMO_MODE) return callDemoAI(prompt, config)
+
   const {
     model = REQUESTED_MODEL,
     modelFallbacks = null,

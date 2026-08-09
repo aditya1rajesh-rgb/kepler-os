@@ -8,7 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:demo": "VITE_DEMO_MODE=true vite --port 5176",
+    "build:demo": "VITE_DEMO_MODE=true vite build --outDir dist-demo",
+    "preview:demo": "vite preview --outDir dist-demo --port 5177 --strictPort"
   },
   "dependencies": {
     "@solar-icons/react": "^1.1.1",

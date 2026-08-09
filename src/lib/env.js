@@ -7,6 +7,8 @@
  *
  * Never expose service-role or other privileged keys in Vite env.
  */
+import { DEMO_MODE } from '../demo/flag';
+
 const PLACEHOLDER_URL = 'placeholder';
 const PLACEHOLDER_KEY = 'placeholder-key';
 
@@ -17,6 +19,10 @@ const FORBIDDEN_CLIENT_VARS = [
 ];
 
 export const validateClientEnv = () => {
+    // The demo build has no backend to point at, so Supabase config is not required
+    // (and must not be present) — see src/demo/README.md.
+    if (DEMO_MODE) return { valid: true, missing: [], forbidden: [] };
+
     const missing = [];
     const forbidden = FORBIDDEN_CLIENT_VARS.filter((key) => Boolean(import.meta.env[key]));
 
