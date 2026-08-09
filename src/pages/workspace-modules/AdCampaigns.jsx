@@ -8,6 +8,7 @@ import SetupRequired from '../../components/workspace/SetupRequired';
 import CampaignStepBanner from '../../components/campaigns/CampaignStepBanner';
 import RatingControl from '../../components/ui/RatingControl';
 import FeedbackInsight from '../../components/ui/FeedbackInsight';
+import GroundedIn from '../../components/ui/GroundedIn';
 import CompetitorAdsPanel from '../../components/ad-campaigns/CompetitorAdsPanel';
 import { useSearchParams } from 'react-router-dom';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
@@ -66,6 +67,8 @@ const AdCampaigns = ({ workspaceId }) => {
     const [saved, setSaved] = useState([]);
     const [feedbackVersion, setFeedbackVersion] = useState(0);
     const [targeting, setTargeting] = useState(null);
+    // E3 — what the last generation was grounded in (goal / campaign / prior assets).
+    const [groundedIn, setGroundedIn] = useState([]);
     const [copiedTargeting, setCopiedTargeting] = useState(false);
     // Competitive grounding brief from the Meta Ad Library read (empty = off).
     const [competitiveContext, setCompetitiveContext] = useState('');
@@ -87,6 +90,7 @@ const AdCampaigns = ({ workspaceId }) => {
         setConfig({ ...EMPTY_CONFIG, ...(item.payload.config ?? {}) });
         setVariants((item.payload.variants ?? []).map((v, i) => ({ ...v, id: v.id ?? `${item.id}-${i}` })));
         setTargeting(item.payload.targeting ?? null);
+        setGroundedIn(item.payload.groundedIn ?? []);
         setNotice(`Loaded "${item.title}".`);
     };
 
@@ -105,6 +109,10 @@ const AdCampaigns = ({ workspaceId }) => {
                     campaignType: config.type,
                     count: 5,
                     competitiveContext,
+                    // E3 — when this generation came from a campaign step, the copy
+                    // is grounded in that campaign and the goal above it.
+                    campaignId: campaignCtx.campaignId,
+                    stepId: campaignCtx.stepId,
                 }),
                 wantsLinkedIn
                     ? adGenerationService.generateLinkedInTargeting(workspaceId, { icp })
@@ -113,6 +121,7 @@ const AdCampaigns = ({ workspaceId }) => {
             if (res.ok) {
                 // Tag with stable ids for keys/copy state.
                 setVariants(res.variants.map((v, i) => ({ ...v, id: `${Date.now()}-${i}` })));
+                setGroundedIn(res.groundedIn ?? []);
             } else {
                 setError(res.error || 'Ad generation failed.');
             }
@@ -133,7 +142,7 @@ const AdCampaigns = ({ workspaceId }) => {
                 title: config.name || 'Untitled campaign',
                 status: 'completed',
                 source: 'ad-generator',
-                payload: { config, variants, targeting },
+                payload: { config, variants, targeting, groundedIn },
                 campaignId: campaignCtx.campaignId,
                 campaignStepId: campaignCtx.stepId,
             });
@@ -221,6 +230,7 @@ const AdCampaigns = ({ workspaceId }) => {
                     )}
                     {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                     {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    {variants.length > 0 && <GroundedIn items={groundedIn} />}
                     <FeedbackInsight workspaceId={workspaceId} module="ads" refreshKey={feedbackVersion} />
                 </>
             }

@@ -8,6 +8,7 @@ import CampaignStepBanner from '../../components/campaigns/CampaignStepBanner';
 import CarouselPreview from '../../components/social/CarouselPreview';
 import RatingControl from '../../components/ui/RatingControl';
 import FeedbackInsight from '../../components/ui/FeedbackInsight';
+import GroundedIn from '../../components/ui/GroundedIn';
 import { useSearchParams } from 'react-router-dom';
 import { useWorkspaceConfig } from '../../hooks/useWorkspaceConfig';
 import { socialService } from '../../services/socialService';
@@ -51,6 +52,8 @@ const SocialMedia = ({ workspaceId }) => {
     const [busyCarousel, setBusyCarousel] = useState(false);
     const [copied, setCopied] = useState(false);
     const [feedbackVersion, setFeedbackVersion] = useState(0);
+    // E3 — what the last generation was grounded in (goal / campaign / prior posts).
+    const [groundedIn, setGroundedIn] = useState([]);
     const [linkedin, setLinkedin] = useState({ configured: false, connected: false });
     const [metaPages, setMetaPages] = useState({ configured: false, connected: false, pageSelected: false });
     const [publishing, setPublishing] = useState(false);
@@ -125,8 +128,13 @@ const SocialMedia = ({ workspaceId }) => {
         if (cfg.platforms.length === 0) { setError('Select at least one platform.'); return; }
         setGenerating(true); reset();
         try {
-            const res = await socialService.generateContentCalendar(workspaceId, cfg);
+            // E3 — a calendar generated from a campaign step is grounded in that
+            // campaign and the goal above it.
+            const res = await socialService.generateContentCalendar(workspaceId, {
+                ...cfg, campaignId: campaignCtx.campaignId, stepId: campaignCtx.stepId,
+            });
             if (!res.ok) { setError(res.error || 'Calendar generation failed.'); return; }
+            setGroundedIn(res.groundedIn ?? []);
             const rows = res.posts.map((p) => ({
                 title: (p.hook || `${p.platform} post`).slice(0, 80),
                 status: 'completed',
@@ -521,6 +529,7 @@ const SocialMedia = ({ workspaceId }) => {
                     )}
                     {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                     {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    {groundedIn.length > 0 && <GroundedIn items={groundedIn} />}
                     <FeedbackInsight workspaceId={workspaceId} module="social" refreshKey={feedbackVersion} />
                 </>
             }

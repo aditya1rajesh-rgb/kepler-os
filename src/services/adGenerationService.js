@@ -1,5 +1,6 @@
 import { callAI, FREE_MODEL_FALLBACKS } from './aiClient';
 import { getBrandContextForGeneration } from './brandContextService';
+import { getGenerationContext } from './generationContextService';
 import { PERSUASION_SYSTEM_FRAGMENT } from '../lib/persuasionLayer';
 import { getPlatformSpec, validateVariant } from '../lib/adPlatformSpecs';
 import { feedbackService } from './feedbackService';
@@ -11,7 +12,7 @@ import { feedbackService } from './feedbackService';
 // persuasion layer; platform char limits are validated IN CODE (validateVariant)
 // because the model miscounts. One robust JSON callAI (see [[ai-json-robustness]]).
 
-const AD_SYSTEM_PROMPT = `You are a senior performance-creative strategist for KEPLER OS. You write high-converting paid-ad copy grounded in the provided brand context, ICP, and competitors.
+const AD_SYSTEM_PROMPT = `You are a senior performance-creative strategist for KEPLER OS. You write high-converting paid-ad copy grounded in the provided brand context, ICP, and competitors. Where the context states a GOAL or CAMPAIGN, every variant must serve it — but the goal and its numbers are your brief, never ad copy: do not state them.
 
 ${PERSUASION_SYSTEM_FRAGMENT}
 
@@ -168,13 +169,21 @@ export const adGenerationService = {
      * @param {number} [config.count] variants to generate (default 5)
      * @returns {Promise<{ok:boolean, variants?:object[], error?:string, modelUsed?:string}>}
      */
-    generateAdVariants: async (workspaceId, { platform = 'multi', objective = '', campaignType = '', count = 5, competitiveContext = '' } = {}) => {
+    generateAdVariants: async (workspaceId, { platform = 'multi', objective = '', campaignType = '', count = 5, competitiveContext = '', campaignId = null, stepId = '' } = {}) => {
         if (!workspaceId) return { ok: false, error: 'workspaceId is required' };
 
         let brandContext;
         try {
-            // 'ads' module emphasis: value prop, differentiators, proof points, ICP.
-            brandContext = await getBrandContextForGeneration(workspaceId, { module: 'ads', depth: 'profile' });
+            // 'ads' module emphasis: value prop, differentiators, proof points, ICP —
+            // now under the E3 ladder, so the copy serves the goal the campaign
+            // reports to rather than only sounding like the brand.
+            brandContext = await getGenerationContext(workspaceId, {
+                module: 'ads',
+                depth: 'profile',
+                topic: `${objective} ${campaignType}`.trim(),
+                campaignId,
+                stepId,
+            });
         } catch (err) {
             return { ok: false, error: `Could not load brand context: ${err.message}` };
         }
@@ -205,7 +214,13 @@ export const adGenerationService = {
             return { ok: false, errorKind: 'empty_content', error: 'The AI returned no usable ad variants. Try a different objective or enrich the brand profile.' };
         }
 
-        return { ok: true, variants, platform, modelUsed: response?.modelUsed ?? null };
+        return {
+            ok: true,
+            variants,
+            platform,
+            modelUsed: response?.modelUsed ?? null,
+            groundedIn: brandContext.meta.groundedIn,
+        };
     },
 
     /**

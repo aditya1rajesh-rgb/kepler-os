@@ -24,6 +24,7 @@ import { routeAsset, MONEY_TYPE_LABELS } from '../../lib/buyIntent';
 import { feedbackService } from '../../services/feedbackService';
 import RatingControl from '../../components/ui/RatingControl';
 import FeedbackInsight from '../../components/ui/FeedbackInsight';
+import GroundedIn from '../../components/ui/GroundedIn';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { workspacePath } from '../../constants/routes';
 import { slugify, normalizeBaseUrl, buildSitemap, buildRobots, buildLlmsTxt, generateIndexNowKey, indexNowKeyFile, buildGeoReadiness } from '../../lib/technicalSeo';
@@ -1043,6 +1044,9 @@ const SeoAeo = ({ workspaceId }) => {
             >
                 {viewItem?.payload?.blog ? (
                     <div className="form-stack">
+                        {/* E3 — what this draft was grounded in, read back off the
+                            asset rather than reconstructed. */}
+                        <GroundedIn items={viewItem.payload.blog.groundedIn ?? []} />
                         <p className="brand-intel-module__source-label">
                             {viewItem.payload.blog.review?.overall != null && (
                                 <>Quality {viewItem.payload.blog.review.overall}/100 · </>

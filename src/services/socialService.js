@@ -1,5 +1,5 @@
 import { callAI, FREE_MODEL_FALLBACKS } from './aiClient';
-import { getBrandContextForGeneration } from './brandContextService';
+import { getGenerationContext } from './generationContextService';
 import {
     SOCIAL_PLATFORM_SPECS,
     LINKEDIN_HOOK_FORMULAS,
@@ -15,7 +15,7 @@ import { feedbackService } from './feedbackService';
 // The model fills copy into proven structures; code validates length. One robust
 // JSON callAI per call (parse/repair/retry centralized - see [[ai-json-robustness]]).
 
-const baseSystem = (extra = '') => `You are a senior social media copywriter for KEPLER OS. Write platform-native posts grounded ONLY in the provided brand context - never invent facts, metrics, or customers.
+const baseSystem = (extra = '') => `You are a senior social media copywriter for KEPLER OS. Write platform-native posts grounded ONLY in the provided brand context - never invent facts, metrics, or customers. Where the context states a GOAL or CAMPAIGN, every post must serve it, and where it lists prior assets, say something they did not. The goal and any figures attached to it are your brief, not post copy - never state them.
 
 ${SOCIAL_ANTI_SLOP}
 ${extra}
@@ -31,8 +31,15 @@ const validateForPlatform = (body, platform) => {
     return { charCount, limit: spec?.charLimit ?? null, overLimit: spec ? charCount > spec.charLimit : false };
 };
 
-const loadContext = async (workspaceId) => {
-    const ctx = await getBrandContextForGeneration(workspaceId, { module: 'social', depth: 'profile' });
+// E3: social generation reads the same ladder as blog and ads — the goal the
+// work reports to, the campaign angle, and what has already gone out under it.
+// Search/AEO signals are deliberately off for social (MODULE_WANTS_SIGNALS):
+// Search Console demand is a search-surface fact and would cost three API pulls
+// per post for material a social post cannot act on.
+const loadContext = async (workspaceId, { topic = '', campaignId = null, stepId = '' } = {}) => {
+    const ctx = await getGenerationContext(workspaceId, {
+        module: 'social', depth: 'profile', topic, campaignId, stepId,
+    });
     if (!ctx.meta.hasBrand) throw new Error('Add a brand profile in Brand Intelligence before generating social content.');
     // Learning loop: fold past low-rated feedback into the context for every social call.
     const guidance = await feedbackService.getGuidance(workspaceId, 'social');
@@ -87,7 +94,7 @@ export const socialService = {
         if (chosen.length === 0) return { ok: false, error: 'Select at least one platform.' };
 
         let ctx;
-        try { ctx = await loadContext(workspaceId); } catch (err) { return { ok: false, error: err.message }; }
+        try { ctx = await loadContext(workspaceId, { topic }); } catch (err) { return { ok: false, error: err.message }; }
 
         const specBlock = chosen.map((p) => `- ${SOCIAL_PLATFORM_SPECS[p].label}: ${SOCIAL_PLATFORM_SPECS[p].guidance}`).join('\n');
         const prompt = `${ctx.prompt}
@@ -112,14 +119,14 @@ Return JSON only:
             })
             .filter(Boolean);
         if (posts.length === 0) return { ok: false, error: 'No usable posts returned. Try a clearer topic.' };
-        return { ok: true, posts };
+        return { ok: true, posts, groundedIn: ctx.meta.groundedIn };
     },
 
     /** LinkedIn posts - hook-formula + pick-by-goal; standard or founder voice. */
     generateLinkedInPosts: async (workspaceId, { topic = '', goal = 'comments', mode = 'standard', pillar = 'authority', narrativeType = '', count = 3 } = {}) => {
         if (!workspaceId) return { ok: false, error: 'workspaceId is required' };
         let ctx;
-        try { ctx = await loadContext(workspaceId); } catch (err) { return { ok: false, error: err.message }; }
+        try { ctx = await loadContext(workspaceId, { topic }); } catch (err) { return { ok: false, error: err.message }; }
 
         const formulaIds = mode === 'founder'
             ? ['confession', 'failure', 'contrarian', 'how_i', 'curiosity_gap']
@@ -156,7 +163,7 @@ Return JSON only:
             })
             .filter(Boolean);
         if (posts.length === 0) return { ok: false, error: 'No usable posts returned.' };
-        return { ok: true, posts, mode };
+        return { ok: true, posts, mode, groundedIn: ctx.meta.groundedIn };
     },
 
     /** Long-form (e.g. a finished blog) → a week of channel-native posts. */
@@ -167,7 +174,7 @@ Return JSON only:
         if (chosen.length === 0) return { ok: false, error: 'Select at least one channel.' };
 
         let ctx;
-        try { ctx = await loadContext(workspaceId); } catch (err) { return { ok: false, error: err.message }; }
+        try { ctx = await loadContext(workspaceId, { topic: String(sourceText).slice(0, 300) }); } catch (err) { return { ok: false, error: err.message }; }
 
         const specBlock = chosen.map((p) => `- ${SOCIAL_PLATFORM_SPECS[p].label}: ${SOCIAL_PLATFORM_SPECS[p].guidance}`).join('\n');
         const prompt = `${ctx.prompt}
@@ -193,7 +200,7 @@ Each post must stand alone and use a DIFFERENT angle. Return JSON only:
             })
             .filter(Boolean);
         if (posts.length === 0) return { ok: false, error: 'No usable posts returned from the source.' };
-        return { ok: true, posts };
+        return { ok: true, posts, groundedIn: ctx.meta.groundedIn };
     },
 
     /**
@@ -202,13 +209,13 @@ Each post must stand alone and use a DIFFERENT angle. Return JSON only:
      * don't truncate; each post carries its scheduled date.
      * @returns {Promise<{ok:boolean, posts?:object[], error?:string, partial?:boolean}>}
      */
-    generateContentCalendar: async (workspaceId, { startDate = new Date().toISOString().slice(0, 10), weeks = 4, postsPerWeek = 3, platforms = ['linkedin'], topic = '', voice = 'company' } = {}) => {
+    generateContentCalendar: async (workspaceId, { startDate = new Date().toISOString().slice(0, 10), weeks = 4, postsPerWeek = 3, platforms = ['linkedin'], topic = '', voice = 'company', campaignId = null, stepId = '' } = {}) => {
         if (!workspaceId) return { ok: false, error: 'workspaceId is required' };
         const chosen = platforms.filter((p) => SOCIAL_PLATFORM_SPECS[p]);
         if (chosen.length === 0) return { ok: false, error: 'Select at least one platform.' };
 
         let ctx;
-        try { ctx = await loadContext(workspaceId); } catch (err) { return { ok: false, error: err.message }; }
+        try { ctx = await loadContext(workspaceId, { topic, campaignId, stepId }); } catch (err) { return { ok: false, error: err.message }; }
 
         const slots = buildSchedule(startDate, clamp(weeks, 1, 6), clamp(postsPerWeek, 1, 5), chosen);
         if (slots.length === 0) return { ok: false, error: 'No posting slots in the chosen timeline.' };
@@ -270,14 +277,14 @@ Return JSON only:
             return { ok: false, error: `Calendar generation returned no posts.${errors.length ? ` (${errors[0]})` : ''}` };
         }
         all.sort((a, b) => a.date.localeCompare(b.date));
-        return { ok: true, posts: all, partial: all.length < slots.length };
+        return { ok: true, posts: all, partial: all.length < slots.length, groundedIn: ctx.meta.groundedIn };
     },
 
     /** Carousel slide content (the on-brand HTML render happens in the UI). */
     generateCarousel: async (workspaceId, { topic = '', slideCount = 6 } = {}) => {
         if (!workspaceId) return { ok: false, error: 'workspaceId is required' };
         let ctx;
-        try { ctx = await loadContext(workspaceId); } catch (err) { return { ok: false, error: err.message }; }
+        try { ctx = await loadContext(workspaceId, { topic }); } catch (err) { return { ok: false, error: err.message }; }
 
         const n = Math.max(4, Math.min(8, slideCount));
         const prompt = `${ctx.prompt}

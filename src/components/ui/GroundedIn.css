@@ -1,0 +1,47 @@
+/* E3 provenance strip — what a generation was grounded in. Advisory, like
+   .feedback-insight: it sits inline above the output without a container of its
+   own, so it reads as an annotation on the asset rather than a section. */
+.grounded-in {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-xs);
+}
+
+.grounded-in__lead {
+    color: var(--text-dim);
+}
+
+.grounded-in__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.grounded-in__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border: 1px solid var(--border-accent);
+    background: var(--accent-soft);
+    border-radius: var(--r-md);
+    color: var(--text);
+}
+
+.grounded-in__icon {
+    flex: none;
+    color: #9db1fb;
+}
+
+/* An inferred goal gets a full sentence, not a chip: the caveat is the point. */
+.grounded-in__caveat {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--text-dim);
+}

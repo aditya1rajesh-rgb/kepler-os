@@ -1,5 +1,5 @@
 import { callAI, FREE_MODEL_FALLBACKS } from './aiClient';
-import { getBrandContextForGeneration } from './brandContextService';
+import { getGenerationContext } from './generationContextService';
 import { groundingService, groundedContextBlock } from './groundingService';
 import { buildBlogSchema } from '../lib/blogSchema';
 import { humanize } from './humanizeService';
@@ -17,7 +17,7 @@ import { feedbackService } from './feedbackService';
 // / source files; never invent stats, numbers, or sources."
 
 const BLOG_SYSTEM_PROMPT = `You are a senior content writer for KEPLER OS who writes for both Google rankings and AI-citation engines (ChatGPT, Perplexity, AI Overviews).
-Ground everything in the provided brand context and source material.
+Ground everything in the provided brand context and source material. Where the context states a GOAL, a CAMPAIGN, prior assets or live search demand, the piece must serve them: the goal decides what a win looks like, the campaign decides the angle, prior assets decide what not to repeat, and the search signals decide the language searchers actually use. Never restate the goal, its target or any performance figure in the copy — they are your brief, not the reader's.
 
 WRITING RULES:
 - Write a cohesive guide with NARRATIVE FLOW - not a list of FAQs. Sections connect with transitions and build a logical argument from start to finish.
@@ -54,7 +54,7 @@ Produce a blog outline. Return JSON only:
  "sections":[{"h2":"section heading - mostly statements/topics; at most ~1 in 3 may be a question","type":"intro | concept | how-to | example | comparison | takeaways","keyPoints":["what this section must cover"]}],
  "faq":[{"q":"a question a searcher/AI engine would ask"}],
  "internalLinkZones":["topics to internally link to"]}
-6-8 sections forming a logical arc: hook/context → core concepts → how-to/application → proof or example → takeaways. Vary the section types and do NOT phrase every heading as a question (real questions belong in the FAQ). Every section must be something this brand can credibly write about from the context.`;
+6-8 sections forming a logical arc: hook/context → core concepts → how-to/application → proof or example → takeaways. Vary the section types and do NOT phrase every heading as a question (real questions belong in the FAQ). Every section must be something this brand can credibly write about from the context. If the context names a goal or campaign, the outline must move a reader toward it; if it lists prior assets, cover ground they do not; if it lists search demand or answer-engine gaps, let those shape the sections and the FAQ.`;
 
 const buildDraftPrompt = (context, outline, { targetKeyword }) => `${context}
 
@@ -189,8 +189,19 @@ export const blogPipelineService = {
 
         let brandContext;
         try {
-            // depth 'full' includes raw source-file excerpts so real product detail grounds the draft.
-            brandContext = await getBrandContextForGeneration(workspaceId, { module: 'blog', depth: 'full' });
+            // E3 — the ladder above the asset, not just the brand beneath it:
+            // goal + campaign + what already exists under them + live search/AEO
+            // signals. depth 'full' still includes raw source-file excerpts so
+            // real product detail grounds the draft. Every leg but the brand is
+            // optional; a workspace with no goal gets exactly what it got before.
+            brandContext = await getGenerationContext(workspaceId, {
+                module: 'blog',
+                depth: 'full',
+                topic: `${contentItem.targetKeyword} ${contentItem.title ?? ''}`.trim(),
+                campaignId: contentItem.campaignId ?? null,
+                stepId: contentItem.campaignStepId ?? '',
+                excludeContentItemId: contentItem.id ?? null,
+            });
         } catch (err) {
             return { ok: false, error: `Could not load brand context: ${err.message}` };
         }
@@ -212,8 +223,15 @@ export const blogPipelineService = {
         // WS1b — grounded research on the specific topic (pure upside; degrades to
         // ungrounded). Feeds the outline + draft REAL current facts/examples/PAA, so
         // anti-fabrication has real material to use instead of forcing vagueness.
+        // E3: the research is aimed at the campaign's angle where there is one, so
+        // the facts that come back serve the piece we actually need. Only the
+        // ANGLE goes out — never the goal's numbers, which are internal estimates
+        // and have no business in a web-search query.
+        const angle = brandContext.campaign?.goal || brandContext.campaign?.title || brandContext.goal?.name || '';
         const research = await groundingService.research(
-            `Research the topic "${contentItem.targetKeyword}" for a ${contentItem.intent || 'informational'}-intent blog post.\nReport what the current top-ranking pages cover and their gaps, real statistics (with year + source), concrete examples and named tools/companies, the questions people also ask, and any recent developments. Real, current facts only.`,
+            `Research the topic "${contentItem.targetKeyword}" for a ${contentItem.intent || 'informational'}-intent blog post.`
+            + `${angle ? `\nThe piece supports this initiative, so favour material relevant to it: "${angle}".` : ''}`
+            + '\nReport what the current top-ranking pages cover and their gaps, real statistics (with year + source), concrete examples and named tools/companies, the questions people also ask, and any recent developments. Real, current facts only.',
             { maxTokens: 2000 },
         );
         const ctx = brandContext.prompt + guidance + groundedContextBlock(research.brief);
@@ -314,6 +332,11 @@ export const blogPipelineService = {
                 outline,
                 grounded: research.ok,
                 sources: research.sources,
+                // E3 provenance — what this draft was actually grounded in, stored
+                // on the asset so the claim can be checked later rather than
+                // trusted at generation time.
+                groundedIn: brandContext.meta.groundedIn,
+                goalId: brandContext.goal?.id ?? null,
             },
         };
     },
