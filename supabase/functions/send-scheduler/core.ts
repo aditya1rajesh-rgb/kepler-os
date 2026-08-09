@@ -58,6 +58,10 @@ export interface EnrollmentRow {
   status: string;
   current_step: number;
   next_send_at: string | null;
+  /** E1: what the last hold was for. Empty when this enrollment is not held. */
+  hold_reason?: string;
+  /** E1: when the CURRENT hold began — preserved across re-holds (migration 030). */
+  held_since?: string | null;
 }
 
 export interface DomainRow {
@@ -382,6 +386,26 @@ export interface SchedulerDb {
   updateEnrollment(id: string, patch: Record<string, unknown>): Promise<void>;
 }
 
+/**
+ * E1: a hold is an event, not just a postponement. Record what it was for and
+ * when it started, preserving `held_since` across re-holds so "held for three
+ * days" is answerable — otherwise a 30-minute bump every 30 minutes looks
+ * identical on the tenth day and the first.
+ */
+export const holdPatch = (
+  enrollment: EnrollmentRow,
+  reason: string,
+  now: Date,
+  config: SchedulerConfig,
+): Record<string, unknown> => ({
+  next_send_at: new Date(now.getTime() + config.holdMinutes * 60 * 1000).toISOString(),
+  hold_reason: reason,
+  held_since: enrollment.held_since ?? now.toISOString(),
+});
+
+/** Cleared on the next successful send — the hold is over. */
+export const CLEAR_HOLD = { hold_reason: "", held_since: null } as const;
+
 export interface RunSummary {
   processed: number;
   sent: number;
@@ -453,9 +477,7 @@ export async function runScheduler(deps: {
         continue;
       }
       if (decision.action === "hold") {
-        await db.updateEnrollment(enrollment.id, {
-          next_send_at: new Date(now.getTime() + config.holdMinutes * 60 * 1000).toISOString(),
-        });
+        await db.updateEnrollment(enrollment.id, holdPatch(enrollment, decision.reason, now, config));
         summary.held += 1;
         continue;
       }
@@ -463,9 +485,7 @@ export async function runScheduler(deps: {
       // decision.action === 'send' — the ONLY path that reaches an adapter.
       const adapter = adapters[decision.sendPath];
       if (!adapter) {
-        await db.updateEnrollment(enrollment.id, {
-          next_send_at: new Date(now.getTime() + config.holdMinutes * 60 * 1000).toISOString(),
-        });
+        await db.updateEnrollment(enrollment.id, holdPatch(enrollment, "no_send_adapter", now, config));
         summary.held += 1;
         continue;
       }
@@ -492,8 +512,8 @@ export async function runScheduler(deps: {
           // advance the enrollment now, without re-sending.
           const nextAt = computeNextSendAt(sequence, decision.stepIdx, now);
           await db.updateEnrollment(enrollment.id, nextAt
-            ? { current_step: decision.stepIdx + 1, next_send_at: nextAt.toISOString() }
-            : { current_step: decision.stepIdx + 1, status: "completed", next_send_at: null });
+            ? { current_step: decision.stepIdx + 1, next_send_at: nextAt.toISOString(), ...CLEAR_HOLD }
+            : { current_step: decision.stepIdx + 1, status: "completed", next_send_at: null, ...CLEAR_HOLD });
           continue;
         }
         const { retry, exhausted } = canRetryClaim(existing, now, config);
@@ -527,8 +547,8 @@ export async function runScheduler(deps: {
         });
         const nextAt = computeNextSendAt(sequence, decision.stepIdx, now);
         await db.updateEnrollment(enrollment.id, nextAt
-          ? { current_step: decision.stepIdx + 1, next_send_at: nextAt.toISOString() }
-          : { current_step: decision.stepIdx + 1, status: "completed", next_send_at: null });
+          ? { current_step: decision.stepIdx + 1, next_send_at: nextAt.toISOString(), ...CLEAR_HOLD }
+          : { current_step: decision.stepIdx + 1, status: "completed", next_send_at: null, ...CLEAR_HOLD });
         warmCounts.set(workspaceId, (warmCounts.get(workspaceId) ?? 0) + 1);
         summary.sent += 1;
         continue;
@@ -539,9 +559,7 @@ export async function runScheduler(deps: {
       if (result.authError) {
         // E1.1: hold, never drop. Auth-prefixed errors retry without an attempt cap.
         await db.finalizeMessage(messageId, { status: "failed", error: `auth:${errText}`, attempt });
-        await db.updateEnrollment(enrollment.id, {
-          next_send_at: new Date(now.getTime() + config.holdMinutes * 60 * 1000).toISOString(),
-        });
+        await db.updateEnrollment(enrollment.id, holdPatch(enrollment, "send_auth", now, config));
         summary.held += 1;
       } else if (result.permanent || attempt >= config.maxAttempts) {
         await db.finalizeMessage(messageId, { status: "failed", error: errText, attempt });

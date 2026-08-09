@@ -149,6 +149,29 @@
     justify-content: flex-end;
 }
 
+/* E1 · held sequences. Warning tone, not error: nothing is broken and nothing
+   is lost — the operator withdrew approval by editing, and sends resume the
+   moment they approve again. The row wraps because the evidence (what it was,
+   when it stopped, how many sends are waiting) is a sentence, not a chip. */
+.engine-row__hold {
+    margin-top: 2px;
+    font-size: var(--text-sm, 12px);
+    line-height: 1.45;
+    color: var(--warning);
+    white-space: normal;
+}
+
+.engine-hold-banner {
+    border-color: rgba(var(--warning-rgb), 0.35);
+    background-color: var(--warning-soft);
+}
+
+.engine-hold-banner__title {
+    margin: 0 0 4px;
+    font-weight: 600;
+    color: var(--warning);
+}
+
 .engine-review-step {
     display: flex;
     flex-direction: column;

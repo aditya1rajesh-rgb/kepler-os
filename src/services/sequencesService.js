@@ -67,6 +67,11 @@ const mapRow = (r) => ({
     sendWindow: r.send_window ?? {},
     approvedBy: r.approved_by ?? null,
     approvedAt: r.approved_at ?? null,
+    // E1: set by the migration-030 trigger when an edit demoted this sequence
+    // out of a sendable status. Empty means a genuine never-approved draft.
+    heldFromStatus: r.held_from_status ?? '',
+    heldAt: r.held_at ?? null,
+    heldBy: r.held_by ?? null,
     sendingDomainId: r.sending_domain_id ?? null,
     targetListId: r.target_list_id ?? null,
     createdAt: r.created_at ?? null,

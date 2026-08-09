@@ -413,6 +413,96 @@ describe('runScheduler (integration, mock provider)', () => {
         expect(typeof state.enrollmentPatches[0].patch.next_send_at).toBe('string');
     });
 
+    // ─── E1 · a hold must leave evidence ──────────────────────────────────────
+    // The silent stop was not that sends stopped — that part is the invariant
+    // working. It was that stopping left no trace: next_send_at slid forward 30
+    // minutes at a time and no row anywhere said why, or since when.
+
+    it('records WHY a send was held, not just that it was postponed', async () => {
+        const state: FakeState = {
+            bundles: [{
+                enrollment: enrollment(),
+                sequence: sequence({ status: 'draft' }), // edited post-approval
+                prospect: prospect(),
+            }],
+            suppressed: new Set(),
+            messages: [],
+            enrollmentPatches: [],
+        };
+        const summary = await runScheduler({ db: makeFakeDb(state), adapters: {}, now: NOW });
+
+        expect(summary.held).toBe(1);
+        expect(state.enrollmentPatches[0].patch).toMatchObject({
+            hold_reason: 'sequence_draft',
+            held_since: NOW.toISOString(),
+        });
+    });
+
+    it('preserves held_since across re-holds so "held for 3 days" stays true', async () => {
+        const threeDaysAgo = new Date(NOW.getTime() - 3 * 24 * 3600 * 1000).toISOString();
+        const state: FakeState = {
+            bundles: [{
+                enrollment: enrollment({ hold_reason: 'sequence_draft', held_since: threeDaysAgo }),
+                sequence: sequence({ status: 'draft' }),
+                prospect: prospect(),
+            }],
+            suppressed: new Set(),
+            messages: [],
+            enrollmentPatches: [],
+        };
+        await runScheduler({ db: makeFakeDb(state), adapters: {}, now: NOW });
+
+        // next_send_at moves; held_since must NOT — otherwise every re-hold
+        // resets the clock and a ten-day stop reads as thirty minutes old.
+        const patch = state.enrollmentPatches[0].patch;
+        expect(patch.held_since).toBe(threeDaysAgo);
+        expect(patch.next_send_at).not.toBe(threeDaysAgo);
+    });
+
+    it('clears the hold once a send actually goes out', async () => {
+        const state: FakeState = {
+            bundles: [{
+                enrollment: enrollment({ hold_reason: 'sequence_draft', held_since: NOW.toISOString() }),
+                sequence: sequence(), // re-approved
+                prospect: prospect(),
+            }],
+            suppressed: new Set(),
+            messages: [],
+            enrollmentPatches: [],
+        };
+        await runScheduler({ db: makeFakeDb(state), adapters: { crm_zoho: makeMockAdapter([]) }, now: NOW });
+
+        expect(state.enrollmentPatches[0].patch).toMatchObject({ hold_reason: '', held_since: null });
+    });
+
+    it('holds with a reason when no adapter is configured for the send path', async () => {
+        const state: FakeState = {
+            bundles: [{ enrollment: enrollment(), sequence: sequence(), prospect: prospect() }],
+            suppressed: new Set(),
+            messages: [],
+            enrollmentPatches: [],
+        };
+        const summary = await runScheduler({ db: makeFakeDb(state), adapters: {}, now: NOW });
+
+        expect(summary.held).toBe(1);
+        expect(state.enrollmentPatches[0].patch).toMatchObject({ hold_reason: 'no_send_adapter' });
+    });
+
+    it('an auth failure is a held send with a reason, not an anonymous deferral', async () => {
+        const state: FakeState = {
+            bundles: [{ enrollment: enrollment(), sequence: sequence(), prospect: prospect() }],
+            suppressed: new Set(),
+            messages: [],
+            enrollmentPatches: [],
+        };
+        await runScheduler({
+            db: makeFakeDb(state),
+            adapters: { crm_zoho: makeMockAdapter([], { ok: false, error: 'token revoked', authError: true } as never) },
+            now: NOW,
+        });
+        expect(state.enrollmentPatches[0].patch).toMatchObject({ hold_reason: 'send_auth' });
+    });
+
     it('a failed send is never a silent drop — the row records the reason', async () => {
         const state: FakeState = {
             bundles: [{ enrollment: enrollment(), sequence: sequence(), prospect: prospect() }],

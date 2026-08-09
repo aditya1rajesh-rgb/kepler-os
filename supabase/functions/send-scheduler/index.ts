@@ -152,6 +152,9 @@ const makeDb = (svc: ReturnType<typeof createClient>): SchedulerDb => ({
         status: row.status,
         current_step: row.current_step,
         next_send_at: row.next_send_at,
+        // E1: carried so a re-hold preserves when the hold started.
+        hold_reason: row.hold_reason ?? "",
+        held_since: row.held_since ?? null,
       },
       sequence: row.sequence ?? null,
       prospect: row.prospect ?? null,

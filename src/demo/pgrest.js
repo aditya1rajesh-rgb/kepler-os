@@ -23,6 +23,48 @@ const FK_OVERRIDES = {
 
 const singular = (table) => table.replace(/ies$/, 'y').replace(/es$/, 'e').replace(/s$/, '');
 
+/**
+ * Emulated BEFORE UPDATE triggers, keyed by table.
+ *
+ * The demo store is otherwise a dumb key-value writer, which is fine until a
+ * table's real behaviour lives in a trigger rather than in the client. Then the
+ * demo diverges from production on exactly the transition a reviewer is most
+ * likely to click. Each entry receives the OLD row plus the incoming patch and
+ * returns the columns the database would have overwritten.
+ *
+ * Keep each in sync with the migration named above it.
+ */
+const SENDABLE_STATUSES = ['approved', 'scheduled', 'active', 'paused'];
+const EDIT_GUARDED_COLUMNS = ['steps', 'mode', 'channel', 'sending_domain_id'];
+
+const BEFORE_UPDATE = {
+    // migration 030 · sequences_guard_approval — editing a sendable sequence
+    // withdraws approval and records what it fell from (E1).
+    sequences: (row, patch) => {
+        const extra = {};
+        const contentEdited = EDIT_GUARDED_COLUMNS.some(
+            (col) => col in patch && JSON.stringify(patch[col]) !== JSON.stringify(row[col]),
+        );
+        const statusUnchanged = patch.status == null || patch.status === row.status;
+
+        if (contentEdited && SENDABLE_STATUSES.includes(row.status) && statusUnchanged) {
+            extra.status = 'draft';
+            extra.approved_by = null;
+            extra.approved_at = null;
+            if (!row.held_from_status) extra.held_from_status = row.status; // keep the FIRST fall
+            extra.held_at = new Date().toISOString();
+        }
+
+        if (patch.status === 'approved' && row.status !== 'approved') {
+            extra.approved_at = new Date().toISOString();
+            extra.held_from_status = '';
+            extra.held_at = null;
+            extra.held_by = null;
+        }
+        return extra;
+    },
+};
+
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 /** `a.b` → nested read; plain key → direct read. */
@@ -308,7 +350,10 @@ export class DemoQuery {
         const matched = this.rows.filter((row) => this.filters.every((f) => applyFilter(row, f)));
         const patch = { ...this.payload };
         if (this.store.hasColumn(this.table, 'updated_at')) patch.updated_at = new Date().toISOString();
-        for (const row of matched) Object.assign(row, patch);
+        const trigger = BEFORE_UPDATE[this.table];
+        // Arguments evaluate before Object.assign runs, so the trigger still
+        // sees the OLD row — same as a BEFORE UPDATE trigger in Postgres.
+        for (const row of matched) Object.assign(row, patch, trigger ? trigger(row, patch) : {});
         return matched;
     }
 

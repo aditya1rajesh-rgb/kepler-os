@@ -20,6 +20,9 @@ const mapRow = (r) => ({
     currentStep: r.current_step ?? 0,
     nextSendAt: r.next_send_at ?? null,
     stopReason: r.stop_reason ?? '',
+    // E1: written by the scheduler when it held this send rather than sending.
+    holdReason: r.hold_reason ?? '',
+    heldSince: r.held_since ?? null,
     meetingAt: r.meeting_at ?? null,
     createdAt: r.created_at ?? null,
     updatedAt: r.updated_at ?? null,

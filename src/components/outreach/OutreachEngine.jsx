@@ -33,6 +33,33 @@ const REPLY_KIND_LABEL = { reply: 'Reply', ooo: 'Out of office', bounce: 'Bounce
 const prospectName = (p) =>
     [p?.firstName, p?.lastName].filter(Boolean).join(' ') || p?.email || 'Unknown';
 
+// E1 — the silent stop, surfaced.
+//
+// Editing a sendable sequence resets it to 'draft' (migration 022 trigger) and
+// the scheduler then holds every enrollment on it, 30 minutes at a time, for
+// ever. Before migration 030 that state was unrepresentable: `held` and a
+// never-approved draft were the same row, so this screen showed both as "Not
+// approved" and outreach stopped with nothing on screen saying so.
+//
+// A sequence is HELD when it carries the status it fell from. That is the only
+// signal — not enrollment counts, which lag by up to one scheduler window.
+const isHeld = (seq) => Boolean(seq.heldFromStatus);
+
+// Only 'active' and 'scheduled' had sends in flight. Falling out of 'approved'
+// or 'paused' still needs re-approval, but nothing stopped — don't claim it did.
+const wasSending = (seq) => ['active', 'scheduled'].includes(seq.heldFromStatus);
+
+/** Sends the scheduler is actually sitting on for this sequence, right now. */
+const heldSendCount = (seq, enrollments) =>
+    enrollments.filter((e) => e.sequenceId === seq.id && e.status === 'active' && e.holdReason).length;
+
+/** Oldest hold on the sequence — how long sending has actually been stopped. */
+const heldSince = (seq, enrollments) =>
+    enrollments
+        .filter((e) => e.sequenceId === seq.id && e.status === 'active' && e.heldSince)
+        .map((e) => e.heldSince)
+        .sort()[0] ?? seq.heldAt;
+
 const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -88,6 +115,14 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
 
     const unresolvable = useMemo(() => findUnresolvableTokens(reviewSteps), [reviewSteps]);
 
+    // E1 rollup. Sequences that were mid-flight when they were edited come
+    // first — those are the ones where sends are piling up behind a hold.
+    const heldSequences = useMemo(
+        () => sequences.filter(isHeld).sort((a, b) => Number(wasSending(b)) - Number(wasSending(a))),
+        [sequences],
+    );
+    const stoppedCount = heldSequences.filter(wasSending).length;
+
     const openReview = (seq) => {
         setReviewSeq(seq);
         setReviewSteps(seq.steps.map((s) => ({ ...s })));
@@ -98,15 +133,36 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
         if (!reviewSeq) return;
         setApproving(true);
         setReviewError('');
+        // E1: the save and the approval are two statements, and the edit trigger
+        // fires on the first. If the second fails, the sequence is left demoted
+        // and holding — the exact silent stop this epic exists to end. Track
+        // which half landed so the error can say what actually happened.
+        let editLanded = false;
+        const wasLive = isHeld(reviewSeq) || ['approved', 'active', 'scheduled'].includes(reviewSeq.status);
         try {
             const edited = JSON.stringify(reviewSteps) !== JSON.stringify(reviewSeq.steps);
-            if (edited) await sequencesService.updateSteps(workspaceId, reviewSeq.id, reviewSteps);
+            if (edited) {
+                await sequencesService.updateSteps(workspaceId, reviewSeq.id, reviewSteps);
+                editLanded = true;
+            }
             await sequencesService.approve(workspaceId, reviewSeq.id);
             setReviewSeq(null);
-            setNotice(`"${reviewSeq.name}" approved — enroll prospects to schedule sends.`);
+            setNotice(
+                isHeld(reviewSeq)
+                    ? `"${reviewSeq.name}" re-approved — held sends resume in the next scheduler window.`
+                    : `"${reviewSeq.name}" approved — enroll prospects to schedule sends.`,
+            );
             await load();
         } catch (err) {
-            setReviewError(toUserMessage(err, 'Approval failed.'));
+            const base = toUserMessage(err, 'Approval failed.');
+            setReviewError(
+                editLanded && wasLive
+                    ? `${base} Your edits were saved, which withdrew approval — this sequence is NOT sending until you approve it again.`
+                    : base,
+            );
+            // Reload regardless: if the edit landed, the row's state changed and
+            // the screen must show it rather than the state from before.
+            if (editLanded) await load();
         } finally {
             setApproving(false);
         }
@@ -190,6 +246,37 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                 </Panel>
             )}
 
+            {/* E1 · the stop, said out loud. Rolled up here as well as shown on
+                each row, because the whole failure was that a stopped sequence
+                looked like an ordinary draft you had not got round to yet. */}
+            {heldSequences.length > 0 && (
+                <Panel className="module-panel engine-hold-banner">
+                    <p className="engine-hold-banner__title" role="alert">
+                        {stoppedCount > 0
+                            ? `${stoppedCount} sequence${stoppedCount === 1 ? ' has' : 's have'} stopped sending`
+                            : `${heldSequences.length} sequence${heldSequences.length === 1 ? '' : 's'} need${heldSequences.length === 1 ? 's' : ''} re-approval`}
+                    </p>
+                    <p className="brand-intel-module__source-label">
+                        Editing the copy withdraws approval — what you approved is no longer what would send, so nothing goes out until you approve it again. Nothing is dropped: held sends resume from where they stopped.
+                    </p>
+                    <div className="platform-pills">
+                        {heldSequences.map((seq) => {
+                            const n = heldSendCount(seq, enrollments);
+                            return (
+                                <button
+                                    key={seq.id}
+                                    type="button"
+                                    className="btn btn-secondary btn-sm platform-pill"
+                                    onClick={() => openReview(seq)}
+                                >
+                                    {seq.name}{n > 0 ? ` · ${n} waiting` : ''}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </Panel>
+            )}
+
             <div className="engine-counters">
                 {[
                     { label: 'Sends', value: counts.sends },
@@ -206,7 +293,7 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
             <Panel className="module-panel">
                 <PanelHeader
                     title="Executable sequences"
-                    meta="Nothing sends without your approval — editing an approved sequence returns it to draft."
+                    meta="Nothing sends without your approval — editing an approved sequence withdraws it, and the row says so."
                 />
                 {sequences.length === 0 ? (
                     <EmptyState message="No executable sequences yet. Generate one in the Builder tab, then choose 'Prepare for sending'." />
@@ -214,6 +301,8 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                     <div className="engine-table" role="table">
                         {sequences.map((seq) => {
                             const seqEnrollments = enrollments.filter((e) => e.sequenceId === seq.id);
+                            const held = isHeld(seq);
+                            const holdCount = held ? heldSendCount(seq, enrollments) : 0;
                             return (
                                 <div key={seq.id} className="engine-row" role="row">
                                     <div className="engine-row__main">
@@ -222,15 +311,25 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                                             {seq.steps.length} email step{seq.steps.length === 1 ? '' : 's'} · {seq.mode}
                                             {seqEnrollments.length ? ` · ${seqEnrollments.length} enrolled` : ''}
                                         </span>
+                                        {/* E1: the evidence, on the object it describes — what it
+                                            was, when it stopped, and what is waiting because of it. */}
+                                        {held && (
+                                            <span className="engine-row__hold" role="status">
+                                                {wasSending(seq)
+                                                    ? `Was ${seq.heldFromStatus} — sending stopped ${formatRelativeTime(heldSince(seq, enrollments))} when the copy was edited.`
+                                                    : `Was ${seq.heldFromStatus} — the copy was edited ${formatRelativeTime(seq.heldAt)}, so approval no longer covers it.`}
+                                                {holdCount > 0 && ` ${holdCount} send${holdCount === 1 ? '' : 's'} waiting.`}
+                                            </span>
+                                        )}
                                     </div>
                                     <StatusPill
-                                        status={seq.status === 'draft' ? 'Not approved' : seq.status}
-                                        variant={seq.status === 'draft' ? 'draft' : undefined}
+                                        status={held ? 'Needs re-approval' : (seq.status === 'draft' ? 'Not approved' : seq.status)}
+                                        variant={held ? 'warning' : (seq.status === 'draft' ? 'draft' : undefined)}
                                     />
                                     <div className="engine-row__actions">
                                         {(seq.status === 'draft') && (
                                             <button type="button" className="btn btn-primary" onClick={() => openReview(seq)}>
-                                                Review &amp; approve
+                                                {held ? 'Review & re-approve' : 'Review & approve'}
                                             </button>
                                         )}
                                         {['approved', 'active', 'scheduled'].includes(seq.status) && (
@@ -286,13 +385,21 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                                     </span>
                                     <span className="label-text">
                                         {e.sequenceName} · step {Math.min(e.currentStep + 1, 99)}
-                                        {e.status === 'active' && e.nextSendAt
-                                            ? ` · next: ${new Date(e.nextSendAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
-                                            : ''}
+                                        {/* E1: "next: 14:30" on a held enrollment is a lie — the
+                                            scheduler will only push it another 30 minutes. Say what
+                                            is really happening instead. */}
+                                        {e.status === 'active' && e.holdReason
+                                            ? ` · held since ${formatRelativeTime(e.heldSince)}`
+                                            : (e.status === 'active' && e.nextSendAt
+                                                ? ` · next: ${new Date(e.nextSendAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
+                                                : '')}
                                         {e.stopReason ? ` · ${e.stopReason.replace(/_/g, ' ')}` : ''}
                                     </span>
                                 </div>
-                                <StatusPill status={ENROLLMENT_STATUS_LABEL[e.status] ?? e.status} variant={e.status} />
+                                <StatusPill
+                                    status={e.status === 'active' && e.holdReason ? 'Held' : (ENROLLMENT_STATUS_LABEL[e.status] ?? e.status)}
+                                    variant={e.status === 'active' && e.holdReason ? 'warning' : e.status}
+                                />
                                 <div className="engine-row__actions">
                                     {e.status === 'active' && (
                                         <>
@@ -369,7 +476,7 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
             <Modal
                 isOpen={Boolean(reviewSeq)}
                 onClose={() => { if (!approving) setReviewSeq(null); }}
-                title={`Review & approve — ${reviewSeq?.name ?? ''}`}
+                title={`${reviewSeq && isHeld(reviewSeq) ? 'Review & re-approve' : 'Review & approve'} — ${reviewSeq?.name ?? ''}`}
                 footer={
                     <>
                         <button type="button" className="btn btn-secondary" onClick={() => setReviewSeq(null)} disabled={approving}>
@@ -386,6 +493,14 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                     </>
                 }
             >
+                {reviewSeq && isHeld(reviewSeq) && (
+                    <p className="engine-hold-banner__title" role="status">
+                        {wasSending(reviewSeq)
+                            ? `This sequence was ${reviewSeq.heldFromStatus} and stopped sending ${formatRelativeTime(heldSince(reviewSeq, enrollments))}, when its copy was edited.`
+                            : `This sequence was ${reviewSeq.heldFromStatus} until its copy was edited ${formatRelativeTime(reviewSeq.heldAt)}.`}
+                        {' '}Approving below covers what you see now.
+                    </p>
+                )}
                 <p className="brand-intel-module__source-label">
                     This is the identity gate: what you approve here is exactly what sends. {'{{firstName}}'}, {'{{lastName}}'}, {'{{fullName}}'}, {'{{company}}'}, {'{{title}}'} and {'{{email}}'} fill automatically per prospect — every other token must be edited out before approval.
                 </p>

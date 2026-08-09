@@ -295,11 +295,18 @@ export const sequences = [
         name: 'CIOs — consolidation (Q3)',
         channel: 'email',
         mode: 'cold',
-        status: 'active',
+        // E1 demo state: this one was ACTIVE and someone edited step 2's copy,
+        // which withdrew approval (migration 022 trigger) and stopped its sends.
+        // Seeded so the held state is demonstrable — it is the failure the
+        // product used to hide, and now the one the screen leads with.
+        status: 'draft',
+        held_from_status: 'active',
+        held_at: daysAgo(1.2),
+        held_by: DEMO_USER_ID,
         steps: cioSteps,
         send_window: { tz: 'Asia/Kolkata', days: [1, 2, 3, 4, 5], startHour: 10, endHour: 18 },
-        approved_by: DEMO_USER_ID,
-        approved_at: daysAgo(17),
+        approved_by: null,
+        approved_at: null,
         sending_domain_id: id('domain-outreach'),
         target_list_id: id('list-cio-groups'),
         created_at: daysAgo(19),
@@ -352,7 +359,7 @@ export const sequences = [
 
 // ── Enrollments, messages, replies ───────────────────────────────────────────
 
-const enrollment = (seqKey, prospectKey, { status, currentStep, nextSendDays, stopReason = '', meetingDays = null, created }) => ({
+const enrollment = (seqKey, prospectKey, { status, currentStep, nextSendDays, stopReason = '', meetingDays = null, created, heldSinceDays = null }) => ({
     id: id(`enr-${seqKey}-${prospectKey}`),
     workspace_id: WS,
     sequence_id: id(`seq-${seqKey}`),
@@ -361,6 +368,11 @@ const enrollment = (seqKey, prospectKey, { status, currentStep, nextSendDays, st
     current_step: currentStep,
     next_send_at: nextSendDays == null ? null : daysAhead(nextSendDays),
     stop_reason: stopReason,
+    // E1: a held send is still 'active' — the scheduler keeps pushing it 30
+    // minutes at a time rather than dropping it. next_send_at alone therefore
+    // reads as a normal upcoming send, which is exactly how it stayed invisible.
+    hold_reason: heldSinceDays == null ? '' : 'sequence_draft',
+    held_since: heldSinceDays == null ? null : daysAgo(heldSinceDays),
     meeting_at: meetingDays == null ? null : daysAhead(meetingDays),
     created_at: daysAgo(created),
     updated_at: daysAgo(Math.max(0.2, created - 8)),
@@ -377,12 +389,13 @@ export const enrollments = [
     enrollment('registrars', 'deccan-admissions', { status: 'stopped_unsub', currentStep: 1, nextSendDays: null, stopReason: 'Unsubscribed at touch 2', created: 9 }),
     enrollment('registrars', 'nalanda-admissions', { status: 'paused', currentStep: 0, nextSendDays: null, stopReason: 'Risky email — held for manual review', created: 4 }),
 
-    // CIO sequence
+    // CIO sequence — edited 1.2 days ago, so its three live enrollments have
+    // been held ever since (E1). They are the "3 sends waiting" on that row.
     enrollment('cios', 'vidyapeeth-cio', { status: 'meeting', currentStep: 2, nextSendDays: null, meetingDays: 4, created: 16 }),
-    enrollment('cios', 'himgiri-cio', { status: 'active', currentStep: 2, nextSendDays: 3, created: 16 }),
+    enrollment('cios', 'himgiri-cio', { status: 'active', currentStep: 2, nextSendDays: 0.02, created: 16, heldSinceDays: 1.2 }),
     enrollment('cios', 'sarala-cio', { status: 'stopped_reply', currentStep: 1, nextSendDays: null, stopReason: 'Replied — sandbox requested', created: 15 }),
-    enrollment('cios', 'coastal-it', { status: 'active', currentStep: 1, nextSendDays: 2, created: 11 }),
-    enrollment('cios', 'anantara-cio', { status: 'active', currentStep: 0, nextSendDays: 1, created: 3 }),
+    enrollment('cios', 'coastal-it', { status: 'active', currentStep: 1, nextSendDays: 0.02, created: 11, heldSinceDays: 1.2 }),
+    enrollment('cios', 'anantara-cio', { status: 'active', currentStep: 0, nextSendDays: 0.02, created: 3, heldSinceDays: 1.2 }),
 
     // IQAC sequence — approved, first sends scheduled
     enrollment('iqac', 'sanjeevani-iqac', { status: 'active', currentStep: 0, nextSendDays: 1, created: 2 }),
