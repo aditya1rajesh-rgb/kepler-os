@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { isUuid } from '../lib/validation';
 import {
+    detectGoalDrift,
     detectMetricMoves,
     detectOutreachMoves,
     detectSearchMoves,
@@ -8,8 +9,10 @@ import {
     searchWindows,
 } from '../lib/detectors';
 import { readingSeries } from '../lib/funnelSnapshot';
-import { MEASURES } from '../lib/goalFeasibility';
+import { MEASURES, deriveRunRate, projectGoal } from '../lib/goalFeasibility';
 import { capabilityService } from './capabilityService';
+import { campaignService } from './campaignService';
+import { goalsService } from './goalsService';
 import { integrationService } from './integrationService';
 import { visibilityService } from './visibilityService';
 
@@ -115,6 +118,9 @@ export const changeEventsService = {
         assertWs(workspaceId);
         const events = [];
         const failures = [];
+        // Loaded once and reused by both the metric detectors and goal drift —
+        // re-querying per goal cost seconds per goal for rows already in hand.
+        let metricRows = [];
 
         // ── Metric + outreach movement, from stored readings ────────────────
         try {
@@ -127,6 +133,7 @@ export const changeEventsService = {
                 .order('captured_at', { ascending: true });
             if (error) throw error;
             const rows = data ?? [];
+            metricRows = rows;
 
             for (const w of WATCHED) {
                 events.push(...detectMetricMoves(readingSeries(rows, w), { measure: w.measure, campaignId: null }));
@@ -181,6 +188,66 @@ export const changeEventsService = {
             }
         } catch {
             failures.push('visibility');
+        }
+
+        // ── Goal drift (E10) — the standing of a goal changing ──────────────
+        //
+        // The previous verdict is RECOMPUTED from history rather than stored.
+        // The obvious design — remember the last verdict and compare — needs a
+        // baseline to be written on the first run, and a baseline nobody writes
+        // means drift is never detected at all. Recomputing the projection as of
+        // the previous reading needs no state, cannot go stale, and is literally
+        // the roadmap's ask: the feasibility engine run again rather than only at
+        // creation.
+        try {
+            const [goals, campaigns] = await Promise.all([
+                goalsService.list(workspaceId),
+                campaignService.listCampaigns(workspaceId, { limit: 200 }),
+            ]);
+            const measured = goals.filter((g) => g.status === 'active' && g.kind === 'measured');
+
+            for (const goal of measured) {
+                const campaignIds = new Set(campaigns.filter((c) => c.goalId === goal.id).map((c) => c.id));
+                if (!campaignIds.size) continue;
+
+                // Merge providers per capture instant, as goalsService.snapshotsFor
+                // does — one reading carries GA4 and CRM metrics together.
+                const byInstant = new Map();
+                for (const r of metricRows) {
+                    if (!campaignIds.has(r.campaign_id)) continue;
+                    const entry = byInstant.get(r.captured_at) ?? { capturedAt: r.captured_at, metrics: {} };
+                    for (const [k, v] of Object.entries(r.metrics ?? {})) {
+                        entry.metrics[k] = (Number(entry.metrics[k]) || 0) + (Number(v) || 0);
+                    }
+                    byInstant.set(r.captured_at, entry);
+                }
+                const sorted = [...byInstant.values()]
+                    .sort((a, b) => String(a.capturedAt).localeCompare(String(b.capturedAt)));
+                if (sorted.length < 2) continue; // one reading is a baseline, not a change
+
+                const project = (rows, at) => projectGoal({
+                    runRate: deriveRunRate(rows, goal.measure, { now: at }),
+                    baseline: goal.baseline?.value ?? 0,
+                    target: goal.target,
+                    startDate: goal.startDate,
+                    endDate: goal.endDate,
+                    now: at,
+                });
+
+                const before = project(sorted.slice(0, -1), new Date(sorted[sorted.length - 2].capturedAt));
+                const current = project(sorted, new Date());
+
+                events.push(...detectGoalDrift({
+                    goalId: goal.id,
+                    name: goal.name,
+                    verdict: current.verdict,
+                    forecast: current.forecast,
+                    target: goal.target,
+                    observedAt: sorted[sorted.length - 1].capturedAt,
+                }, before.verdict));
+            }
+        } catch {
+            failures.push('goals');
         }
 
         if (!events.length) return { ok: true, detected: 0, failures };

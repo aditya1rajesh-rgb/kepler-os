@@ -9,7 +9,7 @@
 // one with the test suite; change it first, then bring this across.
 
 export interface ChangeEvent {
-  kind: "metric" | "search" | "visibility" | "outreach";
+  kind: "metric" | "search" | "visibility" | "outreach" | "goal";
   subject: string;
   direction: "up" | "down";
   magnitude: number;
@@ -258,6 +258,62 @@ export const detectOutreachMoves = (readings: Reading[], { metric }: { metric: "
     comparedTo: prior.at,
     campaignId: null,
     evidence: { metric },
+  })];
+};
+
+// ── Goal drift (E10) ─────────────────────────────────────────────────────────
+
+const VERDICT_RANK: Record<string, number> = { "on-track": 0, "at-risk": 1, "off-pace": 2 };
+const VERDICT_LABEL: Record<string, string> = { "on-track": "on track", "at-risk": "at risk", "off-pace": "behind" };
+
+export interface GoalStanding {
+  goalId: string;
+  name: string;
+  verdict: string;
+  forecast: number | null;
+  target: number | null;
+  observedAt: string;
+}
+
+/**
+ * A goal's standing changing — what makes the recommendation continuous rather
+ * than something you find by visiting.
+ *
+ * Movement into or out of 'unknown' is not drift: that is data arriving or
+ * drying up, and reporting it would blame the user for a missing snapshot. No
+ * previous standing means no change — a first observation is a baseline.
+ */
+export const detectGoalDrift = (current: GoalStanding, previousVerdict: string | null): ChangeEvent[] => {
+  if (!current?.goalId || !current.verdict) return [];
+  if (current.verdict === "unknown" || previousVerdict === "unknown") return [];
+  if (!previousVerdict || previousVerdict === current.verdict) return [];
+
+  const from = VERDICT_RANK[previousVerdict];
+  const to = VERDICT_RANK[current.verdict];
+  if (from === undefined || to === undefined) return [];
+
+  return [mkEvent({
+    kind: "goal",
+    subject: clean(current.name, 160),
+    identity: `${clean(current.name, 100)}@${previousVerdict}->${current.verdict}`,
+    direction: to < from ? "up" : "down",
+    magnitude: Math.abs(to - from),
+    pct: null,
+    unit: "standing",
+    from: null,
+    to: null,
+    observedAt: current.observedAt,
+    comparedTo: null,
+    campaignId: null,
+    evidence: {
+      goalId: current.goalId,
+      from: previousVerdict,
+      to: current.verdict,
+      fromLabel: VERDICT_LABEL[previousVerdict],
+      toLabel: VERDICT_LABEL[current.verdict],
+      forecast: current.forecast,
+      target: current.target,
+    },
   })];
 };
 

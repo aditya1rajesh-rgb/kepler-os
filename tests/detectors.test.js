@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     FLOORS,
+    detectGoalDrift,
     detectMetricMoves,
     detectOutreachMoves,
     detectSearchMoves,
@@ -214,6 +215,51 @@ describe('rankEvents + summariseMovement', () => {
         expect(s.headline).toBeNull();
         expect(s.contributors).toHaveLength(1);
         expect(s.aligned).toBe(false);
+    });
+});
+
+describe('detectGoalDrift', () => {
+    const goal = (verdict) => ({
+        goalId: 'g1', name: 'Q4 pipeline', verdict, forecast: 9000, target: 12000,
+        observedAt: daysAgo(0),
+    });
+
+    it('reports a goal slipping, and calls it down', () => {
+        const [e] = detectGoalDrift(goal('off-pace'), 'on-track');
+        expect(e.kind).toBe('goal');
+        expect(e.direction).toBe('down');
+        expect(e.evidence).toMatchObject({ goalId: 'g1', from: 'on-track', to: 'off-pace', toLabel: 'behind' });
+    });
+
+    it('reports recovery as up', () => {
+        expect(detectGoalDrift(goal('on-track'), 'at-risk')[0].direction).toBe('up');
+    });
+
+    it('says nothing when the standing is unchanged', () => {
+        expect(detectGoalDrift(goal('at-risk'), 'at-risk')).toEqual([]);
+    });
+
+    it('treats a first observation as a baseline, not a change', () => {
+        expect(detectGoalDrift(goal('off-pace'), null)).toEqual([]);
+    });
+
+    it('never reports movement into or out of unknown', () => {
+        // Data arriving or drying up is not the goal slipping, and saying so
+        // would blame the user for a missing snapshot.
+        expect(detectGoalDrift(goal('unknown'), 'on-track')).toEqual([]);
+        expect(detectGoalDrift(goal('off-pace'), 'unknown')).toEqual([]);
+    });
+
+    it('keys on the transition, so each slip is its own event', () => {
+        const slip = detectGoalDrift(goal('at-risk'), 'on-track')[0];
+        const worse = detectGoalDrift(goal('off-pace'), 'at-risk')[0];
+        expect(slip.dedupeKey).not.toBe(worse.dedupeKey);
+    });
+
+    it('outranks every other kind on the hero', () => {
+        const drift = detectGoalDrift(goal('off-pace'), 'on-track')[0];
+        const metric = detectMetricMoves([reading(14, 2600), reading(7, 2900)], { measure: 'sessions' })[0];
+        expect(rankEvents([metric, drift])[0].kind).toBe('goal');
     });
 });
 

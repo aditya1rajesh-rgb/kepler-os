@@ -19,7 +19,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { googleAccessToken, gscByQuery } from "../_shared/googleData.ts";
+import { deriveRunRate, projectGoal, type Snapshot } from "../_shared/goalMath.ts";
 import {
+  detectGoalDrift,
   detectMetricMoves,
   detectOutreachMoves,
   detectSearchMoves,
@@ -198,6 +200,72 @@ Deno.serve(async (req) => {
       }
     } catch (e) {
       errors.push({ workspaceId, detector: "visibility", error: String((e as Error).message) });
+    }
+
+    // ── Goal drift (E10) — the standing of a goal changing ─────────────────
+    //
+    // The previous verdict is RECOMPUTED as of the previous reading rather than
+    // stored. Remembering the last verdict would need a baseline written on the
+    // first run, and a baseline nobody writes means drift is never detected at
+    // all. This needs no state and cannot go stale — and it is the roadmap's
+    // actual ask: the feasibility engine run again, not only at creation.
+    try {
+      const { data: goals } = await svc
+        .from("goals")
+        .select("id, name, measure, target, baseline, start_date, end_date, kind, status")
+        .eq("workspace_id", workspaceId)
+        .eq("status", "active")
+        .eq("kind", "measured");
+
+      for (const goal of goals ?? []) {
+        const { data: goalCampaigns } = await svc
+          .from("campaigns").select("id").eq("workspace_id", workspaceId).eq("goal_id", goal.id);
+        const ids = (goalCampaigns ?? []).map((c) => c.id);
+        if (!ids.length) continue;
+
+        const { data: metricRows } = await svc
+          .from("campaign_metrics")
+          .select("metrics, captured_at")
+          .eq("workspace_id", workspaceId)
+          .in("campaign_id", ids)
+          .order("captured_at", { ascending: true });
+
+        // Merge providers per capture instant, exactly as goalsService does —
+        // one reading carries GA4 and CRM metrics together.
+        const byInstant = new Map<string, Snapshot>();
+        for (const r of metricRows ?? []) {
+          const entry = byInstant.get(r.captured_at) ?? { capturedAt: r.captured_at, metrics: {} };
+          for (const [k, v] of Object.entries(r.metrics ?? {})) {
+            entry.metrics[k] = (Number(entry.metrics[k]) || 0) + (Number(v) || 0);
+          }
+          byInstant.set(r.captured_at, entry);
+        }
+        const snapshots = [...byInstant.values()].sort((a, b) => a.capturedAt.localeCompare(b.capturedAt));
+        if (snapshots.length < 2) continue; // one reading is a baseline, not a change
+
+        const project = (rows: Snapshot[], at: Date) => projectGoal({
+          runRate: deriveRunRate(rows, goal.measure),
+          baseline: Number(goal.baseline?.value ?? 0),
+          target: goal.target,
+          startDate: goal.start_date,
+          endDate: goal.end_date,
+          now: at,
+        });
+
+        const before = project(snapshots.slice(0, -1), new Date(snapshots[snapshots.length - 2].capturedAt));
+        const current = project(snapshots, new Date());
+
+        events.push(...detectGoalDrift({
+          goalId: goal.id,
+          name: goal.name,
+          verdict: current.verdict,
+          forecast: current.forecast,
+          target: goal.target,
+          observedAt: snapshots[snapshots.length - 1].capturedAt,
+        }, before.verdict));
+      }
+    } catch (e) {
+      errors.push({ workspaceId, detector: "goal", error: String((e as Error).message) });
     }
 
     // ── Write ──────────────────────────────────────────────────────────────

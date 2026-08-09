@@ -43,6 +43,10 @@ const describeGap = (from, to) => {
 
 /** One contributor, in its own units — positions for search, engines for AEO. */
 const describeContributor = (e) => {
+    if (e.kind === 'goal') {
+        // The goal's own standing changing outranks everything else on this card.
+        return `this goal moved from ${e.evidence?.fromLabel ?? 'its previous standing'} to ${e.evidence?.toLabel ?? 'a new standing'}`;
+    }
     if (e.kind === 'search') {
         const where = e.evidence?.enteredPageOne ? ' onto page one' : e.evidence?.leftPageOne ? ' off page one' : '';
         return `“${e.subject}” ${e.direction === 'up' ? 'climbed' : 'slipped'} ${fmt(e.magnitude)} position${e.magnitude === 1 ? '' : 's'}${where}`;

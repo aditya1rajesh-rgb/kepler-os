@@ -10,6 +10,7 @@ import { enrollmentsService } from './enrollmentsService';
 import { goalsService } from './goalsService';
 import { integrationService } from './integrationService';
 import { measurementService } from './measurementService';
+import { recommendationService } from './recommendationService';
 import { sequencesService } from './sequencesService';
 
 // The cockpit's data layer (E5, roadmap S2).
@@ -151,6 +152,17 @@ export const cockpitService = {
             ),
         ]);
 
+        // E10 — what would close the gap. Needs the projection, so it runs after
+        // it rather than alongside; it is one more read on data already in hand.
+        const recommendation = hero
+            ? await settle(
+                recommendationService.forGoal(workspaceId, hero, { projection, now }),
+                null,
+                failures,
+                'recommendation',
+            )
+            : null;
+
         const paidConnected = PAID_PROVIDERS.some((p) => statuses?.[p]?.status === 'connected');
 
         return {
@@ -165,6 +177,7 @@ export const cockpitService = {
             campaigns,
             goalCampaigns,
             changes,
+            recommendation,
             // The hero's "what moved": the headline change on the goal's own
             // measure, plus what moved alongside it. `aligned` says whether the
             // supporting movement points the same way — it is correlation, and

@@ -9,8 +9,10 @@ import NeedsYou from '../../components/cockpit/NeedsYou';
 import FunnelSnapshot from '../../components/cockpit/FunnelSnapshot';
 import ChannelContribution from '../../components/cockpit/ChannelContribution';
 import OtherGoals from '../../components/cockpit/OtherGoals';
+import NextWork from '../../components/cockpit/NextWork';
 import { cockpitService } from '../../services/cockpitService';
 import { changeEventsService } from '../../services/changeEventsService';
+import { recommendationService } from '../../services/recommendationService';
 import { dashboardService } from '../../services/dashboardService';
 import { integrationService } from '../../services/integrationService';
 import { MEASURES } from '../../lib/goalFeasibility';
@@ -45,6 +47,7 @@ const Dashboard = ({ workspaceId, workspace }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [detecting, setDetecting] = useState(false);
+    const [accepting, setAccepting] = useState(false);
     const [error, setError] = useState('');
 
     const load = useCallback(async () => {
@@ -138,6 +141,27 @@ const Dashboard = ({ workspaceId, workspace }) => {
         }
     };
 
+    // E10 — accept the recommendation: plan a campaign against the live gap and
+    // create it already parented to the goal. One click, because the whole point
+    // is that the goal asks for work and getting to the work is the friction.
+    const acceptRecommendation = async () => {
+        if (!data?.hero || !data?.recommendation?.brief) return;
+        setAccepting(true);
+        setError('');
+        try {
+            const res = await recommendationService.accept(workspaceId, {
+                goal: data.hero,
+                brief: data.recommendation.brief,
+            });
+            if (!res.ok) { setError(res.error); return; }
+            navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?campaign=${res.campaign.id}`);
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not plan a campaign against this goal.'));
+        } finally {
+            setAccepting(false);
+        }
+    };
+
     const firstName = (displayName || 'there').split(' ')[0];
 
     if (loading) {
@@ -227,47 +251,15 @@ const Dashboard = ({ workspaceId, workspace }) => {
                         : goTo('goals'))}
                 />
 
-                {/* Zone 3 — what to do next. E10 scores which work would close the
-                    gap; until it exists this states the size of the gap honestly
-                    and stops there rather than ranking work it has not measured. */}
-                <Panel className="module-panel">
-                    <PanelHeader title="What would close the gap" meta="Sized from the goal, not yet ranked" />
-                    {hero && hero.kind === 'measured' && data.projection?.requiredPerDay !== null && data.projection?.requiredPerDay !== undefined ? (
-                        <div className="cockpit-next">
-                            <p className="cockpit-next__lead">
-                                Landing this goal needs{' '}
-                                <strong>
-                                    {new Intl.NumberFormat().format(Math.round(data.projection.requiredPerDay))}
-                                </strong>{' '}
-                                {MEASURES[hero.measure]?.unit ?? ''} a day for the remaining{' '}
-                                {data.projection.daysRemaining ?? '—'} days.
-                            </p>
-                            <p className="cockpit-next__sub">
-                                {data.goalCampaigns?.length
-                                    ? `${data.goalCampaigns.length} campaign${data.goalCampaigns.length === 1 ? '' : 's'} currently ladder to it.`
-                                    : 'Nothing ladders to it yet, so nothing is working on it.'}
-                                {' '}Kepler does not yet estimate which campaign would close this gap — it will not rank
-                                work it has not measured.
-                            </p>
-                            <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?new=1&goal=${hero.id}`)}
-                            >
-                                Plan a campaign against it
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="cockpit-empty">
-                            <p className="cockpit-empty__lead">Not enough measured history to size a gap.</p>
-                            <p className="cockpit-empty__sub">
-                                {hero
-                                    ? 'Once campaigns under this goal have metric readings, the required pace appears here.'
-                                    : 'Set a measured goal and this fills in from your own rates.'}
-                            </p>
-                        </div>
+                <NextWork
+                    recommendation={data?.recommendation}
+                    goalName={hero?.name ?? ''}
+                    accepting={accepting}
+                    onAccept={acceptRecommendation}
+                    onPlanManually={() => navigate(
+                        `${workspacePath(workspaceId, 'campaigns', 'all')}?new=1${hero ? `&goal=${hero.id}` : ''}`,
                     )}
-                </Panel>
+                />
             </div>
 
             <FunnelSnapshot stages={data?.funnel ?? []} onConnect={(stage) => connect(stage.connector)} />

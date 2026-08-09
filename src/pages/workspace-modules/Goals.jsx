@@ -5,7 +5,9 @@ import Panel, { PanelHeader } from '../../components/ui/Panel';
 import EmptyState from '../../components/ui/EmptyState';
 import StatusPill from '../../components/ui/StatusPill';
 import GoalMath from '../../components/goals/GoalMath';
+import NextWork from '../../components/cockpit/NextWork';
 import { goalsService } from '../../services/goalsService';
+import { recommendationService } from '../../services/recommendationService';
 import { MEASURES, MEASURE_IDS, goalWindowAdvice } from '../../lib/goalFeasibility';
 import { workspacePath } from '../../constants/routes';
 import { toUserMessage } from '../../lib/errors';
@@ -43,6 +45,10 @@ const Goals = ({ workspaceId }) => {
     const [checkpoints, setCheckpoints] = useState([]);
     const [projection, setProjection] = useState(null);
 
+    // E10 — the goal asks for work. Loaded with the detail, not behind a button,
+    // because a recommendation you have to request is one nobody sees.
+    const [recommendation, setRecommendation] = useState(null);
+    const [accepting, setAccepting] = useState(false);
     const [creating, setCreating] = useState(false);
     const [draft, setDraft] = useState(null);
     const [proposal, setProposal] = useState(null);
@@ -83,6 +89,10 @@ const Goals = ({ workspaceId }) => {
                 setCampaigns(camps);
                 setCheckpoints(cps);
                 setProjection(proj);
+                const rec = await recommendationService
+                    .forGoal(workspaceId, goal, { projection: proj })
+                    .catch(() => null);
+                if (!cancelled) setRecommendation(rec);
             } catch (err) {
                 if (!cancelled) setError(toUserMessage(err, 'Could not open that goal.'));
             }
@@ -157,6 +167,24 @@ const Goals = ({ workspaceId }) => {
             openGoal(goal.id);
         } catch (err) {
             setError(toUserMessage(err, 'Could not create the goal.'));
+        }
+    };
+
+    const acceptRecommendation = async () => {
+        if (!detail || !recommendation?.brief) return;
+        setAccepting(true);
+        setError('');
+        try {
+            const res = await recommendationService.accept(workspaceId, {
+                goal: detail,
+                brief: recommendation.brief,
+            });
+            if (!res.ok) { setError(res.error); return; }
+            navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?campaign=${res.campaign.id}`);
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not plan a campaign against this goal.'));
+        } finally {
+            setAccepting(false);
         }
     };
 
@@ -236,6 +264,16 @@ const Goals = ({ workspaceId }) => {
                                 </div>
                             )}
                         </Panel>
+
+                        {detail.kind === 'measured' && (
+                            <NextWork
+                                recommendation={recommendation}
+                                goalName={detail.name}
+                                accepting={accepting}
+                                onAccept={acceptRecommendation}
+                                onPlanManually={() => navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?new=1&goal=${detail.id}`)}
+                            />
+                        )}
 
                         {detail.kind === 'directional' && (
                             <Panel className="module-panel">

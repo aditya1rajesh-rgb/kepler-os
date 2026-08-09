@@ -311,10 +311,65 @@ export const detectOutreachMoves = (readings = [], { metric = 'replied' } = {}) 
     })];
 };
 
+// ── Goal drift (E10 — the continuous half) ───────────────────────────────────
+
+/** Worse is a bigger number, so a rise in rank is bad news. */
+const VERDICT_RANK = { 'on-track': 0, 'at-risk': 1, 'off-pace': 2 };
+const VERDICT_LABEL = { 'on-track': 'on track', 'at-risk': 'at risk', 'off-pace': 'behind' };
+
+/**
+ * A goal's standing changing.
+ *
+ * This is what makes the recommendation CONTINUOUS rather than something you
+ * discover by visiting: the goal that slipped from on track to behind says so.
+ *
+ * Two refusals. A move into or out of 'unknown' is NOT drift — it means the data
+ * arrived or dried up, and reporting "your goal slipped to unknown" would blame
+ * the user for a missing snapshot. And a goal with no previous recorded standing
+ * emits nothing: the first observation is a baseline, not a change.
+ *
+ * @param current  { goalId, name, verdict, progress, forecast, target, observedAt }
+ * @param previousVerdict the verdict last recorded for this goal, or null
+ */
+export const detectGoalDrift = (current, previousVerdict = null) => {
+    const verdict = current?.verdict;
+    if (!current?.goalId || !verdict) return [];
+    if (verdict === 'unknown' || previousVerdict === 'unknown') return [];
+    if (!previousVerdict || previousVerdict === verdict) return [];
+
+    const from = VERDICT_RANK[previousVerdict];
+    const to = VERDICT_RANK[verdict];
+    if (from === undefined || to === undefined) return [];
+
+    return [event({
+        kind: 'goal',
+        subject: clean(current.name, 160),
+        // "up" is the goal improving. The rank is inverted, hence the comparison.
+        direction: to < from ? 'up' : 'down',
+        magnitude: Math.abs(to - from),
+        pct: null,
+        unit: 'standing',
+        observedAt: current.observedAt,
+        // The previous standing IS the comparison; there is no earlier timestamp
+        // to point at, so the key carries the transition instead.
+        comparedTo: null,
+        identity: `${clean(current.name, 100)}@${previousVerdict}->${verdict}`,
+        evidence: {
+            goalId: current.goalId,
+            from: previousVerdict,
+            to: verdict,
+            fromLabel: VERDICT_LABEL[previousVerdict],
+            toLabel: VERDICT_LABEL[verdict],
+            forecast: current.forecast ?? null,
+            target: current.target ?? null,
+        },
+    })];
+};
+
 // ── Reading the events back ──────────────────────────────────────────────────
 
 /** Significance for display: the metric that moved most, then search, then the rest. */
-const KIND_WEIGHT = { metric: 4, search: 3, visibility: 2, outreach: 2 };
+const KIND_WEIGHT = { goal: 5, metric: 4, search: 3, visibility: 2, outreach: 2 };
 
 export const rankEvents = (events = []) => [...events].sort((a, b) => {
     const w = (KIND_WEIGHT[b.kind] ?? 1) - (KIND_WEIGHT[a.kind] ?? 1);

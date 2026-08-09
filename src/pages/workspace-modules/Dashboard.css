@@ -219,10 +219,52 @@
 .cockpit-queue__title { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
 .cockpit-queue__detail { font-size: var(--fs-2xs); color: var(--text-muted); text-wrap: pretty; }
 
-/* ── Zone 3 · the gap ───────────────────────────────────────────────────── */
+/* ── Zone 3 · the gap (E10) ─────────────────────────────────────────────── */
 .cockpit-next { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
 .cockpit-next__lead { margin: 0; font-size: var(--fs-md); text-wrap: pretty; }
 .cockpit-next__sub { margin: 0; font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; max-width: 60ch; }
+
+/* The working is not small print — it is what makes the number arguable, so it
+   sits directly under the claim at readable weight rather than behind a
+   disclosure nobody opens. */
+.cockpit-next__workings {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    max-width: 62ch;
+    text-wrap: pretty;
+}
+.cockpit-next__workings li { padding-left: var(--sp-3); position: relative; }
+.cockpit-next__workings li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 8px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--border-strong, var(--text-dim));
+}
+
+.cockpit-next__hint {
+    margin: 0;
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    max-width: 62ch;
+    text-wrap: pretty;
+}
+
+.cockpit-next__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.cockpit-next__fineprint { margin: 0; font-size: var(--fs-2xs); color: var(--text-dim); max-width: 62ch; text-wrap: pretty; }
+
+/* Ahead of pace reads as good news; thin evidence reads as quiet. */
+.cockpit-next.is-good .cockpit-next__lead { color: var(--positive); }
+.cockpit-next.is-thin .cockpit-next__lead { color: var(--text-secondary); }
 
 /* ── Zone 4 · the funnel ────────────────────────────────────────────────── */
 .cockpit-funnel {
