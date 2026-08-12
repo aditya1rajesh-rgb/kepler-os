@@ -38,6 +38,10 @@ const Goals = ({ workspaceId }) => {
     const [goals, setGoals] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    // Load failures get their own slot. Sharing one `error` string meant a failed
+    // CREATE overwrote the reason the list was empty, so a missing table read as
+    // "you have no goals yet" with an unexplained create failure above it.
+    const [loadError, setLoadError] = useState('');
     const [notice, setNotice] = useState('');
 
     const [detail, setDetail] = useState(null);
@@ -56,9 +60,9 @@ const Goals = ({ workspaceId }) => {
     const load = useCallback(async () => {
         try {
             setGoals(await goalsService.list(workspaceId));
-            setError('');
+            setLoadError('');
         } catch (err) {
-            setError(toUserMessage(err, 'Could not load goals.'));
+            setLoadError(toUserMessage(err, 'Could not load goals.'));
         } finally {
             setLoading(false);
         }
@@ -208,6 +212,7 @@ const Goals = ({ workspaceId }) => {
                 banner={
                     <>
                         <button type="button" className="campaigns__back" onClick={() => openGoal(null)}>← All goals</button>
+                        {loadError && <p className="brand-intel-module__error" role="alert">{loadError}</p>}
                         {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                     </>
                 }
@@ -312,6 +317,7 @@ const Goals = ({ workspaceId }) => {
             moduleKey="goals"
             banner={
                 <>
+                    {loadError && <p className="brand-intel-module__error" role="alert">{loadError}</p>}
                     {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
                     {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                 </>
@@ -427,7 +433,12 @@ const Goals = ({ workspaceId }) => {
 
             <Panel className="module-panel">
                 <PanelHeader title="Goals" meta="Everything ladders to one of these" />
-                {goals.length === 0 ? (
+                {loadError ? (
+                    /* An unreadable list is not an empty list. Saying "no goals
+                       yet" here would be a confident false statement about the
+                       user's own data. */
+                    <EmptyState message={`Goals could not be loaded, so this list is not showing your goals. ${loadError}`} />
+                ) : goals.length === 0 ? (
                     <EmptyState message="No goals yet. A goal is what campaigns and assets ladder to — without one, generated work has nothing to serve." />
                 ) : (
                     <div className="engine-table" role="table">

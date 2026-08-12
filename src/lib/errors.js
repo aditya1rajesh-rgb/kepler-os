@@ -9,6 +9,43 @@ const SAFE_PATTERNS = [
     /row-level security/i,
 ];
 
+/**
+ * Postgres / PostgREST codes that mean "the schema this build expects is not on
+ * this database" — almost always a migration that has not been applied yet.
+ *
+ * These get a NAMED message rather than the generic fallback. The generic one is
+ * right for unknown errors, and actively harmful here: a missing table produces
+ * a screen that says "could not create" while the list quietly shows an empty
+ * state, which reads as "you have no goals" rather than "this feature is not
+ * deployed". Naming the cause is the difference between a user who is stuck and
+ * one who can act — and it leaks nothing an operator does not already know.
+ */
+const SCHEMA_CODES = new Set([
+    'PGRST205', // Could not find the table … in the schema cache
+    'PGRST204', // Could not find the column … in the schema cache
+    'PGRST202', // function not found
+    '42P01', // undefined_table
+    '42703', // undefined_column
+]);
+
+/** "…the table 'public.goals'…" → "goals" */
+const namedRelation = (message = '') => {
+    const match = /table ['"]?(?:public\.)?([a-z0-9_]+)['"]?/i.exec(message)
+        ?? /relation ['"]?(?:public\.)?([a-z0-9_]+)['"]?/i.exec(message)
+        ?? /column ['"]?([a-z0-9_.]+)['"]?/i.exec(message);
+    return match?.[1] ?? '';
+};
+
+/**
+ * True when this error means the database is behind the app. Exported so a
+ * screen can render a different, non-alarming state rather than an error banner.
+ */
+export const isSchemaError = (error) => {
+    if (!error || typeof error === 'string') return false;
+    if (SCHEMA_CODES.has(error.code)) return true;
+    return /schema cache|does not exist/i.test(error.message ?? '');
+};
+
 export const toUserMessage = (error, fallback = 'Something went wrong. Please try again.') => {
     if (!error) return fallback;
 
@@ -16,6 +53,13 @@ export const toUserMessage = (error, fallback = 'Something went wrong. Please tr
         typeof error === 'string'
             ? error
             : error.message ?? error.error_description ?? fallback;
+
+    if (isSchemaError(error)) {
+        const relation = namedRelation(message);
+        return relation
+            ? `This feature needs the “${relation}” table, which this database does not have yet — a pending migration has not been applied.`
+            : 'This feature needs a database change that has not been applied to this environment yet.';
+    }
 
     if (SAFE_PATTERNS.some((pattern) => pattern.test(message))) {
         if (/jwt expired|session expired/i.test(message)) {
