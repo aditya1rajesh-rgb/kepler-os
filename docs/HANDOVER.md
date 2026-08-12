@@ -1,6 +1,6 @@
 # Handover — Kepler roadmap execution
 
-**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `4d187c1`
+**Session date:** 2026-08-09 · **Branch:** `staging` · **Last commit:** `d39bcf6`
 
 Written so a fresh session can pick this up without replaying the conversation.
 Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
@@ -11,7 +11,7 @@ Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
 
 **Everything is committed and pushed.** `origin/staging` == `staging`.
 
-- `399 tests pass` · production build clean · **lint 56 errors — that is the
+- `423 tests pass` · production build clean · **lint 56 errors — that is the
   accepted baseline** (it was 57; deleting the old dashboard components took one
   with them). CI runs `npm test` + `npm run build` deliberately, never lint.
 - **The repo is now AHEAD of the deployed backend.** Migrations 020–032 were
@@ -23,22 +23,25 @@ Read this, then `docs/ROADMAP.md` and the `roadmap-deviations` memory.
   | `033_change_events.sql` (new table) | E7 | `change_events` does not exist — detection fails, hero shows nothing moved |
   | `034_detector_run_cron.sql` (new schedule) | E7 | No daily detection; the manual button still works once 033 lands |
   | `detector-run` (new function) | E7 | pg_net posts 404 harmlessly |
+  | `035_change_events_goal_kind.sql` (widens a CHECK) | E10 | Goal-drift events are rejected by the constraint |
 
   All of it is blocked on the same expired Supabase token (§5). **033 is the one
   that matters** — without it E7 is inert in production, including the manual
-  path.
+  path — and **035 must go after 033**, since it widens a constraint 033 creates.
+  E10's recommendation itself needs none of this: it reads existing tables.
 - **The email sender is NOT armed.** The Vault secrets for 023/028 were
   deliberately skipped, so `kepler-send-scheduler` and `kepler-inbox-monitor`
   are scheduled but no-op (401). See §5.
 
 ---
 
-## 2. What shipped — the whole NOW tier, plus E3, E5 and E7
+## 2. What shipped — the whole NOW tier, plus E3, E5, E7 and E10
 
 Roadmap NOW tier is **complete** (E27 excluded — the user owns the approvals),
-and three NEXT-tier epics are done: **E3**, **E5** and **E7**. E3 is client-side
-only; E5 changed two edge functions; E7 adds a table, a schedule and a function.
-Everything undeployed is listed in §1.
+and four NEXT-tier epics are done: **E3**, **E5**, **E7** and **E10**. E3 is
+client-side only; E5 changed two edge functions; E7 adds a table, a schedule and
+a function; E10 adds one constraint-widening migration. Everything undeployed is
+listed in §1.
 
 | Epic | What |
 |---|---|
@@ -52,6 +55,7 @@ Everything undeployed is listed in §1.
 | **E3** | Goal-grounded generation — the spine, read (see §2b) |
 | **E5** | Goal cockpit — the return surface, replaces the Dashboard (see §2c) |
 | **E7** | Scheduled detectors — what moved, and the hero that shows it (see §2d) |
+| **E10** | Continuous goal recommendation — the goal asks for work (see §2e) |
 
 **E2 is the important one.** Migration 032 adds `goals`, `goal_checkpoints`,
 `goal_target_history`, `goal_links` and `campaigns.goal_id`. The feasibility
@@ -143,15 +147,16 @@ direction instead of noise.
 |---|---|
 | **1 · Goal hero** | Built. Progress, forecast, **gap in real units**, days remaining, what moved |
 | **2 · Needs you** | Built. Five row types, all from state production already writes |
-| **3 · Recommended next** | **Deliberately not built** — that is E10 |
+| **3 · Recommended next** | **Built by E10** (see §2e); it shipped empty by design |
 | **4 · Funnel** | Built. Five stages, sparklines, honest empty stages |
 | **5 · Channel contribution** | Built, incl. the `production—source` dimension |
 | **6 · Other goals** | Built — a quiet strip, plus "make primary" |
 
-**Zone 3 is the interesting omission.** E10 is what scores which work would close
-the gap. Until it exists the card states the gap's *size* from the goal's own
-math and stops there: it will not rank work it has not measured. A card that
-guessed would be indistinguishable on screen from one that knew.
+**Zone 3 shipped empty on purpose**, and that is worth keeping in mind when
+reading E10: the card stated the gap's size and refused to rank work it had not
+measured, because a card that guessed would be indistinguishable on screen from
+one that knew. E10 supplied the measurement and filled it in — the refusal came
+first, the number second, which is the order that keeps the number honest.
 
 **The hero closes E3's exposed gap.** `goalsService.setPrimary` had no caller, so
 the primary-goal fallback standalone generation relies on was unreachable through
@@ -309,6 +314,83 @@ looking. Worth pairing with E13, which reworks that surface anyway.
 
 ---
 
+## 2e. E10 — continuous goal recommendation
+
+The return-driver. S1: *"Kepler re-reads the gap as data accrues and keeps
+proposing the portfolio that would close it"* — the goal actively asks for work
+rather than waiting to be visited. It fills E5's zone 3 and appears again on the
+goal detail.
+
+What it produces, from the demo dataset:
+
+> **11,525 sessions short with 89 days left. 8 more campaigns of your usual size
+> would plausibly close it.**
+> · Your 3 measured campaigns have delivered 538–2,295 sessions each (median 1,586).
+> · At the median that is 8 campaigns; at your best 6, at your weakest 22.
+> · Those are trailing levels from each campaign's own readings, not lifetime totals.
+
+### Where the care is
+
+That headline is **the most confident sentence in the product**, computed from a
+handful of trailing readings, so `src/lib/goalRecommendation.js` is mostly rules
+about when Kepler may say it (17 tests):
+
+- **Every estimate comes from THIS account's campaigns.** No industry benchmark,
+  no model guess. If the account has not run campaigns, Kepler does not know what
+  a campaign here delivers and says exactly that.
+- **Below three measured campaigns there is no estimate** — only the measured gap
+  and "Kepler needs your own campaigns to report first". It still offers the
+  work; it just will not size it.
+- **The working renders at full weight** under the claim, not behind a
+  disclosure. A recommendation nobody can argue with is a horoscope.
+- **Campaigns younger than a week are excluded.** They inherited a 28-day window
+  that mostly predates them; counting them drags the median down and inflates
+  every "campaigns needed" number.
+- **Time is a constraint.** When past campaigns took longer to deliver than the
+  goal has left, it says so rather than proposing work that cannot land.
+- **The channel hint needs a clear margin** (1.5×) or it stays silent, so it does
+  not rotate its advice every time the numbers wobble.
+
+### Accept
+
+One click plans a campaign against the brief and creates it **already parented to
+the goal**. The brief carries the shortfall and the deadline and **not** the
+estimate: it becomes the campaign's own goal text, and "should deliver ~800
+sessions" would read a month later as a promise Kepler made on its behalf.
+
+### The continuous half
+
+A goal's **standing** changing (on track → behind) is now a change event, on E7's
+schedule and mirrored in the cron (`_shared/goalMath.ts` — a third mirror,
+`deriveRunRate` + `projectGoal` only).
+
+The previous verdict is **recomputed as of the previous reading**, not stored.
+The obvious design — remember the last verdict, compare next time — needs a
+baseline written on the first run, and a baseline nobody writes means drift is
+never detected at all. Recomputing needs no state, cannot go stale, and is
+literally S1's ask: the feasibility engine run again rather than only at creation.
+
+### Two decisions worth not re-litigating
+
+- **Recommendations are computed on read, never persisted.** "Run the feasibility
+  engine on a schedule" reads like "store a recommendations table"; it is not. A
+  stored recommendation is stale the moment any campaign reports, which is the
+  one failure this feature cannot afford. The schedule's job is noticing the
+  standing changed — that is the change event.
+- **Yields fall back from the goal's own campaigns to the workspace** below the
+  sample floor. A second goal's campaigns are still this account's campaigns, and
+  the alternative is silence on every new goal forever. The card says which scope
+  it used.
+
+Verified in the harness: the sized recommendation above, accept creating a
+pre-parented and pre-briefed campaign with four planned steps, and the drift path
+computing verdicts and correctly emitting nothing when nothing drifted. It also
+exposed a performance problem worth remembering: `detectNow` was re-querying
+snapshots per goal and took over 45 seconds; reusing the metric rows already
+loaded brought it to 6.
+
+---
+
 ## 3. E30 — the audit finding, and why it exists
 
 An audit of all 10 screen specs found that **screen-structure decisions were
@@ -358,6 +440,17 @@ content), Settings' three children (E9).
 - **`replies.raw_snippet` holds the email SUBJECT, not the body**, despite the
   name. The Replies screen labels it honestly; fixing it properly means
   `inbox-monitor` storing a body excerpt (a real gap, not yet built).
+- **Two migrations in one epic means an ORDER.** 035 widens a CHECK that 033
+  creates. Applying them out of order fails; `supabase migration list` will not
+  warn you which way round they go.
+- **A stored derived number is a stale number.** E10 computes recommendations on
+  read for this reason. Anything that is a pure function of goals, campaigns and
+  their latest readings should stay that way — the schedule exists to notice
+  change, not to cache answers.
+- **A "remember the last value and compare" detector needs a baseline writer, or
+  it never fires.** E10's drift detection recomputes the previous verdict from
+  history instead, which is the same class of fix as not adding a denormalised
+  parent column: the state you do not keep cannot go stale or go missing.
 - **A dedupe key must carry every axis the event varies on.** E7 shipped three
   variants of one bug in a day: workspace-vs-campaign, prompt-vs-surface, and a
   timestamp of "now" instead of the window it describes. Each let a unique index
@@ -417,20 +510,27 @@ content), Settings' three children (E9).
 
 The goal spine is now closed in both directions: E3 pushed the goal **down** into
 generation, E5 brought the outcome **back up** into a surface worth returning to.
-E7 closed the first of the two holes E5 named. The other is the obvious next:
+E7 and E10 closed both holes E5 named, and every cockpit zone that can be built
+from today's data now is. The spine is complete: goal → work → outcome → back
+into generation, with the goal asking for more work when it slips.
 
-1. **E10 · Continuous goal recommendation (7.3).** Zone 3, still empty by
-   design: the cockpit sizes the gap and refuses to rank work it has not
-   measured. E10 is that ranking, the zone is already framed for it, and E7 now
-   supplies the change signal it would score against.
-2. **E17 · Outreach warnings (7.3).** Contains E1, which shipped; what remains is
-   the rest of the warning surface. The demand queue is already the place for it.
-3. **E15 · Revenue picture (7.3).** No dependencies, and the funnel's revenue
-   stage currently ends at a number with no honest cut line behind it.
+**The most valuable thing left is not an epic — it is the deployment in §1 and
+§5.** Four epics of work are sitting behind one expired token, and two of them
+(E7's detection, E10's drift) are inert in production until it is rotated.
 
-Then **E28 · Library as corpus (7.3)** — E3's PRIOR leg reads `content_items` by
-campaign; E28 makes the corpus first-class, which turns "do not repeat these"
-into "build on these."
+After that, by ICE and by what now has a surface waiting for it:
+
+1. **E28 · Library as corpus (7.3).** E3's PRIOR leg reads `content_items` by
+   campaign; E28 makes the corpus first-class, turning "do not repeat these" into
+   "build on these". It is the last cheap upgrade to generation quality.
+2. **E15 · Revenue picture (7.3).** No dependencies. The funnel's revenue stage
+   ends at a number with no honest cut line behind it, and E10 will size goals
+   against revenue the moment someone sets a revenue goal.
+3. **E17 · Outreach warnings (7.3).** Contains E1, which shipped; the rest of the
+   warning surface belongs in the demand queue, which already exists.
+4. **E9 · Tenancy (7.0).** Still the thing that unblocks E11, and still the only
+   way `workspace_events.actor_id` and the Activity zone stop being designed-and-
+   unwritten.
 
 **E6 · closed loop is still gated on E4 evidence.** Nothing yet reads performance
 back into the next asset, and the roadmap is explicit that the loop should be
@@ -478,7 +578,7 @@ E5 added one more, and set the demo up so the cockpit has something to show:
   port rather than fighting for it — a page reload there would reset the store
   you just set up.
 
-E7 adds one more, and it is the fastest way to exercise a detector:
+E7 and E10 add two more, and the first is the fastest way to exercise a detector:
 
 - **`change_events` is seeded EMPTY on purpose.** The demo's own metric history,
   GSC fixtures and two visibility scan runs are what "Check for changes" runs
@@ -486,3 +586,9 @@ E7 adds one more, and it is the fastest way to exercise a detector:
   Create a goal, ladder a campaign, then press the button (or call
   `changeEventsService.detectNow` from the console) — 13 changes is the expected
   count on the shipped dataset, and a second run must write none.
+- **The demo's three campaigns are what E10 sizes from**, which means the
+  recommendation always lands in the `scope: 'workspace'` fallback for a fresh
+  goal (a new goal has fewer than three of its own). That is the designed path,
+  not a bug. To see the `insufficient-evidence` refusal you need a workspace with
+  under three measured campaigns, which the Ken42 dataset does not have —
+  `tests/goal-recommendation.test.js` covers it instead.
