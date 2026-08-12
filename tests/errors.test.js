@@ -3,7 +3,7 @@
 // together say "you have no goals and the app is fine", when the truth was
 // "this table does not exist on this database". These tests pin the naming.
 import { describe, expect, it } from 'vitest';
-import { isSchemaError, toUserMessage } from '../src/lib/errors.js';
+import { errorDetail, isSchemaError, toUserMessage } from '../src/lib/errors.js';
 
 const pgrest = (code, message) => ({ code, message });
 
@@ -65,5 +65,28 @@ describe('toUserMessage — unchanged behaviour', () => {
 
     it('still names a network failure', () => {
         expect(toUserMessage({ message: 'fetch failed' })).toMatch(/network error/i);
+    });
+});
+
+describe('errorDetail', () => {
+    it('carries the code, message and hint so a cause can be pasted, not described', () => {
+        const detail = errorDetail({
+            code: '23503',
+            message: 'insert or update on table "goals" violates foreign key constraint "goals_created_by_fkey"',
+            hint: 'Key is not present in table "users".',
+        });
+        expect(detail).toContain('23503');
+        expect(detail).toContain('goals_created_by_fkey');
+        expect(detail).toContain('Key is not present');
+    });
+
+    it('is empty for nothing and for plain strings', () => {
+        expect(errorDetail(null)).toBe('');
+        expect(errorDetail('boom')).toBe('');
+        expect(errorDetail({})).toBe('');
+    });
+
+    it('caps runaway detail so it cannot take over the screen', () => {
+        expect(errorDetail({ code: 'X', message: 'y'.repeat(500) }).length).toBeLessThanOrEqual(300);
     });
 });

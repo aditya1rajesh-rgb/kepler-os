@@ -10,7 +10,7 @@ import { goalsService } from '../../services/goalsService';
 import { recommendationService } from '../../services/recommendationService';
 import { MEASURES, MEASURE_IDS, goalWindowAdvice } from '../../lib/goalFeasibility';
 import { workspacePath } from '../../constants/routes';
-import { toUserMessage } from '../../lib/errors';
+import { errorDetail, toUserMessage } from '../../lib/errors';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import '../../styles/module-kepler.css';
 import './Goals.css';
@@ -42,6 +42,10 @@ const Goals = ({ workspaceId }) => {
     // CREATE overwrote the reason the list was empty, so a missing table read as
     // "you have no goals yet" with an unexplained create failure above it.
     const [loadError, setLoadError] = useState('');
+    // The raw cause, rendered quietly beside the friendly message. Without it a
+    // constraint violation, a foreign key, a stale schema cache and a wrong
+    // project all read as the same generic sentence.
+    const [failureDetail, setFailureDetail] = useState('');
     const [notice, setNotice] = useState('');
 
     const [detail, setDetail] = useState(null);
@@ -63,6 +67,7 @@ const Goals = ({ workspaceId }) => {
             setLoadError('');
         } catch (err) {
             setLoadError(toUserMessage(err, 'Could not load goals.'));
+            setFailureDetail(errorDetail(err));
         } finally {
             setLoading(false);
         }
@@ -171,6 +176,7 @@ const Goals = ({ workspaceId }) => {
             openGoal(goal.id);
         } catch (err) {
             setError(toUserMessage(err, 'Could not create the goal.'));
+            setFailureDetail(errorDetail(err));
         }
     };
 
@@ -214,6 +220,9 @@ const Goals = ({ workspaceId }) => {
                         <button type="button" className="campaigns__back" onClick={() => openGoal(null)}>← All goals</button>
                         {loadError && <p className="brand-intel-module__error" role="alert">{loadError}</p>}
                         {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                        {failureDetail && (error || loadError) && (
+                            <p className="brand-intel-module__source-label goals-error-detail">{failureDetail}</p>
+                        )}
                     </>
                 }
                 status={<StatusPill status={detail.status} variant={STATUS_VARIANT[detail.status]} />}
@@ -319,6 +328,9 @@ const Goals = ({ workspaceId }) => {
                 <>
                     {loadError && <p className="brand-intel-module__error" role="alert">{loadError}</p>}
                     {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {failureDetail && (error || loadError) && (
+                        <p className="brand-intel-module__source-label goals-error-detail">{failureDetail}</p>
+                    )}
                     {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                 </>
             }

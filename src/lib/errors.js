@@ -46,6 +46,31 @@ export const isSchemaError = (error) => {
     return /schema cache|does not exist/i.test(error.message ?? '');
 };
 
+/**
+ * The raw cause, for a muted "technical detail" line next to the friendly
+ * message.
+ *
+ * WHY THIS EXISTS. `toUserMessage` deliberately collapses anything it does not
+ * recognise into a generic sentence, which is the right security posture and
+ * makes a real failure undiagnosable: a create that failed on a constraint, a
+ * foreign key, a stale schema cache and a wrong project all read as "Something
+ * went wrong. Please try again." This happened for real on the Goals screen and
+ * cost a session of guessing.
+ *
+ * Postgres error codes and PostgREST messages are not secrets — they describe
+ * the schema, which the operator of this workspace already owns. Rendering them
+ * quietly, beside the human sentence rather than instead of it, is what lets
+ * someone paste the actual cause instead of describing a symptom.
+ */
+export const errorDetail = (error) => {
+    if (!error || typeof error === 'string') return '';
+    const code = error.code ? String(error.code) : '';
+    const message = String(error.message ?? '').trim();
+    const hint = String(error.hint ?? '').trim();
+    if (!code && !message) return '';
+    return [code, message, hint].filter(Boolean).join(' · ').slice(0, 300);
+};
+
 export const toUserMessage = (error, fallback = 'Something went wrong. Please try again.') => {
     if (!error) return fallback;
 

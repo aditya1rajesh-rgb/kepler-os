@@ -142,3 +142,12 @@
     flex-wrap: wrap;
     margin-top: var(--sp-2);
 }
+
+/* The raw cause of a failure, muted and monospaced. Quiet enough not to be the
+   headline, legible enough to paste into a bug report. */
+.goals-error-detail {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: var(--fs-2xs);
+    color: var(--text-dim);
+    word-break: break-word;
+}
