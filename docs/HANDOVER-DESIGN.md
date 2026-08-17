@@ -445,7 +445,22 @@ weekly series and the cockpit props were pulled.
 
 ## Repo state
 
-All changes are **uncommitted and unpushed**, on branch `staging`.
+**Committed and deployed** (2026-08-17), three commits on `staging`:
+
+```
+2d656dd  docs: the Siphron design record
+1edde19  assets(connectors): sixteen real brand marks
+23313e1  feat(theme): ship Siphron as a selectable light theme, and port the redesign
+```
+
+Live at **https://kepler-os-two.vercel.app** — Vercel reports
+`environment=Production`, because the project's Production Branch is `staging`.
+CI green (36s), Vercel green, and the deployed `/assets/index-*.css` and
+`/assets/App-*.css` are **byte-identical** to the locally verified build.
+
+Note when checking a future deploy: Deployment Protection is on, so the
+per-deployment and per-branch URLs return **HTTP 200 with a Vercel login page**.
+That looks like a successful fetch and is not. Use the stable alias above.
 
 Lint is clean on everything this work introduced. Pre-existing
 `react-hooks/set-state-in-effect` errors sit in files it edited
