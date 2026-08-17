@@ -7,9 +7,11 @@ import { capabilityService } from '../../services/capabilityService';
 import { eventService } from '../../services/eventService';
 import { CONNECTORS } from '../../lib/connectors';
 import EmptyState from '../ui/EmptyState';
-// capabilityReport is no longer read here: requested-vs-granted moved off the
-// card and into the connect / manage / needs-attention modals.
-import { compareByState, connectorState } from '../../lib/connectorState';
+import CapabilityList from './CapabilityList';
+// capabilityReport is read by the MODALS now, not by the card: requested-vs-granted
+// needs room for both halves and for the third state (`granted: null`).
+import { capabilityReport, compareByState, connectorState, missingCapabilities } from '../../lib/connectorState';
+import { shortfallConsequence } from '../../lib/connectorCapabilityCopy';
 import gscLogo from '../../assets/connectors/gsc.png';
 import ga4Logo from '../../assets/connectors/ga4.png';
 import googleAdsLogo from '../../assets/connectors/google-ads.png';
@@ -56,6 +58,20 @@ const CONNECTOR_LOGOS = {
     anthropic: anthropicLogo,
 };
 
+const PROVIDER_LABEL = { google: 'Google', meta: 'Meta', linkedin: 'LinkedIn' };
+
+/**
+ * Preconditions the USER must satisfy before consent will produce a working
+ * connection. Stated before the redirect, not discovered after it: a capability
+ * that silently stays unavailable because of an unlinked account is the exact
+ * failure the needs-attention modal exists to explain.
+ */
+const PRECONDITION = {
+    'meta-pages': 'Instagram needs a Business or Creator account linked to the Page. Without that link, publishing to Instagram stays unavailable after connecting. Meta approves posting to your own Page without review; posting to a client’s account needs Meta app review, which Kepler has not completed yet.',
+    linkedin: 'This publishes to your personal LinkedIn profile. Company-Page posting is a separate, gated tier.',
+    'google-ads': 'Reading the Google Ads API also needs a Google-approved developer token. That is separate from this connection, and connecting works without it.',
+};
+
 /**
  * Connector grid + API-key modal for a SINGLE workspace. Extracted from ProfilePage
  * so both the workspace-scoped Integrations screen and the account Settings page can
@@ -83,6 +99,10 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
     const [confirmDisconnect, setConfirmDisconnect] = useState(null);
     const [disconnecting, setDisconnecting] = useState(false);
     const [search, setSearch] = useState('');
+    // The OAuth pre-consent step, and the needs-attention detail. Each holds
+    // { connector, status } so the modal can report against the real connection.
+    const [oauthIntent, setOauthIntent] = useState(null);
+    const [attention, setAttention] = useState(null);
 
     useEffect(() => {
         if (!workspaceId) return undefined;
@@ -186,11 +206,13 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
         if (st) {
             return (
                 <div className="connector-card__connected">
-                    {view.state === 'degraded' && c.authType === 'oauth' && (
-                        <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => connectOauth(c.id)}>Reconnect</button>
-                    )}
-                    {view.state === 'degraded' && c.authType === 'apiKey' && (
-                        <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => openApiKeyModal(c)}>Reconnect</button>
+                    {/* A degraded connection leads with "Why?", not with Reconnect:
+                        the shortfall is the thing to understand, and reconnecting
+                        blind is what produced the shortfall the first time. */}
+                    {view.state === 'degraded' && (
+                        <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => setAttention({ connector: c, status: st })}>
+                            Why?
+                        </button>
                     )}
                     <button type="button" className="btn btn-ghost connector-card__btn" onClick={() => setConfirmDisconnect(c)}>Disconnect</button>
                 </div>
@@ -199,7 +221,9 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
         if (c.authType === 'apiKey') {
             return <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => openApiKeyModal(c)}>Connect</button>;
         }
-        return <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => connectOauth(c.id)}>Connect</button>;
+        // OAuth goes through a pre-consent step: what is being asked for, and any
+        // precondition, BEFORE the user is thrown to a provider consent screen.
+        return <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => setOauthIntent({ connector: c, status: st })}>Connect</button>;
     };
 
     /* One flat grid, not eight category sections. Sixteen connectors across eight
@@ -360,6 +384,93 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
                         </p>
                     </>
                 )}
+            </Modal>
+
+            {/* ── Connect (OAuth): what is asked for, before consent ───────────── */}
+            <Modal
+                isOpen={Boolean(oauthIntent)}
+                onClose={() => setOauthIntent(null)}
+                title={oauthIntent ? `Connect ${oauthIntent.connector.label}` : 'Connect'}
+                footer={
+                    <>
+                        <button type="button" className="btn btn-secondary" onClick={() => setOauthIntent(null)}>Cancel</button>
+                        <button type="button" className="btn btn-primary" onClick={() => connectOauth(oauthIntent.connector.id)}>
+                            Continue to {PROVIDER_LABEL[oauthIntent?.connector?.family] ?? 'the provider'}
+                        </button>
+                    </>
+                }
+            >
+                {oauthIntent && (
+                    <>
+                        <p>
+                            You will be sent to {PROVIDER_LABEL[oauthIntent.connector.family] ?? 'the provider'} to
+                            approve access. Kepler never sees your password.
+                        </p>
+                        <p className="connector-modal__eyebrow">What Kepler is asking for</p>
+                        <CapabilityList
+                            connector={oauthIntent.connector}
+                            caps={capabilityReport(oauthIntent.connector, null).map((c) => ({ ...c, granted: null }))}
+                            mode="request"
+                        />
+                        {PRECONDITION[oauthIntent.connector.id] && (
+                            <>
+                                <p className="connector-modal__eyebrow">Before you continue</p>
+                                <p className="connector-modal__note">{PRECONDITION[oauthIntent.connector.id]}</p>
+                            </>
+                        )}
+                        <p className="connector-modal__eyebrow">What it improves</p>
+                        <p className="connector-modal__note">
+                            {oauthIntent.connector.enhances}: {oauthIntent.connector.description}
+                        </p>
+                    </>
+                )}
+            </Modal>
+
+            {/* ── Needs attention: requested vs GRANTED, and what that costs ───── */}
+            <Modal
+                isOpen={Boolean(attention)}
+                onClose={() => setAttention(null)}
+                title={attention ? `${attention.connector.label} needs attention` : 'Needs attention'}
+                footer={
+                    <>
+                        <button type="button" className="btn btn-secondary" onClick={() => setAttention(null)}>Close</button>
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => {
+                                const c = attention.connector;
+                                setAttention(null);
+                                if (c.authType === 'apiKey') openApiKeyModal(c);
+                                else connectOauth(c.id);
+                            }}
+                        >
+                            Reconnect
+                        </button>
+                    </>
+                }
+            >
+                {attention && (() => {
+                    const caps = capabilityReport(attention.connector, attention.status);
+                    const missing = missingCapabilities(attention.connector, attention.status);
+                    const view = connectorState(attention.connector, attention.status, {
+                        oauthConfigured: integrationService.isOAuthConfigured(attention.connector.id),
+                    });
+                    return (
+                        <>
+                            <p>{view.detail}</p>
+                            <p className="connector-modal__eyebrow">What this connection can do</p>
+                            <CapabilityList connector={attention.connector} caps={caps} />
+                            {missing.length > 0 && (
+                                <>
+                                    <p className="connector-modal__eyebrow">What that means today</p>
+                                    <p className="connector-modal__note">
+                                        {shortfallConsequence(attention.connector, missing)}
+                                    </p>
+                                </>
+                            )}
+                        </>
+                    );
+                })()}
             </Modal>
         </>
     );

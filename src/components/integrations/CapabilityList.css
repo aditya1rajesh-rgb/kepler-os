@@ -1,0 +1,57 @@
+/* Capability rows inside the connect / needs-attention modals. */
+
+.caplist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Cards at one level are the same size, so every row gets the same padding and
+   the content decides only its height, not its geometry. */
+.caplist__row {
+    padding: 14px;
+    border-radius: var(--r-md);
+    background: var(--layer-inset);
+}
+
+.caplist__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.caplist__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.caplist__state {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.caplist__state--ok { color: var(--positive); }
+.caplist__state--bad { color: var(--negative); }
+.caplist__state--info { color: var(--accent-text); }
+.caplist__state--dim { color: var(--text-dim); }
+
+.caplist__what {
+    margin: 2px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.caplist__note {
+    margin: 2px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-dim);
+}

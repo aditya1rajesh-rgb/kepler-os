@@ -12,6 +12,7 @@ import { prospectListsService } from '../../services/prospectListsService';
 import { formatRelativeTime } from '../../lib/formatRelativeTime';
 import { needsResponse } from '../../lib/replyTriage';
 import { toUserMessage } from '../../lib/errors';
+import './ProspectRow.css';
 
 // The send engine (R1a): approve → enroll → KEPLER sends on schedule via the
 // connected CRM. Everything here is a VIEW over the execution tables; the
@@ -569,7 +570,9 @@ const OutreachEngine = ({ workspaceId, zohoConnected, refreshKey = 0 }) => {
                     </div>
                 )}
                 {prospects.length === 0 ? (
-                    <EmptyState message="No prospects with an email address. Add prospects (with emails) in the Prospecting panel first." />
+                    /* "Prospecting" was retired into Audiences; check moduleRegistry
+                       before naming a destination here. */
+                    <EmptyState message="No prospects with an email address. Add people in Audiences first, then enrich them to reveal emails." />
                 ) : (
                     <div className="engine-prospect-list">
                         {prospects.map((p) => (

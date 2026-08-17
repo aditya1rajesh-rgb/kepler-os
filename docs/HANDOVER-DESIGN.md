@@ -266,35 +266,87 @@ and `:root[data-theme='siphron']` outspecifies it. That block now exists.
   `"Off pace"` in the source and left the tests behind. A red suite blocks a
   deploy, so they are updated. **435/435 pass.**
 
+### The two structural screens — DONE
+
+**Audiences is one canvas.** The three-tab strip is gone. It held seven panels
+over four objects, two of them rendered twice: prospects appeared under both
+Saved research and Find prospects with *per-panel selection state*, so picking six
+people in one and switching showed none selected; lists appeared as a tab and as a
+segment of Saved research, one object with two action sets and two open
+behaviours. Now a Lists rail selects what the People table shows, Find prospects
+is a drawer, and saved accounts left for Research.
+
+- `ListDetail` became the People table with two modes. `listId` set means list
+  members and remove takes them *out of the list*; `listId` null means all people
+  and remove *deletes the prospect* — the wrong one there would be destructive.
+  All-people also carries push-to-Zoho, which was the retired Prospects panel's
+  action and would otherwise have been lost with it.
+- The canvas keys the table on the selection, so switching audiences remounts it:
+  a fresh fetch and a cleared selection, without clearing state inside an effect.
+- `FindProspectsDrawer` keeps the six-control search and drops that screen's
+  duplicate saved-prospects panel.
+- **Retired**: `Prospecting.jsx`, `AbmSaved.jsx`, `OutreachLists.jsx`.
+- **A latent breakage found on the way out**: `.prospect-*` row styles lived in
+  `Prospecting.css` and were used by *seven* surfaces while only two imported it —
+  they happened to be loaded because some screen pulled that file in. Deleting
+  Prospecting would have silently unstyled five surfaces. The shared half is now
+  `components/outreach/ProspectRow.css` and every consumer imports it.
+
+**Research is master-detail.** An Accounts rail carries this run's queue above the
+saved accounts, with one full card on the right and the composer at the foot of
+the rail. The two rail lists do not overlap: research auto-persists, so a
+completed account *graduates* out of the queue into Saved rather than appearing in
+both — the near-duplicate trap Audiences had. The one exception is a result whose
+persistence failed, which stays in the queue because that is the only place it can
+still be reached.
+
+Cross-account contact selection spans everything in memory (every result the run
+produced, plus every saved account opened), which is what "select top N by fit"
+ranks over. The dead chat layer — 19 rule blocks — is deleted.
+
+**One thing corrected during verification:** the mount auto-selected the most
+recent account, which marked a rail row active while the pane still showed the
+empty state — the screen contradicting itself. Nothing is auto-selected now. The
+empty pane is a *designed* state introduced by master-detail, and picking for the
+user is a guess about intent.
+
+### The budget slider and the last two modals — DONE
+
+- **Budget tier is a three-stop segmented control**, not `<input type="range">`.
+  It has exactly three values, and the slider also made the labels and the thumb
+  two separate controls for one choice. Stored ids stay `low|mid|high` so saved
+  campaigns keep loading. `radiogroup` semantics, verified.
+- **OAuth pre-consent** and **needs attention** are built
+  (`components/integrations/CapabilityList.jsx`,
+  `lib/connectorCapabilityCopy.js`). This closes the gap the chip removal opened.
+
+  Both report **capabilities, never raw scopes** — verified with an on-screen
+  scan: no `ads_management`, no `googleapis.com`, no `kepler:` anywhere. What does
+  appear is the provider's own permission NAME ("Meta calls this permission Ads
+  Management"), because that is the word on the consent screen.
+
+  **`kepler:*` scopes are handled separately and this matters.** They are internal
+  markers Kepler invented for its own Google Ads developer-token gating, not
+  anything Google grants. Presenting them as a provider permission would blame
+  Google for a gate that is ours, so they get their own line: *"Kepler needs a
+  Google-approved production developer token… That approval is ours to obtain,
+  not yours to grant."*
+
+  **Three states, because `null` is not `false`**: Granted · Not granted · **Not
+  recorded**. The last is a connection that predates scope recording — unknowable
+  rather than refused, and the column the card had no room for. Verified on all
+  three paths.
+
+  A degraded card now leads with **Why?** rather than Reconnect: the shortfall is
+  the thing to understand, and reconnecting blind is what produced it.
+
 ### What is left
 
-**The two structural screens**, still design-only and the reason the port is not
-finished:
-
-- **Audiences → a single canvas**: lists rail + people table, with *Find
-  prospects* as a drawer, and saved accounts moving to Research. The repo ships
-  the three-tab version.
-- **Research → master-detail**: queue and saved accounts left, one result card
-  right. The repo ships the chat transcript.
-
-**Smaller, well-specified:**
-
-- **The budget slider** is still a real `<input type="range">` in
-  `AdCampaigns.jsx`. The design draws a three-stop segmented control, because it
-  has exactly three values and a continuous track implies precision the model
-  does not have.
-- **The four Integrations modals exist only in Figma.** `ConnectorsPanel.jsx` now
-  has two (the API-key form, and the disconnect confirmation this pass added). The
-  **OAuth pre-consent** step and the **needs-attention** detail are unbuilt — and
-  needs-attention is the one that matters, because the capability chips have now
-  been removed from the cards, so requested-vs-granted currently has nowhere to
-  live. `capabilityReport` and `missingCapabilities` in `connectorState.js` are
-  the data for it; note that `granted: null` means *unknowable*, not refused.
-- **The remaining `#fff` / `#ffffff` `color:` declarations** were left alone: each
-  needs its surface checked, and on an accent surface white is correct in both
-  themes. There are ~13.
-
-**An accessibility decision for you:** `--text-dim` at 2.09:1 on white (above).
+- **The remaining `#fff` / `#ffffff` `color:` declarations** (~13). Each needs its
+  surface checked: on an accent surface white is correct in both themes.
+- **An accessibility decision for you:** `--text-dim` at 2.09:1 on white (above).
+  Every remaining contrast failure in the light theme is this one token, used for
+  micro-labels; dark reports zero failures on every route audited.
 
 ---
 

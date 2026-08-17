@@ -5,70 +5,8 @@
 }
 
 /* ── Chat layer ─────────────────────────────────────────────────────────── */
-.abm-chat {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.abm-chat__log {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    max-height: 62vh;
-    overflow-y: auto;
-    padding-right: 0.25rem;
-}
-
-.abm-turn {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.abm-msg {
-    display: flex;
-}
-.abm-msg--user { justify-content: flex-end; }
-.abm-msg--assistant { justify-content: flex-start; }
-
-.abm-bubble {
-    max-width: min(680px, 92%);
-    padding: 0.7rem 0.95rem;
-    border-radius: 14px;
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-    background: var(--surface-2, rgba(255, 255, 255, 0.02));
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-.abm-bubble--user {
-    background: var(--accent-soft, rgba(var(--accent-rgb), 0.16));
-    border-color: var(--accent-border, rgba(var(--accent-rgb), 0.35));
-}
-.abm-bubble--intro { max-width: 100%; }
-
-.abm-bubble__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    opacity: 0.7;
-    margin-bottom: 0.3rem;
-}
-.abm-bubble__content { margin: 0; }
 
 /* Typing dots */
-.abm-typing { display: inline-flex; gap: 5px; align-items: center; }
-.abm-typing span {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: currentColor; opacity: 0.5;
-    animation: abm-blink 1.2s infinite ease-in-out;
-}
-.abm-typing span:nth-child(2) { animation-delay: 0.2s; }
-.abm-typing span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes abm-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 0.9; } }
 
 .abm-composer {
     display: flex;
@@ -125,12 +63,6 @@
 .abm-sources summary { cursor: pointer; opacity: 0.7; }
 .abm-sources ul { margin: 0.4rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.2rem; }
 .abm-sources a { color: inherit; }
-
-.abm-note {
-    margin: 0; font-size: 0.8rem; opacity: 0.75;
-    padding: 0.5rem 0.7rem; border-radius: 8px;
-    border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.14));
-}
 
 /* ── Contacts table ─────────────────────────────────────────────────────── */
 .abm-table__scroll { overflow-x: auto; }
@@ -195,36 +127,6 @@
 }
 
 .abm-saved-module { display: flex; flex-direction: column; gap: 24px; }
-.abm-saved-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 0.35rem; }
-.abm-saved-open {
-    background: none; border: none; padding: 0; cursor: pointer;
-    color: inherit; font: inherit; text-align: left;
-    flex: 1 1 auto; min-width: 0;
-    display: flex; flex-direction: column; gap: 0.15rem;
-}
-.abm-saved-open:hover .prospect-row__name { text-decoration: underline; }
-
-/* The chat is the canvas: the log scrolls internally and the composer stays
-   pinned, so researching a long list never pushes the input off screen. */
-.abm-research-module.mscreen--fill .abm-chat {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    flex: 1;
-}
-
-.abm-research-module.mscreen--fill .abm-chat__log {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-}
-
-.abm-research-module.mscreen--fill .abm-composer {
-    flex-shrink: 0;
-    padding-top: var(--sp-3);
-    border-top: 1px solid var(--border-subtle);
-}
 
 /* Bulk research sits on the canvas as a collapsible strip — visible and
    scannable, but subordinate to the analyst chat below it. It spent a short
@@ -276,4 +178,147 @@
     flex-direction: column;
     gap: var(--sp-3);
     padding: 0 var(--sp-4) var(--sp-4);
+}
+
+/* ── Master-detail canvas ─────────────────────────────────────────────────────
+   Replaced a chat log. The result card is the densest object in the product, so
+   one is shown at a time and the rail says what else exists. Two content
+   columns, never three. */
+.abm__canvas {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+/* Same rail idiom as Audiences: a recessed track whose selected row lifts. */
+.abm__rail {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: var(--layer-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+}
+
+/* The list scrolls; the composer below it does not. Researching twelve companies
+   must never push the input out of reach. */
+.abm__rail-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 58vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.abm__rail-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 8px 2px;
+    margin: 0;
+}
+
+.abm__rail-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--r-sm);
+    text-align: left;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    transition: background-color var(--t-fast), color var(--t-fast);
+}
+
+.abm__rail-row:hover { background: var(--wash-3); color: var(--text); }
+
+.abm__rail-row.is-active {
+    background: var(--layer-raised);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+}
+
+/* A queued or in-flight row is not yet clickable, and says so by not offering a
+   pointer. An errored one keeps its message visible in the sub-line. */
+.abm__rail-row--queued,
+.abm__rail-row--loading { cursor: default; }
+.abm__rail-row--loading .abm__rail-sub { color: var(--accent-text); }
+.abm__rail-row--error .abm__rail-sub { color: var(--negative); }
+.abm__rail-row--cancelled { opacity: 0.7; }
+
+.abm__rail-btn,
+.abm__rail-row > .abm__rail-btn {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+}
+
+.abm__rail-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.abm__rail-sub {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.abm__rail-del {
+    flex-shrink: 0;
+    opacity: 0;
+    padding: 4px;
+    transition: opacity var(--t-fast);
+}
+
+.abm__rail-row:hover .abm__rail-del,
+.abm__rail-row.is-active .abm__rail-del,
+.abm__rail-del:focus-visible { opacity: 1; }
+
+.abm__rail-note {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    padding: 4px 10px 6px;
+    margin: 0;
+}
+
+/* The composer is pinned at the foot of the rail: a new company enters the LIST. */
+.abm__rail-composer {
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.abm__pane { min-width: 0; }
+
+@media (max-width: 980px) {
+    .abm__canvas { grid-template-columns: minmax(0, 1fr); }
+    .abm__rail-scroll { max-height: 34vh; }
 }

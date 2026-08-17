@@ -36,6 +36,14 @@ const PLATFORMS = [
     { id: 'multi', label: 'Multi-platform' },
 ];
 
+// Three discrete stops. The stored ids stay 'low' | 'mid' | 'high' so saved
+// campaigns keep loading.
+const BUDGET_TIERS = [
+    { id: 'low', label: 'Essential' },
+    { id: 'mid', label: 'Growth' },
+    { id: 'high', label: 'Scale' },
+];
+
 // The per-field character count is built from `fieldStatus`'s keys, which are
 // payload field names. `headline` passes as a word by luck; `primaryText` does
 // not, and a machine value must never reach the screen.
@@ -374,23 +382,28 @@ const AdCampaigns = ({ workspaceId }) => {
                         </div>
                     </div>
 
+                    {/* Budget tier is a THREE-STOP segmented control, not a range
+                        input. It has exactly three values, and a continuous track
+                        implies a precision the model does not have - it also made
+                        the labels and the thumb two separate controls for one
+                        choice, where clicking a label and dragging the thumb were
+                        different interactions with the same three options. */}
                     <div className="config-section">
-                        <label className="label-text">Budget Tier</label>
-                        <div className="budget-slider-labels">
-                            <span className={`label-text budget-label ${config.budget === 'low' ? 'active' : ''}`} onClick={() => setConfig({ ...config, budget: 'low' })}>Essential</span>
-                            <span className={`label-text budget-label ${config.budget === 'mid' ? 'active' : ''}`} onClick={() => setConfig({ ...config, budget: 'mid' })}>Growth</span>
-                            <span className={`label-text budget-label ${config.budget === 'high' ? 'active' : ''}`} onClick={() => setConfig({ ...config, budget: 'high' })}>Scale</span>
+                        <label className="label-text" id="budget-tier-label">Budget Tier</label>
+                        <div className="budget-tier" role="radiogroup" aria-labelledby="budget-tier-label">
+                            {BUDGET_TIERS.map((t) => (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={config.budget === t.id}
+                                    className={`budget-tier__stop ${config.budget === t.id ? 'is-active' : ''}`}
+                                    onClick={() => setConfig({ ...config, budget: t.id })}
+                                >
+                                    {t.label}
+                                </button>
+                            ))}
                         </div>
-                        <input
-                            type="range"
-                            min="1" max="3" step="1"
-                            className="premium-range"
-                            value={config.budget === 'low' ? 1 : config.budget === 'high' ? 3 : 2}
-                            onChange={e => {
-                                const val = parseInt(e.target.value);
-                                setConfig({ ...config, budget: val === 1 ? 'low' : val === 2 ? 'mid' : 'high' });
-                            }}
-                        />
                     </div>
                 </Panel>
 

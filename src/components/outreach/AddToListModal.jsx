@@ -4,7 +4,8 @@ import { prospectListsService } from '../../services/prospectListsService';
 import { toUserMessage } from '../../lib/errors';
 
 // Add N selected prospects to a prospect list — create a new one or pick an
-// existing one. Shared by Prospecting + Saved (both have a multi-select). Lists
+// existing one. Shared by Audiences (Find prospects) + Research (both have a
+// multi-select). Lists
 // are the reusable audience a sequence targets. onAdded(count, listName) lets
 // the caller show a notice + clear its selection.
 const AddToListModal = ({ workspaceId, prospectIds = [], isOpen, onClose, onAdded }) => {

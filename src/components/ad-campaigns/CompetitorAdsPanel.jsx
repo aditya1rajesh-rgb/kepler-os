@@ -4,6 +4,7 @@ import Panel, { PanelHeader } from '../ui/Panel';
 import EmptyState from '../ui/EmptyState';
 import { integrationService } from '../../services/integrationService';
 import { adGenerationService } from '../../services/adGenerationService';
+import '../outreach/ProspectRow.css';
 
 // ad_type=ALL (all ads) is broadly queryable only for EU-reached ads (DSA);
 // elsewhere it skews to political/issue ads. Flag the EU ones.

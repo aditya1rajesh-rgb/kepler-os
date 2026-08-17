@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Download, ExternalLink, Trash2, Send, Sparkles } from '../../lib/icons';
+import { ArrowLeft, Check, Download, ExternalLink, Trash2, Send, Sparkles } from '../../lib/icons';
 import Panel from '../ui/Panel';
 import Modal from '../ui/Modal';
 import EmptyState from '../ui/EmptyState';
@@ -10,13 +10,23 @@ import { integrationService } from '../../services/integrationService';
 import { downloadCsv } from '../../lib/exportCsv';
 import { useBulkSelect } from '../../hooks/useBulkSelect';
 import { toUserMessage } from '../../lib/errors';
+import './ProspectRow.css';
 import './ListDetail.css';
 
-// Apollo-style detail for one list: member table with per-row + bulk select, CSV
-// export (before/after enrichment), remove-from-list, Build-sequence hand-off, and
-// Apollo email/phone enrichment (emails / phones / both) with a credit estimate,
-// batched ≤10 per call with progress + cancel. Enrichment needs the connector-proxy
-// `enrich` action deployed + migration 029; until then it errors gracefully.
+// The PEOPLE TABLE on the Audiences canvas: member table with per-row + bulk
+// select, CSV export (before/after enrichment), remove, Build-sequence hand-off,
+// and Apollo email/phone enrichment (emails / phones / both) with a credit
+// estimate, batched ≤10 per call with progress + cancel. Enrichment needs the
+// connector-proxy `enrich` action deployed + migration 029; until then it errors
+// gracefully.
+//
+// Two modes, because the Lists rail selects between them:
+//   listId set  -> the members of that list; remove takes them out of the list.
+//   listId null -> ALL people in the workspace; remove deletes the prospect.
+// The all-people mode replaces the "Prospects" segment that used to render the
+// same people a second time with its own separate selection state. It therefore
+// also carries push-to-Zoho, which was that panel's action and would otherwise
+// have been lost with it.
 
 const fullName = (m) => [m.firstName, m.lastName].filter(Boolean).join(' ') || '—';
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
@@ -45,12 +55,15 @@ const EXPORT_COLUMNS = [
     { key: 'status', label: 'Status' },
 ];
 
-const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSequence }) => {
+const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSequence, onChanged }) => {
+    const allPeople = !listId;
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [msg, setMsg] = useState('');
     const [apolloConnected, setApolloConnected] = useState(false);
+    const [zohoConnected, setZohoConnected] = useState(false);
+    const [pushing, setPushing] = useState(false);
     const [enrichOpen, setEnrichOpen] = useState(false);
     const [enrichFields, setEnrichFields] = useState('both'); // 'email' | 'phone' | 'both'
     const [enriching, setEnriching] = useState(false);
@@ -60,19 +73,30 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
     const bulk = useBulkSelect();
 
     useEffect(() => {
-        if (!workspaceId || !listId) return undefined;
+        if (!workspaceId) return undefined;
         let cancelled = false;
         setLoading(true); setError('');
+        // Selection is NOT cleared here: the canvas keys this component on the
+        // selected list, so switching audiences remounts it and stale picks cannot
+        // survive the switch. One less setState in an effect.
         Promise.all([
-            prospectListsService.listMembers(workspaceId, listId),
+            listId
+                ? prospectListsService.listMembers(workspaceId, listId)
+                : prospectsService.list(workspaceId),
             integrationService.getStatus(workspaceId, 'apollo').catch(() => null),
+            integrationService.getStatus(workspaceId, 'zoho').catch(() => null),
         ])
-            .then(([rows, apollo]) => {
+            .then(([rows, apollo, zoho]) => {
                 if (cancelled) return;
                 setMembers(rows);
                 setApolloConnected(apollo?.status === 'connected');
+                setZohoConnected(zoho?.status === 'connected');
             })
-            .catch((err) => { if (!cancelled) setError(toUserMessage(err, 'Could not load this list.')); })
+            .catch((err) => {
+                if (!cancelled) {
+                    setError(toUserMessage(err, listId ? 'Could not load this list.' : 'Could not load your people.'));
+                }
+            })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [workspaceId, listId]);
@@ -91,12 +115,42 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
         downloadCsv(name, rows, EXPORT_COLUMNS);
     };
 
+    /* Removal means different things in the two modes, and the wrong one is
+       destructive: taking someone out of a list must not delete them from the
+       workspace. */
     const removeMember = async (prospectId) => {
         try {
-            await prospectListsService.removeMember(workspaceId, listId, prospectId);
+            if (allPeople) await prospectsService.remove(workspaceId, prospectId);
+            else await prospectListsService.removeMember(workspaceId, listId, prospectId);
             setMembers((prev) => prev.filter((m) => m.id !== prospectId));
             bulk.removeMany([prospectId]);
-        } catch (err) { setError(toUserMessage(err, 'Could not remove that contact.')); }
+            onChanged?.();
+        } catch (err) {
+            setError(toUserMessage(err, allPeople ? 'Could not remove that person.' : 'Could not remove that contact.'));
+        }
+    };
+
+    // Carried over from the retired Prospects segment: pushed rows lose their
+    // checkbox, so a second push cannot double-create the same lead.
+    const pushable = members.filter((m) => bulk.selected.has(m.id) && m.status !== 'pushed');
+
+    const pushToZoho = async () => {
+        if (!pushable.length) { setError('Select at least one person who is not already in Zoho.'); return; }
+        setPushing(true); setError(''); setMsg('');
+        try {
+            await integrationService.pushToCrm(workspaceId, 'zoho', {
+                prospects: pushable.map((p) => ({
+                    firstName: p.firstName, lastName: p.lastName, company: p.company, email: p.email, title: p.title,
+                })),
+            });
+            await prospectsService.markPushed(workspaceId, pushable.map((p) => p.id), 'zoho');
+            const ids = new Set(pushable.map((p) => p.id));
+            setMembers((prev) => prev.map((m) => (ids.has(m.id) ? { ...m, status: 'pushed', pushedTo: 'zoho' } : m)));
+            bulk.clear();
+            setMsg(`Pushed ${pushable.length} lead${pushable.length === 1 ? '' : 's'} into Zoho.`);
+        } catch (err) {
+            setError(toUserMessage(err, 'Could not push to Zoho.'));
+        } finally { setPushing(false); }
     };
 
     const runEnrich = async () => {
@@ -150,12 +204,21 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
         <div className="module-kepler list-detail">
             <Panel>
                 <div className="list-detail__head">
-                    <button type="button" className="btn btn-ghost" onClick={onBack}>
-                        <ArrowLeft size={15} strokeWidth={1.8} /> Lists
-                    </button>
+                    {/* No Back link on the canvas: the Lists rail is always visible
+                        and is what moves between audiences. onBack survives for any
+                        caller that still renders this standalone. */}
+                    {onBack && (
+                        <button type="button" className="btn btn-ghost" onClick={onBack}>
+                            <ArrowLeft size={15} strokeWidth={1.8} /> Lists
+                        </button>
+                    )}
                     <div className="list-detail__title">
                         <h2 className="font-section">{listName}</h2>
-                        <span>{members.length} contact{members.length === 1 ? '' : 's'}</span>
+                        <span>
+                            {members.length} {allPeople
+                                ? `person${members.length === 1 ? '' : 's'}`.replace('persons', 'people')
+                                : `contact${members.length === 1 ? '' : 's'}`}
+                        </span>
                     </div>
                     <div className="module-toolbar module-toolbar--inline">
                         <button
@@ -191,9 +254,13 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                 {msg && <p className="brand-intel-module__source-label" role="status">{msg}</p>}
 
                 {loading ? (
-                    <EmptyState loading message="Loading list…" />
+                    <EmptyState loading message={allPeople ? 'Loading your people…' : 'Loading list…'} />
                 ) : members.length === 0 ? (
-                    <EmptyState message="This list has no contacts yet. Add prospects from Research or Find prospects." />
+                    /* Two different absences: nobody in the workspace at all, versus
+                       an audience nobody has been added to yet. */
+                    <EmptyState message={allPeople
+                        ? 'No people yet. Use Find prospects, or save contacts from Research.'
+                        : 'This list has no contacts yet. Add people from All people, or save contacts from Research.'} />
                 ) : (
                     <>
                         <SelectionBar
@@ -209,6 +276,11 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                             <button type="button" className="btn btn-secondary" onClick={exportRows}>
                                 <Download size={15} strokeWidth={1.8} /> Export {bulk.size}
                             </button>
+                            {allPeople && zohoConnected && (
+                                <button type="button" className="btn btn-primary" onClick={pushToZoho} disabled={pushing || pushable.length === 0}>
+                                    {pushing ? 'Pushing…' : `Push ${pushable.length || ''} to Zoho`}
+                                </button>
+                            )}
                         </SelectionBar>
                         <div className="list-table__scroll">
                             <table className="list-table">
@@ -230,7 +302,13 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                                     {members.map((m) => (
                                         <tr key={m.id}>
                                             <td className="list-table__check">
-                                                <input type="checkbox" checked={bulk.selected.has(m.id)} onChange={() => bulk.toggle(m.id)} aria-label={`Select ${fullName(m)}`} />
+                                                <input
+                                                    type="checkbox"
+                                                    checked={bulk.selected.has(m.id)}
+                                                    disabled={m.status === 'pushed'}
+                                                    onChange={() => bulk.toggle(m.id)}
+                                                    aria-label={`Select ${fullName(m)}`}
+                                                />
                                             </td>
                                             <td className="list-table__name">{fullName(m)}</td>
                                             <td>{m.title || <span className="list-table__muted">—</span>}</td>
@@ -252,9 +330,20 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                                                 ) : <span className="list-table__muted">—</span>}
                                             </td>
                                             <td>
-                                                <button type="button" className="btn btn-ghost" onClick={() => removeMember(m.id)} title="Remove from list">
-                                                    <Trash2 size={15} strokeWidth={1.8} />
-                                                </button>
+                                                {m.status === 'pushed' ? (
+                                                    <span className="prospect-row__saved" title="Already a lead in Zoho">
+                                                        <Check size={14} strokeWidth={2.2} /> In Zoho
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-ghost"
+                                                        onClick={() => removeMember(m.id)}
+                                                        title={allPeople ? 'Remove person' : 'Remove from list'}
+                                                    >
+                                                        <Trash2 size={15} strokeWidth={1.8} />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

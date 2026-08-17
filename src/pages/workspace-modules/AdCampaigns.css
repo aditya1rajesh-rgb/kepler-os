@@ -181,18 +181,8 @@
     border-color: rgba(var(--accent-rgb), 0.45);
 }
 
-.budget-slider-labels {
-    display: flex;
-    gap: 8px;
-}
 
-.budget-label {
-    cursor: pointer;
-}
 
-.budget-label.active {
-    color: var(--kepler-accent-2);
-}
 
 .structure-tree {
     display: flex;
@@ -262,26 +252,46 @@
     border: 1px dashed var(--border-strong);
 }
 
-.premium-range {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 2px;
-    background: var(--wash-4);
-    outline: none;
-    margin-top: 8px;
-}
 
-.premium-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 12px;
-    height: 12px;
-    background: var(--kepler-accent);
-    border-radius: 50%;
-    cursor: pointer;
-}
 
 @media (max-width: 1000px) {
     .campaign-builder-layout {
         grid-template-columns: 1fr;
     }
+}
+
+/* ── Budget tier: three discrete stops ────────────────────────────────────────
+   A segmented control on a recessed track, not a range input. The track carries
+   the "three positions on a scale" reading that the slider was there for, without
+   implying anything between the stops. */
+.budget-tier {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    background: var(--layer-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-sm);
+}
+
+.budget-tier__stop {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--r-xs);
+    cursor: pointer;
+    transition: background-color var(--t-fast), color var(--t-fast);
+}
+
+.budget-tier__stop:hover { color: var(--text); background: var(--wash-3); }
+
+.budget-tier__stop.is-active {
+    background: var(--layer-raised);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+    color: var(--accent-text);
+    font-weight: 600;
 }

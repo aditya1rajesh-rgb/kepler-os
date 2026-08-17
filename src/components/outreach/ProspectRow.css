@@ -1,8 +1,11 @@
-.prospecting-module {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
+/* The prospect row, shared.
+ *
+ * These rules used to live in `Prospecting.css` and were relied on by seven
+ * surfaces while only two of them imported it - the styles happened to be loaded
+ * because some screen in the app pulled that file in. Deleting the retired
+ * Prospecting screen would have silently unstyled five other surfaces, so the
+ * shared half moved here and every consumer imports it explicitly.
+ */
 
 .prospect-list {
     list-style: none;
@@ -19,9 +22,9 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 0.7rem 1rem;
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    background: var(--surface-2, rgba(255, 255, 255, 0.02));
+    background: var(--wash-1);
 }
 
 .prospect-row--clickable {
@@ -80,34 +83,6 @@
     align-items: center;
     gap: 0.3rem;
     font-size: 0.8rem;
-    opacity: 0.8;
+    color: var(--text-muted);
     white-space: nowrap;
-}
-
-/* Search sits on the canvas above the saved list. It is compact — a filter bar,
-   not a wall of stacked fields — so it stays subordinate to the prospects
-   without being hidden. The rail experiment crushed this into 320px and
-   truncated every placeholder; a form feeding the screen's primary action
-   belongs on the canvas. */
-.prospecting__search {
-    padding-bottom: var(--sp-4);
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.prospecting__search-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-}
-
-.prospecting__search .builder-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--sp-3);
-}
-
-.prospecting__search .platform-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-2);
 }

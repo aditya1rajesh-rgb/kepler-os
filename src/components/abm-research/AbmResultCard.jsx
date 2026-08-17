@@ -115,8 +115,8 @@ const AbmResultCard = ({
             setSavedKeys((prev) => new Set([...prev, ...chosen.map(matchKey)]));
             if (onDeselect) onDeselect(chosen.map(selKey)); else setLocalSel(new Set());
             setNotice(created.length
-                ? `Saved ${created.length} contact${created.length === 1 ? '' : 's'} to your prospect list. Find them under Audiences.`
-                : 'Those contacts are already in your prospect list.');
+                ? `Saved ${created.length} contact${created.length === 1 ? '' : 's'}. Find them under Audiences.`
+                : 'Those contacts are already in Audiences.');
         } catch (err) {
             setError(toUserMessage(err, 'Could not save to the prospect list.'));
         } finally { setBusy(''); }

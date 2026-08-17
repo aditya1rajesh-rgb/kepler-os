@@ -1,0 +1,145 @@
+/* Audiences: one canvas, a rail and a pane.
+ *
+ * Two content columns, never three - a rail plus two panes leaves the working
+ * pane ~420px. The rail is fixed and the table takes the rest, because the table
+ * is where the work happens and it is the widest object in the product.
+ */
+
+.audiences__canvas {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+/* The rail is a recessed TRACK; the selected row lifts out of it. Same idiom as
+   the segmented control, at a different scale - so "which audience am I looking
+   at" reads the same way as "which tab am I on", and nothing new was invented. */
+.audiences__rail {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    background: var(--layer-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+}
+
+.audiences__rail-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 4px 8px 6px;
+    margin: 0;
+}
+
+.audiences__rail-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--r-sm);
+    text-align: left;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    transition: background-color var(--t-fast), color var(--t-fast);
+}
+
+.audiences__rail-row:hover {
+    background: var(--wash-3);
+    color: var(--text);
+}
+
+/* Selected: lifted to a raised surface with the smallest elevation. */
+.audiences__rail-row.is-active {
+    background: var(--layer-raised);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+}
+
+.audiences__rail-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    text-align: left;
+}
+
+.audiences__rail-btn {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+}
+
+/* `display: block`, not flex: text-overflow: ellipsis has NO effect on a flex
+   container, so a long list name hard-cut mid-word ("KenFin expansion (finance
+   buy") instead of ellipsising. */
+.audiences__rail-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.audiences__rail-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+/* The delete affordance stays out of the way until the row is hovered or
+   selected: a destructive control should not be the loudest thing in a list you
+   are scanning. It remains keyboard-reachable regardless. */
+.audiences__rail-del {
+    flex-shrink: 0;
+    opacity: 0;
+    padding: 4px;
+    transition: opacity var(--t-fast);
+}
+
+.audiences__rail-row:hover .audiences__rail-del,
+.audiences__rail-row.is-active .audiences__rail-del,
+.audiences__rail-del:focus-visible {
+    opacity: 1;
+}
+
+.audiences__rail-note {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    padding: 6px 10px 4px;
+    margin: 0;
+}
+
+.audiences__pane {
+    min-width: 0;
+}
+
+/* Below the two-column threshold the rail becomes a horizontal strip above the
+   table rather than a 260px column squeezing it. */
+@media (max-width: 900px) {
+    .audiences__canvas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .audiences__rail {
+        position: static;
+        flex-direction: row;
+        overflow-x: auto;
+        align-items: stretch;
+    }
+    .audiences__rail-label { display: none; }
+    .audiences__rail-row { width: auto; flex-shrink: 0; }
+    .audiences__rail-del { opacity: 1; }
+}
