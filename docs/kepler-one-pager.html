@@ -1,0 +1,514 @@
+<title>Kepler — Capability Brief</title>
+
+<style>
+  :root {
+    --paper: #fbfbfd;
+    --ink: #12141c;
+    --ink-soft: #454b60;
+    --muted: #6b7186;
+    --rule: #e2e4ee;
+    --rule-soft: #eef0f6;
+    --accent: #4a6cf7;
+    --accent-ink: #2f47b8;
+    --accent-wash: #eef1fe;
+    --solid: #2f6f52;
+    --pending: #8a6a1f;
+
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0e1016;
+      --ink: #e9eaf1;
+      --ink-soft: #b3b8c9;
+      --muted: #868da2;
+      --rule: #262a36;
+      --rule-soft: #1b1f28;
+      --accent: #8098ff;
+      --accent-ink: #a3b4ff;
+      --accent-wash: #171b28;
+      --solid: #6fbc94;
+      --pending: #d3ab55;
+    }
+  }
+
+  :root[data-theme="light"] {
+    --paper: #fbfbfd;
+    --ink: #12141c;
+    --ink-soft: #454b60;
+    --muted: #6b7186;
+    --rule: #e2e4ee;
+    --rule-soft: #eef0f6;
+    --accent: #4a6cf7;
+    --accent-ink: #2f47b8;
+    --accent-wash: #eef1fe;
+    --solid: #2f6f52;
+    --pending: #8a6a1f;
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0e1016;
+    --ink: #e9eaf1;
+    --ink-soft: #b3b8c9;
+    --muted: #868da2;
+    --rule: #262a36;
+    --rule-soft: #1b1f28;
+    --accent: #8098ff;
+    --accent-ink: #a3b4ff;
+    --accent-wash: #171b28;
+    --solid: #6fbc94;
+    --pending: #d3ab55;
+  }
+
+  .sheet {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(28px, 5vw, 64px) clamp(20px, 5vw, 56px) 72px;
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+
+  .sheet p { margin: 0; }
+
+  /* ---- masthead ---- */
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-bottom: 26px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .wordmark {
+    font-family: var(--serif);
+    font-size: clamp(38px, 6vw, 56px);
+    line-height: 1;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+
+  .wordmark .dot { color: var(--accent); }
+
+  .thesis {
+    font-family: var(--serif);
+    font-size: clamp(18px, 2.4vw, 22px);
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 52ch;
+    text-wrap: balance;
+  }
+
+  /* ---- section scaffold: label rail + content ---- */
+
+  .block {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 0 32px;
+    padding: 30px 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .block:last-of-type { border-bottom: 0; }
+
+  .block > h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 4px 0 0;
+    align-self: start;
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: var(--measure);
+  }
+
+  .body p { color: var(--ink-soft); }
+  .body strong { color: var(--ink); font-weight: 600; }
+
+  @media (max-width: 720px) {
+    .block { grid-template-columns: 1fr; gap: 12px; }
+    .block > h2 { margin: 0; }
+  }
+
+  /* ---- the loop diagram ---- */
+
+  .loop { width: 100%; height: auto; display: block; overflow: visible; }
+  .loop text {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    fill: var(--ink);
+  }
+  .loop .caption { fill: var(--muted); text-transform: none; letter-spacing: 0.02em; }
+  .loop .node { fill: none; stroke: var(--rule); stroke-width: 1.25; }
+  .loop .link { stroke: var(--ink-soft); stroke-width: 1.25; fill: none; }
+  .loop .feedback { stroke: var(--accent); stroke-width: 1.5; fill: none; stroke-dasharray: 4 3; }
+
+  .loop-frame {
+    border: 1px solid var(--rule);
+    background: var(--accent-wash);
+    padding: 26px 22px 18px;
+    overflow-x: auto;
+  }
+
+  /* ---- capability ledger ---- */
+
+  .ledger {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+    gap: 1px;
+    background: var(--rule-soft);
+    border: 1px solid var(--rule-soft);
+  }
+
+  .cell {
+    background: var(--paper);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .cell dt {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .cell dd {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  /* ---- claims ---- */
+
+  .claims {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: claim;
+  }
+
+  .claims li {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .claims li::before {
+    counter-increment: claim;
+    content: counter(claim);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    padding-top: 3px;
+  }
+
+  .claims h3 {
+    font-family: var(--sans);
+    font-size: 14.5px;
+    font-weight: 600;
+    margin: 0 0 3px;
+    color: var(--ink);
+  }
+
+  .claims p { font-size: 13.5px; color: var(--ink-soft); }
+
+  /* ---- market table ---- */
+
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  caption {
+    text-align: left;
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding-bottom: 14px;
+    max-width: var(--measure);
+  }
+
+  th, td {
+    text-align: left;
+    padding: 9px 14px 9px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  tbody th { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  td { color: var(--ink-soft); }
+  .num { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+
+  tbody tr.us th, tbody tr.us td {
+    border-bottom: 0;
+    border-top: 2px solid var(--ink);
+    padding-top: 12px;
+    color: var(--ink);
+  }
+  tbody tr.us td.req { font-weight: 600; }
+
+  /* ---- status ---- */
+
+  .status {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px 28px;
+  }
+
+  .metric { display: flex; flex-direction: column; gap: 2px; }
+
+  .metric .figure {
+    font-family: var(--mono);
+    font-size: 21px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric .what {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .gaps {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13.5px;
+  }
+
+  .gaps li {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 14px;
+    color: var(--ink-soft);
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    padding-top: 3px;
+  }
+
+  .tag.built { color: var(--solid); }
+  .tag.open { color: var(--pending); }
+
+  .colophon {
+    margin-top: 42px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+  }
+</style>
+
+<article class="sheet">
+
+  <header class="masthead">
+    <p class="eyebrow">Capability brief · August 2026</p>
+    <h1 class="wordmark">Kepler<span class="dot">.</span></h1>
+    <p class="thesis">The one place where a marketing goal, the work done against it, and the outcome it produced are the same object.</p>
+  </header>
+
+  <section class="block">
+    <h2>What it is</h2>
+    <div class="body">
+      <p>A marketing platform for teams that have to run every channel with no specialists. Kepler builds a structured model of the brand from its website and documents, then generates and measures work across search, outbound, social and paid — all of it laddered to an <strong>account goal the user defines</strong>.</p>
+      <p>Every other tool optimises inside one channel and can tell you whether an email worked. Kepler is built to answer the question the founder actually asks: <strong>did marketing work.</strong></p>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Who it's for</h2>
+    <div class="body">
+      <p>The generalist orchestrator — the marketer of record for a lean go-to-market team or a small agency. They don't own the wings: paid may sit with an agency, content may be freelance, the CRM belongs to sales. They coordinate all of it and they answer for the number at the end.</p>
+      <p><strong>No data team. No enterprise content stack. No operations queue.</strong> That constraint is the market position, not a limitation — see the table below.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>The loop</h2>
+    <div class="body">
+      <div class="loop-frame">
+        <svg class="loop" viewBox="0 0 700 148" role="img" aria-label="Diagram: a goal produces campaigns, which produce assets, which produce measured outcomes; measurement feeds back into the next generation.">
+          <rect class="node" x="1" y="20" width="146" height="38" rx="2"></rect>
+          <rect class="node" x="185" y="20" width="146" height="38" rx="2"></rect>
+          <rect class="node" x="369" y="20" width="146" height="38" rx="2"></rect>
+          <rect class="node" x="553" y="20" width="146" height="38" rx="2"></rect>
+
+          <text x="16" y="44">Account goal</text>
+          <text x="200" y="44">Campaign</text>
+          <text x="384" y="44">Asset</text>
+          <text x="568" y="44">Outcome</text>
+
+          <path class="link" d="M147 39 H179"></path>
+          <path class="link" d="M179 39 l-7 -3.4 v6.8 z" fill="currentColor" stroke="none"></path>
+          <path class="link" d="M331 39 H363"></path>
+          <path class="link" d="M363 39 l-7 -3.4 v6.8 z" fill="currentColor" stroke="none"></path>
+          <path class="link" d="M515 39 H547"></path>
+          <path class="link" d="M547 39 l-7 -3.4 v6.8 z" fill="currentColor" stroke="none"></path>
+
+          <path class="feedback" d="M626 58 V96 Q626 108 614 108 H86 Q74 108 74 96 V64"></path>
+          <path class="feedback" d="M74 58 l-4.6 9 h9.2 z" fill="var(--accent)" stroke="none" stroke-dasharray="0"></path>
+
+          <text class="caption" x="196" y="132">Measured outcomes ground the next generation — the gap pulls the next asset</text>
+        </svg>
+      </div>
+      <p>The gap between the target and the reading is what makes generation continuous rather than episodic. An orphaned asset is correct about the brand and ignorant of what the company is trying to achieve; Kepler's generation reads the goal, the campaign, what has already been produced, and real search demand — in that order of authority.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>What's in it</h2>
+    <div class="body">
+      <dl class="ledger">
+        <div class="cell"><dt>Brand intelligence</dt><dd>Structured brand model built from the website, documents and guided input. Every module reads from it.</dd></div>
+        <div class="cell"><dt>Goals</dt><dd>Proposes a reachable target from the account's own rates instead of asking on a blank field.</dd></div>
+        <div class="cell"><dt>Campaigns</dt><dd>Goal, strategy and ordered steps that deep-link into the module that does the work.</dd></div>
+        <div class="cell"><dt>Search &amp; answer engines</dt><dd>Keyword pipeline, blog production, technical SEO, and what AI assistants say about the brand.</dd></div>
+        <div class="cell"><dt>Outbound</dt><dd>Sequences, reply and bounce handling, prospect lists, account research, CRM push.</dd></div>
+        <div class="cell"><dt>Ad creative</dt><dd>Eight-angle variants grounded in live competitor ads, with platform limits enforced.</dd></div>
+        <div class="cell"><dt>Social</dt><dd>Calendar planning, per-platform specs, on-brand carousels from the brand's own colour identity.</dd></div>
+        <div class="cell"><dt>Measurement</dt><dd>Campaign-scoped tagging that survives renaming, traffic and CRM attribution, accruing history.</dd></div>
+        <div class="cell"><dt>Change detection</dt><dd>Scheduled jobs that report what <em>moved</em> — rankings, citations, replies — not what things are.</dd></div>
+        <div class="cell"><dt>Learning</dt><dd>Ratings and correction notes feed the next generation in that module. No model training required.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Why it holds</h2>
+    <div class="body">
+      <ol class="claims">
+        <li>
+          <div>
+            <h3>It produces real output with nothing connected</h3>
+            <p>Every module works AI-only. Connecting a data source grounds that module in live data instead of estimates — an enhancement, never a dependency, and enforced in the architecture. Ten minutes to first output against a four-week implementation.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>The goal is a first-class object</h3>
+            <p>Competitors optimise inside a seam — activation, lifecycle messaging, production, the website. None of them holds a standing account goal that campaigns and assets ladder to and that accrues across them.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>It refuses to compute what it cannot defend</h3>
+            <p>No cross-channel efficiency claims. No estimate below three measured campaigns. Change events say "alongside", never "because". Share is taken over the whole picture, never the attributed slice. The workings render at full weight beside every claim — a recommendation nobody can argue with is a horoscope. These refusals are pinned by automated tests, and a competitor whose growth story depends on confident numbers cannot copy them.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>The market</h2>
+    <div class="body">
+      <div class="table-wrap">
+        <table>
+          <caption>Four funded entrants, and the precondition each one carries. Three of the four cannot start at all inside a lean team.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Company</th>
+              <th scope="col">Raised</th>
+              <th scope="col">Requires</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Hightouch</th><td class="num">$150M · $2.75B</td><td>A cloud data warehouse</td></tr>
+            <tr><th scope="row">Ploy</th><td class="num">$27M seed</td><td>The website as the centre of gravity</td></tr>
+            <tr><th scope="row">JustAI</th><td class="num">$17M Series A</td><td>An installed user base to message</td></tr>
+            <tr><th scope="row">Gradial</th><td class="num">$13M Series A</td><td>An enterprise CMS and asset stack</td></tr>
+            <tr class="us"><th scope="row">Kepler</th><td class="num">—</td><td class="req">Nothing connected</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The funded field is enterprise-first by construction. The buyer who has to run every channel personally is the one none of them is shaped to serve.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Where it stands</h2>
+    <div class="body">
+      <div class="status">
+        <div class="metric"><span class="figure">435</span><span class="what">automated tests passing, across 28 files</span></div>
+        <div class="metric"><span class="figure">35</span><span class="what">database migrations, row-level security throughout</span></div>
+        <div class="metric"><span class="figure">16</span><span class="what">integrations — 12 connectable, 4 answer-engine surfaces</span></div>
+        <div class="metric"><span class="figure">0</span><span class="what">paying customers</span></div>
+      </div>
+      <ul class="gaps">
+        <li><span class="tag built">Built</span><span>The full loop — goal, laddered campaigns, grounded generation, attribution, change detection, continuous recommendation. Deployed to a staging environment.</span></li>
+        <li><span class="tag built">Built</span><span>Legal and review foundations for platform approvals. The approvals themselves are free and mostly self-serve; they need paperwork and a production domain, not capital.</span></li>
+        <li><span class="tag open">Open</span><span>Paid-media ingestion connects but reads no spend yet. The email sender is complete and deliberately unarmed.</span></li>
+        <li><span class="tag open">Open</span><span>No customers, and therefore no usage evidence. Everything above is capability; none of it is demand.</span></li>
+      </ul>
+      <p>Stated plainly because it is the honest position, and because a brief that overstates it would contradict the one thing the product is built to be.</p>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <span>Kepler — capability brief</span>
+    <span>August 2026</span>
+    <span>Figures verified against the codebase, not estimated</span>
+  </footer>
+
+</article>
