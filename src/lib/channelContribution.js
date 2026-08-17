@@ -261,7 +261,7 @@ export const contributionCaveats = ({ paidConnected = false, hasSourceBreakdown 
         // is missing is the money, and with it any cost-per-outcome.
         out.push({
             id: 'no-paid',
-            text: 'No ad platform is connected. Paid rows count sessions only — spend, CPC and cost per outcome are not measured, and ad clicks that never reached a tagged link are absent entirely.',
+            text: 'No ad platform is connected. Paid rows count sessions only: spend, CPC and cost per outcome are not measured, and ad clicks that never reached a tagged link are absent entirely.',
         });
     }
     // Stated always, because it never stops being true while attribution is

@@ -107,9 +107,9 @@
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
     background: var(--surface-2, rgba(255, 255, 255, 0.03));
 }
-.abm-badge--fit-high { color: #34d399; border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.12); }
-.abm-badge--fit-medium { color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.12); }
-.abm-badge--fit-low { color: #94a3b8; border-color: rgba(148, 163, 184, 0.35); background: rgba(148, 163, 184, 0.1); }
+.abm-badge--fit-high { color: var(--positive); border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.12); }
+.abm-badge--fit-medium { color: var(--warning); border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.12); }
+.abm-badge--fit-low { color: var(--text-muted); border-color: rgba(148, 163, 184, 0.35); background: rgba(148, 163, 184, 0.1); }
 
 .abm-account__facts { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.85rem; }
 .abm-fact__label { opacity: 0.55; margin-right: 0.35rem; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em; }
@@ -167,14 +167,14 @@
     background: var(--accent-soft, rgba(var(--accent-rgb), 0.16));
 }
 
-.abm-saved { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; color: #34d399; white-space: nowrap; }
+.abm-saved { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; color: var(--positive); white-space: nowrap; }
 .abm-flag {
     font-size: 0.72rem; padding: 0.12rem 0.4rem; border-radius: 6px;
-    color: #fbbf24; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.3);
+    color: var(--warning); background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.3);
     white-space: nowrap;
 }
 .abm-src { font-size: 0.75rem; opacity: 0.7; }
-.abm-src--apollo { color: #34d399; opacity: 0.9; }
+.abm-src--apollo { color: var(--positive); opacity: 0.9; }
 
 @media (max-width: 640px) {
     .abm-account__head { flex-direction: column; }
@@ -186,12 +186,12 @@
 
 .abm-linkbtn {
     background: none; border: none; padding: 0; cursor: pointer;
-    color: var(--accent, #4a6cf7); font: inherit; text-decoration: underline;
+    color: var(--accent, var(--accent)); font: inherit; text-decoration: underline;
 }
 
 /* CRM (Zoho) duplicate flag — distinct from the amber "needs email" flag. */
 .abm-flag--crm {
-    color: #60a5fa; background: rgba(96, 165, 250, 0.12); border-color: rgba(96, 165, 250, 0.3);
+    color: var(--accent-text); background: rgba(96, 165, 250, 0.12); border-color: rgba(96, 165, 250, 0.3);
 }
 
 .abm-saved-module { display: flex; flex-direction: column; gap: 24px; }

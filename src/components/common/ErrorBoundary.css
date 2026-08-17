@@ -9,7 +9,7 @@
             rgba(12, 13, 24, 0.5) 0%,
             rgba(20, 21, 38, 0.55) 100%
         );
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
 }
 
 .error-boundary__message {

@@ -30,7 +30,7 @@
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: none;
-    color: #7f819a;
+    color: var(--text-muted);
 }
 
 .home-hero__title {
@@ -38,13 +38,13 @@
     font-weight: 600;
     line-height: 1.05;
     letter-spacing: -0.015em;
-    color: #f4f4f9;
+    color: var(--text);
 }
 
 .home-hero__subtitle {
     font-size: 14px;
     line-height: 1.625;
-    color: #9698ac;
+    color: var(--text-muted);
 }
 
 .home-hero__actions {
@@ -76,13 +76,13 @@
     font-weight: 400;
     line-height: 1;
     letter-spacing: 0.005em;
-    color: #ececed;
+    color: var(--text);
 }
 
 .home-section-heading__line {
     flex: 1;
     height: 1px;
-    background: linear-gradient(to right, rgba(255, 255, 255, 0.1), transparent);
+    background: linear-gradient(to right, var(--wash-4), transparent);
 }
 
 /* ── Dashboard grid ───────────────────────────────────────── */
@@ -121,7 +121,7 @@
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: none;
-    color: #8e90a3;
+    color: var(--text-muted);
 }
 
 .home-stat-tile__value {
@@ -130,7 +130,7 @@
     font-weight: 600;
     line-height: 1;
     letter-spacing: -0.02em;
-    color: #f4f4f9;
+    color: var(--text);
 }
 
 .home-stat-tile__trend {
@@ -157,7 +157,7 @@
 }
 
 .home-activity-item:hover {
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: var(--wash-2);
 }
 
 .home-activity-item__dot {
@@ -199,7 +199,7 @@
 }
 
 .home-activity-btn:hover {
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: var(--wash-2);
 }
 
 .home-activity-btn:focus-visible {
@@ -252,7 +252,7 @@
 .home-delete-error {
     margin-top: 12px;
     font-size: 13px;
-    color: #ff8f8f;
+    color: var(--negative);
 }
 
 /* ── Workspaces panel ───────────────────────────────────────── */
@@ -266,7 +266,7 @@
     height: 40px;
     padding: 0 16px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background-color: var(--kepler-panel);
     font-size: 14px;
     color: var(--kepler-text);

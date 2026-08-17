@@ -23,16 +23,35 @@ const STATUS_TONE = {
     'not-measured': 'is-thin',
 };
 
-const NextWork = ({ recommendation, goalName = '', accepting = false, onAccept, onPlanManually }) => {
+const NextWork = ({ recommendation, goalName = '', accepting = false, loading = false, onAccept, onPlanManually }) => {
+    // Sizing takes seconds. Announcing "nothing to size" while it is still running
+    // states a conclusion the screen has not reached, and then contradicts itself.
+    if (loading) {
+        return (
+            <Panel className="module-panel">
+                <PanelHeader title="What would close the gap" meta="Sized from your own campaigns" />
+                <div className="cockpit-empty">
+                    <p className="cockpit-empty__lead">Sizing this against your campaigns…</p>
+                </div>
+            </Panel>
+        );
+    }
+
+    // Two different absences. On the cockpit with no goal there is no gap to size;
+    // on a goal's own detail the goal plainly exists, and "set a goal" reads as a
+    // bug. Same empty panel, different sentence, because they are different facts.
     if (!recommendation) {
         return (
             <Panel className="module-panel">
                 <PanelHeader title="What would close the gap" meta="Sized from your own campaigns" />
                 <div className="cockpit-empty">
-                    <p className="cockpit-empty__lead">Set a goal and this fills in.</p>
+                    <p className="cockpit-empty__lead">
+                        {goalName ? 'Nothing to size against this goal yet.' : 'Set a goal and this fills in.'}
+                    </p>
                     <p className="cockpit-empty__sub">
-                        A recommendation is a gap plus what your campaigns have actually delivered. Without a goal
-                        there is no gap to size.
+                        {goalName
+                            ? 'A recommendation is a gap plus what your campaigns have actually delivered. This one has no measured campaigns to size it from.'
+                            : 'A recommendation is a gap plus what your campaigns have actually delivered. Without a goal there is no gap to size.'}
                     </p>
                 </div>
             </Panel>
@@ -82,7 +101,7 @@ const NextWork = ({ recommendation, goalName = '', accepting = false, onAccept, 
                 {canAct && (
                     <p className="cockpit-next__fineprint">
                         {tooLate
-                            ? `It will be created under “${goalName}”, briefed against the shortfall — but on your own history it is unlikely to land in time.`
+                            ? `It will be created under “${goalName}”, briefed against the shortfall. On your own history, it is unlikely to land in time.`
                             : `It will be created under “${goalName}” and briefed against the shortfall.`}
                     </p>
                 )}

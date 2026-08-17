@@ -1,0 +1,611 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FIDELITY TEST — Finnulate 2.0 reference (`image 7`)
+
+   This is NOT a Kepler surface. It is a controlled experiment: can we
+   reproduce a light, warm-neutral, mono-for-data dashboard at the fidelity of
+   the reference bitmap, before deciding whether to flip Kepler's identity?
+
+   Every token below is scoped under `.fin` and prefixed `--fin-*` so it cannot
+   reach the app shell, and nothing here imports or overrides index.css. Values
+   were measured off the reference PNG (see docs/DESIGN-REFERENCE-EXTRACT.md),
+   not invented.
+
+   Delete this whole directory if the answer is "no".
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fin {
+  /* ── Surfaces: warm-neutral, R > G > B by 2–3 points ───────────────────── */
+  --fin-backdrop: #dddcda;      /* mockup floor, outside the app frame */
+  --fin-surface: #ffffff;       /* raised — cards, panels, table */
+  --fin-chrome: #f3f2f0;        /* recessed — sidebar, inputs, card plate */
+  --fin-chrome-2: #eceae7;      /* recessed + pressed */
+
+  /* ── Ink: four rungs, true black at the top ────────────────────────────── */
+  --fin-ink: #000000;
+  --fin-ink-2: #545454;
+  --fin-ink-3: #8e8e8e;         /* mono labels, column headers */
+  --fin-ink-4: #b9b9b9;         /* ghost rows, disabled */
+
+  /* ── Lines ─────────────────────────────────────────────────────────────── */
+  --fin-line: #eceae7;
+  --fin-line-2: #dfdedb;
+
+  /* ── The accent is black. There is no chromatic accent. ────────────────── */
+  --fin-solid: #100f0d;
+  --fin-solid-2: #2a2926;
+  --fin-bar: #202020;           /* emphasised chart bar */
+  --fin-bar-ghost: #e4e3e1;     /* comparison series */
+
+  /* ── Colour appears only as state ──────────────────────────────────────── */
+  --fin-success: #0f684c;
+  --fin-warning: #d99f3e;
+
+  /* ── Two families, split by data type ──────────────────────────────────── */
+  --fin-sans: 'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --fin-mono: 'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+
+  /* ── Geometry ──────────────────────────────────────────────────────────── */
+  --fin-r-frame: 16px;
+  --fin-r-card: 12px;
+  --fin-r-ctl: 8px;
+  --fin-r-xs: 5px;
+  --fin-r-pill: 999px;
+
+  --fin-sidebar-w: 188px;
+  --fin-header-h: 44px;
+
+  --fin-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --fin-shadow-lift: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 1px rgba(0, 0, 0, 0.04);
+  --fin-shadow-frame: 0 12px 40px -12px rgba(0, 0, 0, 0.18);
+  --fin-shadow-pop: 0 8px 24px -6px rgba(0, 0, 0, 0.14);
+
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: var(--fin-backdrop);
+  font-family: var(--fin-sans);
+  color: var(--fin-ink);
+  -webkit-font-smoothing: antialiased;
+  display: grid;
+  place-items: center;
+  padding: 42px;
+}
+
+.fin *,
+.fin *::before,
+.fin *::after { box-sizing: border-box; }
+
+/* The uppercase letterspaced mono label — used for KPI labels, panel titles
+   and column headers. One rule, because it is one idea. */
+.fin-label {
+  font-family: var(--fin-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fin-ink-3);
+  white-space: nowrap;
+}
+
+/* Machine data: figures, ids, currency. Tabular so columns align. */
+.fin-num {
+  font-family: var(--fin-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ── App frame ──────────────────────────────────────────────────────────── */
+.fin__frame {
+  width: 1116px;
+  height: 816px;
+  display: grid;
+  grid-template-columns: var(--fin-sidebar-w) 1fr;
+  /* Without an explicit row the implicit row is `auto`, so a tall sidebar sizes
+     the row past the frame and the pinned footer lands outside the clip. */
+  grid-template-rows: 100%;
+  background: var(--fin-surface);
+  border-radius: var(--fin-r-frame);
+  box-shadow: var(--fin-shadow-frame);
+  overflow: hidden;
+}
+
+/* ═══ Sidebar — the recessed tone; active item lifts to white ═══════════════ */
+.fin-sidebar {
+  background: var(--fin-chrome);
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 2px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Nav scrolls; the switcher and the user card stay pinned. */
+.fin-sidebar__nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.fin-sidebar__nav::-webkit-scrollbar { display: none; }
+
+.fin-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--fin-chrome-2);
+  border: 1px solid var(--fin-line-2);
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.fin-switcher__tile {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--fin-surface);
+  border-radius: 8px;
+  box-shadow: var(--fin-shadow-lift);
+  font-family: var(--fin-mono);
+  font-weight: 700;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--fin-ink);
+}
+
+.fin-switcher__meta { min-width: 0; flex: 1; }
+.fin-switcher__eyebrow {
+  font-size: 10px;
+  color: var(--fin-ink-3);
+  line-height: 1.2;
+}
+.fin-switcher__name {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-switcher__chev {
+  flex: none;
+  color: var(--fin-ink-3);
+  display: grid;
+  gap: 1px;
+}
+
+.fin-navgroup { font-size: 11px; font-weight: 500; color: var(--fin-ink); padding: 0 8px 5px; }
+.fin-navgroup--spaced { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--fin-line-2); }
+
+.fin-nav {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  color: var(--fin-ink-3);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.fin-nav svg { width: 15px; height: 15px; flex: none; stroke-width: 1.6; }
+.fin-nav:hover { color: var(--fin-ink-2); background: rgba(0, 0, 0, 0.025); }
+
+/* The active treatment: lift to white, ink goes black, icon fills. */
+.fin-nav--active {
+  background: var(--fin-surface);
+  color: var(--fin-ink);
+  font-weight: 600;
+  border-color: var(--fin-line);
+  box-shadow: var(--fin-shadow-lift);
+}
+.fin-nav--active svg { fill: var(--fin-ink); stroke: var(--fin-ink); stroke-width: 1.2; }
+
+.fin-sidebar__foot { flex: none; padding-top: 8px; }
+.fin-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--fin-surface);
+  border: 1px solid var(--fin-line-2);
+  box-shadow: var(--fin-shadow-lift);
+  cursor: pointer;
+}
+.fin-user__avatar {
+  width: 26px; height: 26px; flex: none;
+  border-radius: 7px;
+  object-fit: cover;
+  background: var(--fin-chrome-2);
+}
+.fin-user__name { font-size: 12px; font-weight: 600; line-height: 1.3; }
+.fin-user__role { font-size: 10px; color: var(--fin-ink-3); line-height: 1.3; }
+
+/* ═══ Main column ══════════════════════════════════════════════════════════ */
+.fin-main { display: flex; flex-direction: column; min-width: 0; background: var(--fin-surface); }
+
+.fin-header {
+  height: var(--fin-header-h);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--fin-line);
+}
+
+.fin-crumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fin-ink-3); }
+.fin-crumb b { color: var(--fin-ink); font-weight: 600; }
+
+.fin-search {
+  margin-left: auto;
+  width: 250px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  border-radius: var(--fin-r-ctl);
+  background: var(--fin-chrome);
+  color: var(--fin-ink-3);
+  font-size: 11.5px;
+}
+.fin-search svg { width: 13px; height: 13px; flex: none; }
+.fin-kbd {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+}
+.fin-kbd span {
+  min-width: 15px; height: 15px;
+  display: grid; place-items: center;
+  border-radius: 4px;
+  background: var(--fin-surface);
+  border: 1px solid var(--fin-line-2);
+  font-size: 9px;
+  color: var(--fin-ink-3);
+}
+
+.fin-iconbtn {
+  width: 28px; height: 28px;
+  flex: none;
+  display: grid; place-items: center;
+  border-radius: var(--fin-r-ctl);
+  background: var(--fin-surface);
+  border: 1px solid var(--fin-line-2);
+  color: var(--fin-ink-2);
+  cursor: pointer;
+}
+.fin-iconbtn svg { width: 14px; height: 14px; stroke-width: 1.6; }
+.fin-iconbtn:hover { background: var(--fin-chrome); }
+
+.fin-avatar {
+  width: 28px; height: 28px; flex: none;
+  border-radius: var(--fin-r-ctl);
+  object-fit: cover;
+  border: 1px solid var(--fin-line-2);
+  background: var(--fin-chrome-2);
+}
+
+/* Vertical rhythm is pinned to the reference's own pixel geometry so a
+   side-by-side at 1200×900 is directly comparable: header 44, then
+   12 / pagehead 30 / 12 / KPI 93 / 12 / panels 354 / 12 / table (overflows
+   the frame, exactly as the reference crops it). */
+.fin-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 12px 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fin-pagehead { display: flex; align-items: center; gap: 8px; height: 30px; flex: none; }
+/* index.css sets a global h1 colour (--text, near-white); state ours or the
+   heading renders as invisible pale grey on white. */
+.fin-pagehead h1 {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--fin-ink);
+  line-height: 1.2;
+}
+
+.fin-btn {
+  height: 28px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 10px;
+  border-radius: var(--fin-r-ctl);
+  border: 1px solid var(--fin-line-2);
+  background: var(--fin-surface);
+  font-family: var(--fin-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--fin-ink);
+  cursor: pointer;
+}
+.fin-btn svg { width: 13px; height: 13px; stroke-width: 1.7; }
+.fin-btn:hover { background: var(--fin-chrome); }
+.fin-btn--solid {
+  background: var(--fin-solid);
+  border-color: var(--fin-solid);
+  color: #fff;
+  font-weight: 600;
+}
+.fin-btn--solid:hover { background: var(--fin-solid-2); }
+
+/* ═══ KPI cards — white card inset on a recessed plate ═════════════════════ */
+.fin-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex: none; height: 93px; }
+
+.fin-kpi {
+  background: var(--fin-chrome);
+  border-radius: var(--fin-r-card);
+  padding: 1px 1px 0;
+  display: flex;
+  flex-direction: column;
+}
+.fin-kpi__card {
+  background: var(--fin-surface);
+  border: 1px solid var(--fin-line);
+  border-radius: var(--fin-r-card);
+  padding: 10px 12px 11px;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fin-kpi__figure { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; margin-top: 9px; }
+.fin-kpi__unit { font-family: var(--fin-sans); font-size: 11px; font-weight: 400; color: var(--fin-ink-3); margin-left: 5px; letter-spacing: 0; }
+
+.fin-spark { display: flex; align-items: flex-end; gap: 3px; height: 30px; flex: none; }
+.fin-spark i { width: 1.5px; background: var(--fin-line-2); border-radius: 1px; }
+.fin-spark i.on { background: var(--fin-ink); width: 2px; }
+
+.fin-kpi__foot {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 25px;
+  flex: none;
+  padding: 0 10px;
+  font-size: 10.5px;
+}
+.fin-kpi__dot {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--fin-line-2);
+  display: grid; place-items: center;
+  color: var(--fin-ink-3);
+}
+.fin-kpi__dot svg { width: 8px; height: 8px; stroke-width: 2.4; }
+.fin-kpi__delta { color: var(--fin-success); font-weight: 500; }
+.fin-kpi__delta em { font-family: var(--fin-sans); font-style: normal; color: var(--fin-ink-3); font-weight: 400; margin-left: 4px; }
+
+/* ═══ Panels ═══════════════════════════════════════════════════════════════ */
+.fin-panels { display: grid; grid-template-columns: 1.72fr 1fr; gap: 10px; flex: none; height: 354px; }
+
+.fin-panel {
+  background: var(--fin-surface);
+  border: 1px solid var(--fin-line);
+  border-radius: var(--fin-r-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.fin-panel__head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 11px;
+  background: var(--fin-chrome);
+  border-bottom: 1px solid var(--fin-line);
+}
+.fin-panel__info { width: 11px; height: 11px; color: var(--fin-ink-4); flex: none; }
+.fin-panel__more { margin-left: auto; color: var(--fin-ink-3); display: flex; cursor: pointer; }
+.fin-panel__more svg { width: 14px; height: 14px; }
+.fin-panel__body { padding: 11px; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+/* Segmented control */
+.fin-seg { display: flex; gap: 2px; padding: 2px; background: var(--fin-chrome); border-radius: var(--fin-r-ctl); }
+.fin-seg button {
+  border: 0; background: transparent;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-family: var(--fin-sans);
+  font-size: 10.5px;
+  color: var(--fin-ink-3);
+  cursor: pointer;
+}
+.fin-seg button[data-on='true'] {
+  background: var(--fin-surface);
+  color: var(--fin-ink);
+  font-weight: 600;
+  box-shadow: var(--fin-shadow-lift);
+}
+
+.fin-legend { display: flex; align-items: center; gap: 12px; font-size: 10px; color: var(--fin-ink-2); }
+.fin-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.fin-legend i { width: 5px; height: 5px; border-radius: 50%; background: var(--fin-bar-ghost); }
+.fin-legend i.solid { background: var(--fin-ink); }
+
+/* ── Bar chart ─────────────────────────────────────────────────────────── */
+.fin-chart { flex: 1; display: flex; gap: 7px; min-height: 0; }
+.fin-chart__y {
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-family: var(--fin-mono);
+  font-size: 9px;
+  color: var(--fin-ink-4);
+  padding-bottom: 15px;
+  flex: none;
+  text-align: right;
+}
+.fin-chart__plot { flex: 1; position: relative; min-width: 0; display: flex; flex-direction: column; }
+.fin-chart__grid { position: absolute; inset: 0 0 15px 0; display: flex; flex-direction: column; justify-content: space-between; }
+.fin-chart__grid i { height: 1px; background: var(--fin-line); opacity: 0.8; }
+
+/* Sales trend is a WAFFLE MATRIX, not a bar chart: a grid of discrete 7px
+   rounded squares, black for the focus series stacked from the baseline and
+   pale for the comparison series above it. Measured off the reference at 5×
+   — 7px cell, 2px gutter, ~60 columns × 27 rows. */
+.fin-waffle {
+  position: absolute;
+  inset: 0 0 15px 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2px;
+  overflow: hidden;
+}
+.fin-waffle__col { display: flex; flex-direction: column-reverse; gap: 2px; flex: none; }
+.fin-waffle__cell { width: 7px; height: 7px; border-radius: 1.5px; flex: none; }
+.fin-waffle__cell--solid { background: var(--fin-bar); }
+.fin-waffle__cell--ghost { background: #e3e2e0; }
+
+/* Revenue breakdown is a thin STACKED STEM: one ~3.5px rounded vertical rule
+   per period, black from the baseline with the comparison series stacked pale
+   on top — not two overlaid bars. */
+.fin-stems {
+  position: absolute;
+  inset: 0 0 15px 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+/* height:100% is load-bearing — `align-items:flex-end` on the parent shrinks
+   the column to content, and percentage heights inside then resolve to 0. */
+.fin-stems__col { width: 3.5px; height: 100%; flex: none; display: flex; flex-direction: column; justify-content: flex-end; }
+.fin-stems__ghost { background: #e2e1df; border-radius: 2px 2px 0 0; }
+.fin-stems__solid { background: var(--fin-bar); border-radius: 0 0 2px 2px; }
+
+/* The breakdown's gridlines are dotted; the trend's are solid hairlines. */
+.fin-chart__grid--dotted i { height: 0; background: none; border-top: 1px dotted #d9d8d5; }
+
+.fin-chart__x {
+  margin-top: auto;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  font-family: var(--fin-mono);
+  font-size: 9px;
+  color: var(--fin-ink-3);
+}
+.fin-chart__x span { flex: 1; text-align: center; }
+.fin-chart__x span[data-on='true'] { color: var(--fin-ink); font-weight: 700; }
+
+/* Chart tooltip */
+.fin-tip {
+  position: absolute;
+  z-index: 3;
+  background: var(--fin-surface);
+  border: 1px solid var(--fin-line-2);
+  border-radius: 9px;
+  box-shadow: var(--fin-shadow-pop);
+  padding: 7px 9px;
+  min-width: 108px;
+}
+.fin-tip__title { font-size: 10.5px; font-weight: 600; color: var(--fin-ink-2); margin-bottom: 5px; }
+.fin-tip__row { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--fin-ink-3); }
+.fin-tip__row b { margin-left: auto; color: var(--fin-ink); font-weight: 700; }
+.fin-tip__row i { width: 4px; height: 4px; border-radius: 50%; background: var(--fin-bar-ghost); }
+.fin-tip__row i.solid { background: var(--fin-ink); }
+.fin-tip__marker { position: absolute; width: 1px; background: var(--fin-line-2); z-index: 2; }
+.fin-tip__pin {
+  position: absolute; z-index: 3;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--fin-ink);
+  border: 1.5px solid var(--fin-surface);
+}
+
+/* AI insight strip */
+.fin-insight {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--fin-line-2);
+  border-radius: var(--fin-r-ctl);
+  background: var(--fin-chrome);
+  font-size: 10.5px;
+  color: var(--fin-ink-2);
+}
+.fin-insight svg { width: 12px; height: 12px; flex: none; color: var(--fin-ink-3); }
+.fin-insight .x { margin-left: auto; color: var(--fin-ink-4); }
+
+/* ═══ Table ════════════════════════════════════════════════════════════════ */
+.fin-tablewrap { flex: none; }
+.fin-table { width: 100%; border-collapse: collapse; }
+.fin-table th {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--fin-line);
+  font-weight: 400;
+}
+.fin-table th > span { display: inline-flex; align-items: center; gap: 4px; }
+.fin-table th svg { width: 9px; height: 9px; color: var(--fin-ink-4); }
+.fin-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--fin-line);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.fin-table tr:last-child td { border-bottom: 0; }
+
+/* Human data: sans. Machine data: mono, bold. This is the rule. */
+.fin-cell-name { font-weight: 500; color: var(--fin-ink); }
+.fin-cell-id { font-family: var(--fin-mono); color: var(--fin-ink-3); font-size: 11px; }
+.fin-cell-num { font-family: var(--fin-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.fin-check {
+  width: 13px; height: 13px;
+  border: 1px solid var(--fin-line-2);
+  border-radius: var(--fin-r-xs);
+  background: var(--fin-surface);
+  display: block;
+  cursor: pointer;
+}
+
+/* Status pill: white fill, colour carried by the dot and the label only. */
+.fin-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 21px;
+  padding: 0 9px 0 7px;
+  border-radius: var(--fin-r-pill);
+  border: 1px solid var(--fin-line-2);
+  background: var(--fin-surface);
+  font-size: 11px;
+  font-weight: 500;
+}
+.fin-pill svg { width: 10px; height: 10px; flex: none; }
+.fin-pill--success { color: var(--fin-success); }
+.fin-pill--pending { color: var(--fin-warning); }
+.fin-pill--refunded { color: var(--fin-ink-3); }
+
+.fin-rowbtn {
+  width: 22px; height: 20px;
+  display: grid; place-items: center;
+  border-radius: 6px;
+  border: 1px solid var(--fin-line-2);
+  background: var(--fin-surface);
+  color: var(--fin-ink-3);
+  cursor: pointer;
+}
+.fin-rowbtn svg { width: 12px; height: 12px; }
+
+/* Last row fades — the scroll affordance from the reference. */
+.fin-table tr[data-fade='true'] td { opacity: 0.42; }
+
+/* ── Lab chrome (not part of the reference) ────────────────────────────── */
+.fin-note {
+  position: fixed;
+  left: 12px;
+  bottom: 10px;
+  font-family: var(--fin-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}

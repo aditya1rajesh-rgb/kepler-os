@@ -315,7 +315,7 @@ export const detectOutreachMoves = (readings = [], { metric = 'replied' } = {}) 
 
 /** Worse is a bigger number, so a rise in rank is bad news. */
 const VERDICT_RANK = { 'on-track': 0, 'at-risk': 1, 'off-pace': 2 };
-const VERDICT_LABEL = { 'on-track': 'on track', 'at-risk': 'at risk', 'off-pace': 'behind' };
+const VERDICT_LABEL = { 'on-track': 'on track', 'at-risk': 'at risk', 'off-pace': 'off pace' };
 
 /**
  * A goal's standing changing.

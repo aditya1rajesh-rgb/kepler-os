@@ -47,6 +47,36 @@
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* ── Washes: a translucent LIFT over whatever is beneath ───────────────────
+     The `rgba(255,255,255,0.02…0.08)` idiom, tokenised. These stay translucent
+     rather than becoming flat colours because that is the semantic: a panel
+     lifting off its parent, whatever the parent happens to be. Dark lifts with
+     white; Siphron lifts with its blue-tinted ink, the same base as its borders,
+     so the direction inverts and the meaning does not. */
+  --wash-1: rgba(255, 255, 255, 0.02);
+  --wash-2: rgba(255, 255, 255, 0.04);
+  --wash-3: rgba(255, 255, 255, 0.06);
+  --wash-4: rgba(255, 255, 255, 0.08);
+
+  /* The inset top-edge highlight that reads as a bevel on a dark surface. It has
+     no light-theme equivalent - Siphron groups by shadow, not by edges - so it
+     resolves to nothing there rather than to an invisible white line. */
+  --edge-highlight: rgba(255, 255, 255, 0.22);
+
+  /* The canvas colour at zero alpha, for gradients that fade OUT.
+     `transparent` is rgba(0,0,0,0), so a gradient interpolating to it smears grey
+     on a light canvas - the "fade to transparent black" trap. Fading to the
+     canvas's own hue at zero alpha is invisible in either theme. */
+  --canvas-fade: rgba(10, 11, 15, 0);
+  /* The header's under-shadow start. Dark casts the canvas downward; Siphron
+     casts its blue-tinted ink, faintly. */
+  --header-fade-from: rgba(10, 11, 15, 0.55);
+
+  /* The same bevel, but for a surface that is SATURATED ACCENT in both themes
+     (the hero KPI card's violet gradient). White reads on violet whichever theme
+     is active, so unlike --edge-highlight this one does not vanish in light. */
+  --edge-highlight-accent: rgba(255, 255, 255, 0.16);
   --border-accent: rgba(var(--accent-rgb), 0.42);
 
   /* ── Elevation ───────────────────────────────────────────────────────────
@@ -90,6 +120,21 @@
   --warning: #fcd34d;
   --warning-rgb: 252, 211, 77;
   --warning-soft: rgba(var(--warning-rgb), 0.13);
+
+  /* Scrim behind a modal. Heavier in dark, where the canvas is already near-black
+     and a light scrim would not separate the dialog from it. */
+  --modal-scrim: rgba(9, 9, 16, 0.72);
+
+  /* ── Tile tints: the five pastel wells for icon chips and stat tiles ──────
+     Defined in BOTH themes on purpose. A token that exists in only one theme is
+     a trap: the first component to use it renders correctly in that theme and
+     breaks in the other. Siphron's are near-white pastels; dark's are the same
+     hues as low-alpha washes over the near-black canvas. */
+  --tile-cream: rgba(214, 232, 170, 0.07);
+  --tile-ice: rgba(150, 214, 240, 0.07);
+  --tile-lavender: rgba(160, 150, 245, 0.08);
+  --tile-peach: rgba(245, 200, 150, 0.07);
+  --tile-mint: rgba(150, 230, 190, 0.07);
 
   /* ── Typography: families ────────────────────────────────────────────────
      One family. The four v3 aliases were identical strings, so they expressed
@@ -681,5 +726,16 @@ select {
     --border-strong: rgba(255, 255, 255, 0.42);
     --text-muted: #a8aeba;
     --text-dim: #8a90a0;
+  }
+
+  /* Siphron needs its own block, and needs the attribute in the selector: a bare
+     `:root` here loses to `:root[data-theme='siphron']` on specificity, so
+     without this the light theme silently ignored high-contrast entirely. */
+  :root[data-theme='siphron'] {
+    --border-subtle: rgba(38, 50, 110, 0.16);
+    --border: rgba(38, 50, 110, 0.28);
+    --border-strong: rgba(38, 50, 110, 0.46);
+    --text-muted: #4a5060;
+    --text-dim: #5d6474;
   }
 }

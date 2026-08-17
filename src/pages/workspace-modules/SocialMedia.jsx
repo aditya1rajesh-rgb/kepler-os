@@ -28,6 +28,19 @@ import './SocialMedia.css';
 const PLATFORM_OPTS = Object.entries(SOCIAL_PLATFORM_SPECS).map(([id, s]) => ({ id, label: s.label }));
 const WEEK_OPTS = [{ v: 2, l: '2 weeks' }, { v: 4, l: '1 month' }, { v: 6, l: '6 weeks' }];
 
+// A metric that was never returned is not zero. "0 likes" on a post with 143
+// comments is a claim about the post; the absence of a reading is not.
+const metric = (n) => (n === null || n === undefined ? '—' : new Intl.NumberFormat().format(Number(n) || 0));
+
+// History arrives from several providers. Defaulting the label to "Facebook"
+// attributed every LinkedIn post to the wrong network.
+const CHANNEL_LABELS = { linkedin: 'LinkedIn', facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', x: 'X / Twitter' };
+const channelLabel = (c) => {
+    const key = String(c || '').toLowerCase();
+    if (CHANNEL_LABELS[key]) return CHANNEL_LABELS[key];
+    return key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Unknown network';
+};
+
 const SocialMedia = ({ workspaceId }) => {
     const { loading, brand, readiness } = useWorkspaceConfig(workspaceId);
     const [searchParams] = useSearchParams();
@@ -152,7 +165,7 @@ const SocialMedia = ({ workspaceId }) => {
                     contentItemId: created[0].id,
                 });
             }
-            setNotice(`Generated ${created.length} posts across your calendar.${res.partial ? ' Some slots were skipped - re-run to fill them.' : ''}${campaignCtx.campaignId ? ' Linked to your campaign.' : ''}`);
+            setNotice(`Generated ${created.length} posts across your calendar.${res.partial ? ' Some slots were skipped. Re-run to fill them.' : ''}${campaignCtx.campaignId ? ' Linked to your campaign.' : ''}`);
         } catch (err) {
             setError(toUserMessage(err, 'Calendar generation failed.'));
         } finally {
@@ -234,7 +247,7 @@ const SocialMedia = ({ workspaceId }) => {
     // Publish the open post to its platform's connected account.
     const publishPost = async (provider, payload, label) => {
         const text = postText();
-        if (!text.trim()) { setError('Nothing to publish - the post is empty.'); return; }
+        if (!text.trim()) { setError('Nothing to publish: the post is empty.'); return; }
         setPublishing(true); reset(); setPublished(null);
         try {
             const res = await integrationService.publish(workspaceId, provider, { ...payload, text });
@@ -290,7 +303,7 @@ const SocialMedia = ({ workspaceId }) => {
         <Panel className="module-panel">
             <PanelHeader
                 title="Account history"
-                meta="Your real published posts and their engagement — the ground truth for what works"
+                meta="Your real published posts and their engagement: the ground truth for what works"
                 action={metaPages.connected ? (
                     <button type="button" className="btn btn-primary" onClick={pullHistory} disabled={historyPulling || !metaPages.pageSelected}>
                         {historyPulling ? 'Pulling…' : 'Pull history'}
@@ -300,7 +313,7 @@ const SocialMedia = ({ workspaceId }) => {
                 ) : null}
             />
             {!metaPages.configured && (
-                <p className="cockpit__intel-hint">Facebook & Instagram isn't configured on this build yet (Meta app + env pending). LinkedIn history isn't available — LinkedIn restricts reading personal-profile posts; it arrives with the company-Pages tier.</p>
+                <p className="cockpit__intel-hint">Facebook & Instagram isn't configured on this build yet (Meta app + env pending). LinkedIn history isn't available: LinkedIn restricts reading personal-profile posts, so it arrives with the company-Pages tier.</p>
             )}
             {metaPages.connected && !metaPages.pageSelected && (
                 <div className="brief-section">
@@ -316,7 +329,7 @@ const SocialMedia = ({ workspaceId }) => {
                 </div>
             )}
             {history.length === 0 ? (
-                <EmptyState message={metaPages.connected ? 'No history pulled yet — hit "Pull history" to import your posts and their engagement.' : 'Connect Facebook & Instagram to import your past posts and see what actually performed.'} />
+                <EmptyState message={metaPages.connected ? 'No history pulled yet. Hit "Pull history" to import your posts and their engagement.' : 'Connect Facebook & Instagram to import your past posts and see what actually performed.'} />
             ) : (
                 <ul className="measurement-list">
                     {history.map((p) => (
@@ -325,13 +338,13 @@ const SocialMedia = ({ workspaceId }) => {
                                 <div className="measurement-row__main">
                                     <span className="measurement-row__title">{(p.text || '(no text)').slice(0, 120)}{p.text?.length > 120 ? '…' : ''}</span>
                                     <span className="measurement-row__sub">
-                                        {p.channel === 'instagram' ? 'Instagram' : 'Facebook'}{p.mediaType ? ` · ${p.mediaType}` : ''}{p.postedAt ? ` · ${formatRelativeTime(p.postedAt)}` : ''}
+                                        {channelLabel(p.channel)}{p.mediaType ? ` · ${p.mediaType}` : ''}{p.postedAt ? ` · ${formatRelativeTime(p.postedAt)}` : ''}
                                     </span>
                                 </div>
                                 <div className="measurement-row__metrics">
-                                    <span><strong>{p.metrics?.likes ?? 0}</strong> likes</span>
-                                    <span><strong>{p.metrics?.comments ?? 0}</strong> comments</span>
-                                    {p.channel === 'facebook' && <span><strong>{p.metrics?.shares ?? 0}</strong> shares</span>}
+                                    <span><strong>{metric(p.metrics?.reactions ?? p.metrics?.likes)}</strong> reactions</span>
+                                    <span><strong>{metric(p.metrics?.comments)}</strong> comments</span>
+                                    {p.metrics?.shares != null && <span><strong>{metric(p.metrics.shares)}</strong> shares</span>}
                                 </div>
                                 {p.url && <a className="campaigns__step-link" href={p.url} target="_blank" rel="noreferrer">View ↗</a>}
                             </div>
@@ -482,13 +495,21 @@ const SocialMedia = ({ workspaceId }) => {
                                     return <button type="button" className="btn btn-secondary" onClick={() => publishPost('meta-pages', { channel: 'facebook' }, 'Facebook')} disabled={publishing}>{publishing ? 'Publishing…' : 'Publish to Facebook'}</button>;
                                 }
                                 if (platform === 'instagram' && metaPages.configured) {
-                                    // IG's API requires hosted media - honest state until media upload ships.
-                                    return <button type="button" className="btn btn-secondary" disabled title="Instagram needs a hosted image or video - publishing lands with media upload.">Instagram: needs media</button>;
+                                    // IG's API requires hosted media: an honest state until media
+                                    // upload ships. The reason was a `title` tooltip, which is
+                                    // invisible on touch and to keyboard users — a disabled control
+                                    // whose reason needs a hover is a dead end, so it is on screen.
+                                    return <button type="button" className="btn btn-secondary" disabled>Instagram: needs media</button>;
                                 }
                                 return null;
                             })()}
                             <button type="button" className="btn-destructive" onClick={() => handleDeletePost(selected)}>Delete</button>
                         </div>
+                        {selected.payload.platform === 'instagram' && metaPages.configured && !published?.url && (
+                            <p className="label-text">
+                                Instagram needs a hosted image or video, so publishing lands with media upload.
+                            </p>
+                        )}
                         <RatingControl
                             key={selected.id}
                             label="Rate this post"

@@ -16,8 +16,10 @@
   "dependencies": {
     "@solar-icons/react": "^1.1.1",
     "@supabase/supabase-js": "^2.108.1",
+    "dialkit": "^1.4.3",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.18.0",
+    "motion": "^13.1.0",
     "pdfjs-dist": "^6.1.200",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

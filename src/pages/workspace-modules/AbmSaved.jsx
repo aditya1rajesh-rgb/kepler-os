@@ -27,8 +27,10 @@ import './Prospecting.css';
 
 const TIER_LABEL = { enterprise: 'Enterprise', 'mid-market': 'Mid-market', smb: 'SMB' };
 const fullName = (p) => [p.firstName, p.lastName].filter(Boolean).join(' ') || p.email || 'Unknown';
+// Fall back to the raw tier: TIER_LABEL only covers enterprise/mid-market/smb, and
+// research can return its own tiering ("Tier 1"), which was being dropped silently.
 const accountSub = (a) =>
-    [TIER_LABEL[a.tier], a.icpFit && `${a.icpFit} fit`, a.employeeSize].filter(Boolean).join(' · ');
+    [a.tier && (TIER_LABEL[a.tier] ?? a.tier), a.icpFit && `${a.icpFit} ICP fit`, a.employeeSize].filter(Boolean).join(' · ');
 
 const AbmSaved = ({ workspaceId }) => {
     const [accounts, setAccounts] = useState(null); // null = loading
@@ -207,7 +209,7 @@ const AbmSaved = ({ workspaceId }) => {
                 />
                 {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                 {prospects.length === 0 ? (
-                    <EmptyState message="No prospects yet. Save contacts from ABM Research or Prospecting." />
+                    <EmptyState message="No prospects yet. Save contacts from Research or Find prospects." />
                 ) : (
                     <>
                     <SelectionBar
@@ -257,7 +259,7 @@ const AbmSaved = ({ workspaceId }) => {
             <Panel variant="quiet">
                 <PanelHeader title={`Lists${lists.length ? ` · ${lists.length}` : ''}`} meta="Named audiences — open one to view contacts, export, and enrich." />
                 {lists.length === 0 ? (
-                    <EmptyState message="No lists yet. Select prospects above and “Add to list”." />
+                    <EmptyState message="No lists yet. Select prospects in the Prospects tab and “Add to list”." />
                 ) : (
                     <ul className="prospect-list">
                         {lists.map((l) => {

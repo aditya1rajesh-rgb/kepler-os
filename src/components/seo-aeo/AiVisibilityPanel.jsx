@@ -60,13 +60,13 @@ const AiVisibilityPanel = ({ workspaceId }) => {
             const r = await visibilityService.runScan(workspaceId, { mock });
             await load();
             if (mock) {
-                setNotice(`Sample scan — ${r.promptCount} prompts × ${r.surfaces.length} surfaces (illustrative, not real measurement).`);
+                setNotice(`Sample scan: ${r.promptCount} prompts × ${r.surfaces.length} surfaces (illustrative, not real measurement).`);
             } else if (!r.promptCount) {
                 setNotice(r.message || 'No buyer prompts could be generated yet.');
             } else if (!r.counts.ok) {
-                setNotice('No AI surfaces are connected yet — connect Perplexity/OpenAI/Anthropic to measure live, or run a sample.');
+                setNotice('No AI surfaces are connected yet. Connect Perplexity, OpenAI or Anthropic to measure live, or run a sample.');
             } else {
-                setNotice(`Scan complete — share of voice ${pct(r.shareOfVoice)} across ${r.surfaces.length} surfaces.`);
+                setNotice(`Scan complete. Share of voice ${pct(r.shareOfVoice)} across ${r.surfaces.length} surfaces.`);
             }
         } catch (e) {
             setError(toUserMessage(e, 'Could not run the visibility scan.'));
@@ -84,12 +84,12 @@ const AiVisibilityPanel = ({ workspaceId }) => {
 
             <Panel variant="quiet">
                 {!visibility ? (
-                    <EmptyState message="No visibility scans yet. Run a scan to see whether AI assistants mention your brand when buyers ask category questions — connect providers for live data, or run a sample to preview the loop." />
+                    <EmptyState message="No visibility scans yet. Run a scan to see whether AI assistants mention your brand when buyers ask category questions. Connect providers for live data, or run a sample to preview the loop." />
                 ) : (
                     <>
                         {!visibility.hasReal && (
                             <p className="brand-intel-module__source-label">
-                                Sample data — providers not connected yet. Connect Perplexity / ChatGPT / Claude for live measurement.
+                                Sample data: providers not connected yet. Connect Perplexity, ChatGPT or Claude for live measurement.
                             </p>
                         )}
                         <div className="cockpit__intel-facts">
@@ -130,7 +130,7 @@ const AiVisibilityPanel = ({ workspaceId }) => {
 
                         {gaps.length > 0 && (
                             <div className="measurement-gaps">
-                                <p className="brand-intel-module__source-label">Content opportunities — buyers ask these and a competitor is named, but you are not:</p>
+                                <p className="brand-intel-module__source-label">Content opportunities: buyers ask these and a competitor is named, but you are not.</p>
                                 <ul className="measurement-list">
                                     {gaps.slice(0, 8).map((g) => (
                                         <li key={`${g.surface}:${g.prompt}`} className="measurement-row">

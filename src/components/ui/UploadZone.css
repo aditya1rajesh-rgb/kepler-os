@@ -4,7 +4,7 @@
     align-items: center;
     justify-content: center;
     padding: 48px;
-    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border: 1px dashed var(--border-strong);
     border-radius: 12px;
     gap: 8px;
     text-align: center;
@@ -15,7 +15,7 @@
 
 .upload-zone:hover {
     border-color: rgba(var(--accent-rgb), 0.45);
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--wash-2);
 }
 
 .upload-zone p {
@@ -25,5 +25,5 @@
 
 .upload-subtitle {
     font-size: 12px;
-    color: #8e90a3;
+    color: var(--text-muted);
 }

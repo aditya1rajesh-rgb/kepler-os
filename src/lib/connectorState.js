@@ -101,7 +101,7 @@ export const connectorState = (connector, status, { oauthConfigured = true } = {
             state: 'platform_managed',
             ...CONNECTOR_STATES.platform_managed,
             detail: status?.configured
-                ? 'Configured — included in your scans.'
+                ? 'Configured. Included in your scans.'
                 : 'Not configured yet, so it is excluded from your scans.',
         };
     }
@@ -112,7 +112,7 @@ export const connectorState = (connector, status, { oauthConfigured = true } = {
                 state: 'degraded',
                 ...CONNECTOR_STATES.degraded,
                 detail: status.status === 'expired'
-                    ? 'Access expired — reconnect to resume.'
+                    ? 'Access expired. Reconnect to resume.'
                     : 'The connection was rejected. Reconnect with fresh credentials.',
             };
         }
@@ -131,8 +131,8 @@ export const connectorState = (connector, status, { oauthConfigured = true } = {
                 state: 'degraded',
                 ...CONNECTOR_STATES.degraded,
                 detail: names.length > 1
-                    ? `Connected, but ${list} were not granted — reconnect to authorise them.`
-                    : `Connected, but ${list} was not granted — reconnect to authorise it.`,
+                    ? `Connected, but ${list} were not granted. Reconnect to authorise them.`
+                    : `Connected, but ${list} was not granted. Reconnect to authorise it.`,
             };
         }
         return { state: 'connected', ...CONNECTOR_STATES.connected, detail: '' };

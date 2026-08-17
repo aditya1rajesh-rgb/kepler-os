@@ -13,9 +13,9 @@ const COUNTRIES = [
     { value: 'CA', label: 'Canada' },
     { value: 'AU', label: 'Australia' },
     { value: 'IN', label: 'India' },
-    { value: 'DE', label: 'Germany (EU — full ad set)' },
-    { value: 'FR', label: 'France (EU — full ad set)' },
-    { value: 'NL', label: 'Netherlands (EU — full ad set)' },
+    { value: 'DE', label: 'Germany (EU: full ad set)' },
+    { value: 'FR', label: 'France (EU: full ad set)' },
+    { value: 'NL', label: 'Netherlands (EU: full ad set)' },
 ];
 
 // Competitor intelligence from the Meta Ad Library → a structured read (per the
@@ -89,7 +89,7 @@ const CompetitorAdsPanel = ({ workspaceId, onGroundingChange, chrome = true }) =
         if (connected !== false) return null;
         const hint = (
             <p className="cockpit__intel-hint">
-                Connect Meta Ad Library in <strong>Profile &amp; settings → Connectors</strong> to search competitors' live ads and ground your creative in them.
+                Connect Meta Ad Library in <strong>Integrations</strong> to search competitors' live ads and ground your creative in them.
             </p>
         );
         if (!chrome) return hint;

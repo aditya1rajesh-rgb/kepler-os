@@ -105,7 +105,7 @@ const CompetitorSuggestionCard = ({
                     {payload.messagingSummary}
                 </p>
             ) : (
-                <p className="suggestion-card__placeholder">Messaging summary - available after enrichment</p>
+                <p className="suggestion-card__placeholder">Messaging summary: available after enrichment</p>
             )}
             <div className="suggestion-card__actions">
                 <button type="button" className="btn btn-secondary" onClick={onAccept} disabled={accepting}>

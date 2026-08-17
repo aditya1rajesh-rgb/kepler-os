@@ -56,7 +56,7 @@
         to bottom,
         var(--layer-canvas) 0%,
         var(--layer-canvas) 62%,
-        rgba(10, 11, 15, 0) 100%
+        var(--canvas-fade) 100%
     );
     backdrop-filter: var(--blur-thin);
     -webkit-backdrop-filter: var(--blur-thin);
@@ -97,7 +97,7 @@
 
 .mscreen__rail-toggle:hover {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.055);
+    background: var(--wash-3);
 }
 
 .mscreen__rail-toggle:active {

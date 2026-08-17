@@ -83,8 +83,18 @@ const Sidebar = ({ collapsed, onToggle, onOpenPalette }) => {
         <aside className={`sidebar kepler-shell ${collapsed ? 'sidebar--collapsed' : ''}`}>
             <div className={`sidebar__brand ${collapsed ? 'sidebar__brand--collapsed' : ''}`}>
                 <Link to="/" className="sidebar__brand-cluster" title="Dashboard">
+                    {/* The mark is painted from the logo's alpha channel (see
+                        Sidebar.css), not drawn as an <img>: the artwork is pure
+                        white, so on a light theme an <img> is invisible.
+                        It carries the accessible name only when collapsed —
+                        otherwise the wordmark beside it already says KEPLER. */}
                     <span className="sidebar__brand-badge">
-                        <img src="/kepler-logo.png" alt="KEPLER" className="sidebar__brand-badge-mark" />
+                        <span
+                            className="sidebar__brand-badge-mark"
+                            role={collapsed ? 'img' : undefined}
+                            aria-label={collapsed ? 'KEPLER' : undefined}
+                            aria-hidden={collapsed ? undefined : 'true'}
+                        />
                     </span>
                     {!collapsed && <span className="sidebar__wordmark font-heading">KEPLER</span>}
                 </Link>

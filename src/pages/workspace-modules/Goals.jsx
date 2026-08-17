@@ -55,7 +55,9 @@ const Goals = ({ workspaceId }) => {
 
     // E10 — the goal asks for work. Loaded with the detail, not behind a button,
     // because a recommendation you have to request is one nobody sees.
-    const [recommendation, setRecommendation] = useState(null);
+    // Stamped with the goal it was sized for. It resolves after the goal loads, so
+    // an unstamped value renders another goal's shortfall under this goal's name.
+    const [recommendation, setRecommendation] = useState(null); // { goalId, value }
     const [accepting, setAccepting] = useState(false);
     const [creating, setCreating] = useState(false);
     const [draft, setDraft] = useState(null);
@@ -101,7 +103,7 @@ const Goals = ({ workspaceId }) => {
                 const rec = await recommendationService
                     .forGoal(workspaceId, goal, { projection: proj })
                     .catch(() => null);
-                if (!cancelled) setRecommendation(rec);
+                if (!cancelled) setRecommendation({ goalId: goal.id, value: rec });
             } catch (err) {
                 if (!cancelled) setError(toUserMessage(err, 'Could not open that goal.'));
             }
@@ -181,13 +183,13 @@ const Goals = ({ workspaceId }) => {
     };
 
     const acceptRecommendation = async () => {
-        if (!detail || !recommendation?.brief) return;
+        if (!detail || recommendation?.goalId !== detail.id || !recommendation?.value?.brief) return;
         setAccepting(true);
         setError('');
         try {
             const res = await recommendationService.accept(workspaceId, {
                 goal: detail,
-                brief: recommendation.brief,
+                brief: recommendation.value.brief,
             });
             if (!res.ok) { setError(res.error); return; }
             navigate(`${workspacePath(workspaceId, 'campaigns', 'all')}?campaign=${res.campaign.id}`);
@@ -251,7 +253,7 @@ const Goals = ({ workspaceId }) => {
                             {campaigns.length === 0 ? (
                                 /* A goal with no campaigns IS the empty state, and its
                                    primary action is "add the work" — per S1. */
-                                <EmptyState message="No campaigns yet. A goal moves when there is work under it — start one from the button above." />
+                                <EmptyState message="No campaigns yet. A goal moves when there is work under it, so start one from the button above." />
                             ) : (
                                 <div className="engine-table" role="table">
                                     {campaigns.map((c) => {
@@ -281,7 +283,8 @@ const Goals = ({ workspaceId }) => {
 
                         {detail.kind === 'measured' && (
                             <NextWork
-                                recommendation={recommendation}
+                                recommendation={recommendation?.goalId === detail.id ? recommendation.value : null}
+                                loading={recommendation?.goalId !== detail.id}
                                 goalName={detail.name}
                                 accepting={accepting}
                                 onAccept={acceptRecommendation}
@@ -339,7 +342,7 @@ const Goals = ({ workspaceId }) => {
         >
             {creating && draft && (
                 <Panel className="module-panel">
-                    <PanelHeader title="New goal" meta="Goals resolve — an end date is required" />
+                    <PanelHeader title="New goal" meta="Goals resolve, so an end date is required" />
                     <div className="builder-grid">
                         <div className="input-group">
                             <label className="label-text" htmlFor="goal-name">Name</label>
@@ -365,7 +368,7 @@ const Goals = ({ workspaceId }) => {
                             <p className="brand-intel-module__source-label">
                                 {draft.kind === 'measured'
                                     ? 'Bound to a measure Kepler can read. Gets a forecast and a gap.'
-                                    : 'Free text — organises campaigns and tracks checkpoints, but gets no forecast. You can attach a measure later.'}
+                                    : 'Free text. Organises campaigns and tracks checkpoints, but gets no forecast. You can attach a measure later.'}
                             </p>
                         </div>
 
@@ -416,7 +419,7 @@ const Goals = ({ workspaceId }) => {
                                     )}
                                     {proposal && !proposal.proposal && (
                                         <span className="label-text">
-                                            No history for this measure yet — set a target yourself and Kepler will track against it.
+                                            No history for this measure yet. Set a target yourself and Kepler will track against it.
                                         </span>
                                     )}
                                 </div>
@@ -451,7 +454,7 @@ const Goals = ({ workspaceId }) => {
                        user's own data. */
                     <EmptyState message={`Goals could not be loaded, so this list is not showing your goals. ${loadError}`} />
                 ) : goals.length === 0 ? (
-                    <EmptyState message="No goals yet. A goal is what campaigns and assets ladder to — without one, generated work has nothing to serve." />
+                    <EmptyState message="No goals yet. A goal is what campaigns and assets ladder to; without one, generated work has nothing to serve." />
                 ) : (
                     <div className="engine-table" role="table">
                         {goals.map((g) => (

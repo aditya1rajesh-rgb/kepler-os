@@ -179,7 +179,7 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                 </div>
 
                 {!apolloConnected && (
-                    <p className="list-detail__hint">Connect Apollo in Integrations to reveal emails &amp; phones. Export works without it, before and after.</p>
+                    <p className="list-detail__hint">Connect Apollo in Integrations to reveal emails and phones. Export works without it, before and after.</p>
                 )}
                 {enriching && progress && (
                     <p className="brand-intel-module__source-label" role="status">
@@ -193,7 +193,7 @@ const ListDetail = ({ workspaceId, listId, listName = 'List', onBack, onBuildSeq
                 {loading ? (
                     <EmptyState loading message="Loading list…" />
                 ) : members.length === 0 ? (
-                    <EmptyState message="This list has no contacts yet. Add prospects from ABM Research or Prospecting." />
+                    <EmptyState message="This list has no contacts yet. Add prospects from Research or Find prospects." />
                 ) : (
                     <>
                         <SelectionBar

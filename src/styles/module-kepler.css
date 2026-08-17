@@ -17,7 +17,7 @@
 .module-kepler .intel-textarea,
 .module-kepler select.intel-input {
     background-color: var(--kepler-panel);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--kepler-text);
     transition: border-color var(--t-fast), box-shadow var(--t-fast);
@@ -68,7 +68,7 @@
 
 .module-kepler .data-label,
 .module-kepler .label-text {
-    color: #8e90a3;
+    color: var(--text-muted);
 }
 
 /* Dashed add / drop zones */
@@ -78,7 +78,7 @@
 .module-kepler .add-variant-placeholder,
 .module-kepler .file-drop-zone-full,
 .module-kepler .logo-drop-zone {
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: var(--border-strong);
     background-color: rgba(18, 19, 23, 0.4);
     color: var(--kepler-muted);
     border-radius: 12px;
@@ -92,7 +92,7 @@
 .module-kepler .logo-drop-zone:hover {
     border-color: rgba(var(--accent-rgb), 0.45);
     color: var(--kepler-text);
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--wash-2);
 }
 
 .module-kepler .module-search-input {
@@ -101,7 +101,7 @@
     height: 36px;
     padding: 0 14px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background-color: var(--kepler-panel);
     font-size: 13px;
     color: var(--kepler-text);
@@ -130,7 +130,7 @@
 .module-kepler .intel-chip {
     font-size: 11px;
     background-color: var(--kepler-panel);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     padding: 4px 10px;
     border-radius: 6px;
     color: var(--kepler-text);
@@ -147,7 +147,7 @@
 
 .module-empty-state,
 .home__empty {
-    color: var(--kepler-muted, #7f819a);
+    color: var(--kepler-muted, var(--text-muted));
     font-size: 13px;
     line-height: 1.5;
     margin: 0;

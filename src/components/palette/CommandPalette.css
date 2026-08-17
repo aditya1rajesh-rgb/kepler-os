@@ -58,7 +58,7 @@
     border-radius: 5px;
     border: 1px solid var(--border-light);
     color: var(--text-dim);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--wash-2);
 }
 
 .cmdk__list {
@@ -129,12 +129,12 @@
 }
 
 .cmdk__item--active .cmdk__item-sub {
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--text-secondary);
 }
 
 .cmdk__item-enter {
     flex-shrink: 0;
     font-size: 14px;
     line-height: 1;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-secondary);
 }

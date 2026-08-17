@@ -43,3 +43,8 @@ kepler-os-dashboard/
 
 # Generated knowledge-graph output (graphify skill) — rebuildable, ~5MB
 graphify-out/
+
+# Agent skills installed via `npx skills add` — reinstallable, machine-local
+.agents/
+.claude/skills/
+skills-lock.json

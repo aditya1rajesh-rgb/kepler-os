@@ -1,0 +1,194 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIPHRON — Kepler's light theme, and the default appearance.
+
+   No longer an experiment: this is one of two themes the user chooses between
+   (see `lib/theme.js`). It re-points the root tokens declared in `index.css`;
+   Kepler's dark values stay on `:root` so `[data-theme='kepler']` needs no block
+   of its own and a missing attribute degrades to dark, never to unstyled.
+
+   Every value here is the design system of record — the same numbers as the
+   Figma variable collection `Kepler — Siphron` in file XlstnvwPQpcOq2tNY7sjxN,
+   which all thirteen destinations, six states frames and seven modals were drawn
+   against. Change one here and it must change there too.
+
+   Source of the original measurements: Finnulate 2.0 → Home → `image 21`
+   (node 118:14300), a flat bitmap read pixel by pixel.
+
+   HOW THIS DIFFERS FROM `fin`, and why it suits Kepler better:
+
+   1. It is CHROMATIC. Only 3.3% of the reference's pixels are neutral grey
+      (Finnulate: 94%). Dominant hues sit at 230–260° — blue-violet, which is
+      the family Kepler's own indigo (#4a6cf7, ~228°) already lives in. This is
+      a shift of the existing identity, not a replacement of it.
+   2. Surfaces are COOL (B > G > R), the exact inverse of Finnulate's warm
+      neutrals.
+   3. It groups with SHADOW AND SOFT TINT, barely using borders at all. That
+      matters: Kepler's 239 hardcoded `rgba(255,255,255,…)` hairlines are the
+      main casualty of a light flip, and a style that does not lean on borders
+      is far less damaged by losing them.
+   4. Radii are much larger and there is no monospace anywhere.
+
+   The reference uses a top horizontal nav; Kepler has a sidebar. IA is left
+   alone — this is a skin test, not a restructure.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root[data-theme='siphron'] {
+  /* ── Surfaces: cool, low-contrast, near-white ──────────────────────────── */
+  --layer-canvas: #eef2f5;
+  --layer-chrome: #f9fafc;
+  --layer-raised: #ffffff;
+  --layer-raised-hover: #f7f8fd;
+  --layer-inset: #eff0fa;        /* lavender-tinted wells, like the search field */
+  --layer-overlay: #ffffff;
+
+  --layer-chrome-thin: rgba(249, 250, 252, 0.78);
+  --layer-raised-thin: rgba(255, 255, 255, 0.72);
+  --layer-overlay-thin: rgba(255, 255, 255, 0.92);
+
+  /* ── Borders: tinted toward the accent, never neutral black ────────────── */
+  --border-subtle: rgba(38, 50, 110, 0.05);
+  --border: rgba(38, 50, 110, 0.09);
+  --border-strong: rgba(38, 50, 110, 0.16);
+
+  /* ── Washes: the same LIFT semantics, inverted ─────────────────────────────
+     Dark lifts a surface with translucent white; on a light canvas that does
+     nothing, so Siphron lifts with its own blue-tinted ink instead. Still
+     translucent, so a wash composites over whatever is beneath it. */
+  --wash-1: rgba(38, 50, 110, 0.02);
+  --wash-2: rgba(38, 50, 110, 0.035);
+  --wash-3: rgba(38, 50, 110, 0.05);
+  --wash-4: rgba(38, 50, 110, 0.07);
+
+  --canvas-fade: rgba(238, 242, 245, 0);
+  --header-fade-from: rgba(38, 50, 110, 0.06);
+
+  /* No edge highlights in this system: it groups by shadow. Resolving to
+     transparent is deliberate - the alternative is an invisible white hairline
+     that still costs a paint. */
+  --edge-highlight: transparent;
+
+  /* ── Ink: cool near-black ──────────────────────────────────────────────── */
+  --text: #12141a;
+  --text-secondary: #41464c;
+  --text-muted: #767c8a;
+  --text-dim: #a3a9b8;
+
+  /* ── Accent: indigo rotated to violet — same family, more saturation ───── */
+  --accent: #8a59f3;
+  --accent-rgb: 138, 89, 243;
+  --accent-hover: #9a6ff5;
+  --accent-deep: #5f37c0;
+  --accent-text: #6d40d8;
+  --accent-soft: rgba(138, 89, 243, 0.10);
+  --accent-soft-hover: rgba(138, 89, 243, 0.16);
+  --accent-glow: rgba(138, 89, 243, 0.45);
+  --highlight-grad: linear-gradient(135deg, #9d76f0 0%, #8a59f3 52%, #6f42dd 100%);
+  --card-grad: linear-gradient(168deg, #ffffff 0%, #ffffff 62%, #f7f8fd 100%);
+
+  /* ── Semantic: soft tinted fills, not saturated bars ───────────────────── */
+  --positive: #2f7d5f;
+  --positive-rgb: 47, 125, 95;
+  --positive-soft: rgba(47, 125, 95, 0.12);
+  --negative: #c8443c;
+  --negative-rgb: 200, 68, 60;
+  --negative-soft: rgba(200, 68, 60, 0.11);
+  --warning: #b07d1f;
+  --warning-rgb: 176, 125, 31;
+  --warning-soft: rgba(217, 168, 62, 0.18);
+
+  /* ── Elevation: soft, diffuse, blue-tinted — this is what groups ───────── */
+  --shadow-sm: 0 1px 2px rgba(38, 50, 110, 0.05);
+  --shadow-md: 0 6px 18px -6px rgba(38, 50, 110, 0.12);
+  --shadow-lg: 0 18px 44px -14px rgba(38, 50, 110, 0.16);
+  --shadow-xl: 0 32px 72px -18px rgba(38, 50, 110, 0.20);
+  --shadow-accent: 0 8px 22px -8px rgba(138, 89, 243, 0.45);
+
+  /* ── Radii: markedly rounder than v4 ───────────────────────────────────── */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-card: var(--r-lg);
+
+  /* Ink at 45%, not 72%: on a light canvas the heavier scrim buries the screen
+     rather than letting it recede. Matches `Integrations · modal overlay`. */
+  --modal-scrim: rgba(18, 20, 26, 0.45);
+
+  /* ── Tile tints: the five pastel wells used for icon chips and stat tiles ── */
+  --tile-cream: #f3f6ef;
+  --tile-ice: #eef9fc;
+  --tile-lavender: #f3f3fb;
+  --tile-peach: #fbf7ee;
+  --tile-mint: #eff9f4;
+
+  /* ── Type: geometric humanist, no mono anywhere in this reference ──────── */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+/* The canvas is FLAT. The reference bitmap has an iridescent violet/blue bloom
+   and this file used to reproduce it, but no Figma frame accounts for it: all
+   thirteen destinations were composed on a flat #eef2f5, and the card shadows
+   were tuned against that. A mesh behind them would put every screen on a
+   background it was not designed on. */
+:root[data-theme='siphron'] body {
+  background: var(--layer-canvas);
+}
+
+/* Figures are big, bold and proportional here — the opposite of `fin`'s
+   tabular-mono rule. No monospace override on purpose. */
+:root[data-theme='siphron'] .stat-value,
+:root[data-theme='siphron'] .metric-value,
+:root[data-theme='siphron'] .kpi-value {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* ═══ THEME DIFFERENCES ═════════════════════════════════════════════════════
+   The SHELL PATCH that used to live here is GONE. It existed only because the
+   base rules hardcoded `rgba(255,255,255,…)`; those are now tokens, so the
+   overrides are redundant — and one of them was doing damage:
+   `[class*='card'] { border-color: … }` outspecifies a deliberate state border,
+   so it was flattening `.connector-card--degraded`'s warning edge to a hairline
+   in this theme only.
+
+   What remains below is not patching. These are the two places where Siphron
+   genuinely renders differently from Kepler dark, and they belong to the theme.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Nav selection is a SOFT tinted pill here, not a solid accent one. The sidebar
+   is not drawn in the Figma frames (they are the 1180px content area), so this
+   is the shell's own decision: on a near-white chrome a solid violet pill is the
+   loudest object on screen, which is the wrong weight for "where I am". */
+:root[data-theme='siphron'] .sidebar__item:hover,
+:root[data-theme='siphron'] .header__action:hover {
+  background: var(--accent-soft);
+}
+/* Leaf items and CHILD items get the same treatment — the child rule is a
+   separate class, so overriding only `--item--active` left a nav where a
+   top-level selection was a soft pill and a sub-screen selection was a solid
+   violet one. One state, one appearance. */
+:root[data-theme='siphron'] .sidebar__item--active,
+:root[data-theme='siphron'] .sidebar__item--active:hover,
+:root[data-theme='siphron'] .sidebar__child--active,
+:root[data-theme='siphron'] .sidebar__child--active:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+:root[data-theme='siphron'] .sidebar__item--active .sidebar__item-icon {
+  color: var(--accent-text);
+}
+
+/* Containers group by ELEVATION rather than by outline — the defining move of
+   this system. Scoped to known container roots on purpose: a broad
+   [class*='card'] selector also matches inner parts (.card__header,
+   .card__title) and paints shadow bands across headings. */
+:root[data-theme='siphron'] .card,
+:root[data-theme='siphron'] .panel,
+:root[data-theme='siphron'] .surface,
+:root[data-theme='siphron'] .content-card,
+:root[data-theme='siphron'] .stat-card {
+  box-shadow: var(--shadow-md);
+}

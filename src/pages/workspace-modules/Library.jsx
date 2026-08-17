@@ -11,7 +11,8 @@ import './Library.css';
 
 const TYPE_META = {
     seo: { label: 'SEO & AEO', module: 'seo-aeo' },
-    ads: { label: 'Ad Campaigns', module: 'ad-campaigns' },
+    // Labels have to match the nav: this module is "Ad Creative" there.
+    ads: { label: 'Ad Creative', module: 'ad-campaigns' },
     outreach: { label: 'Outreach', module: 'outreach' },
     social: { label: 'Social Media', module: 'social-media' },
 };
@@ -19,7 +20,7 @@ const TYPE_META = {
 const FILTERS = [
     { id: 'all', label: 'All' },
     { id: 'seo', label: 'SEO & AEO' },
-    { id: 'ads', label: 'Ad Campaigns' },
+    { id: 'ads', label: 'Ad Creative' },
     { id: 'outreach', label: 'Outreach' },
     { id: 'social', label: 'Social Media' },
 ];
@@ -109,13 +110,23 @@ const Library = ({ workspaceId }) => {
                 {loading ? (
                     <EmptyState loading message="Loading library…" />
                 ) : visible.length === 0 ? (
-                    <EmptyState
-                        message={
-                            items.length === 0
-                                ? 'No content yet - generate assets in any module and they’ll collect here.'
-                                : 'No items match your filter.'
-                        }
-                    />
+                    /* Three different reasons the list is empty, and a search is
+                       not a filter: naming the wrong control sends the user to
+                       clear something they never set. */
+                    items.length === 0 ? (
+                        <EmptyState message="No content yet. Generate assets in any module and they’ll collect here." />
+                    ) : query.trim() ? (
+                        <EmptyState
+                            message={`No content matches “${query.trim()}”.`}
+                            action={
+                                <button type="button" className="btn btn-secondary" onClick={() => setQuery('')}>
+                                    Clear search
+                                </button>
+                            }
+                        />
+                    ) : (
+                        <EmptyState message="No items match your filter." />
+                    )
                 ) : (
                     <ul className="library__list">
                         {visible.map((item) => {

@@ -314,7 +314,7 @@ export const contentItems = [
             opportunityScore: 34,
             metricStatus: 'measured',
             geo: { isCandidate: true, type: 'comparison', recommendedFormat: 'comparison page' },
-            routing: { publish: false, assetType: 'comparison page', action: 'Win off-domain — G2 category page and a third-party roundup outrank vendor-owned vs pages for this query' },
+            routing: { publish: false, assetType: 'comparison page', action: 'Win off-domain: G2 category page and a third-party roundup outrank vendor-owned vs pages for this query' },
             rationale: 'Buyers search this before the first call. Own the narrative off-domain where the answer engines look.',
         },
         created_at: daysAgo(11),
@@ -410,7 +410,7 @@ export const contentItems = [
         campaign_id: id('campaign-intake'),
         campaign_step_id: 'step-ads-registrar',
         payload: {
-            config: { platform: 'linkedin', objective: 'Book a KenRoll walkthrough with registrars before the November renewal window', campaignType: 'lead-gen', count: 4 },
+            config: { name: 'LinkedIn — Registrar pain, admissions cycle time', platform: 'linkedin', icpId: id('persona-registrar'), goal: 'Book a KenRoll walkthrough with registrars before the November renewal window', type: 'lead-gen', budget: 'mid' },
             variants: [
                 {
                     angle: 'outcome',
@@ -488,7 +488,7 @@ export const contentItems = [
         campaign_id: id('campaign-accreditation'),
         campaign_step_id: 'step-ads-naac',
         payload: {
-            config: { platform: 'google', objective: 'Capture accreditation-cycle search intent for KenCompliance', campaignType: 'lead-gen', count: 3 },
+            config: { name: 'Google Search — NAAC / accreditation intent', platform: 'google', goal: 'Capture accreditation-cycle search intent for KenCompliance', type: 'lead-gen', budget: 'mid' },
             variants: [
                 {
                     angle: 'outcome',

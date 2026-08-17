@@ -14,7 +14,7 @@
     flex-direction: column;
     gap: var(--sp-4);
     padding-top: var(--sp-4);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-subtle);
 }
 
 .intel-readonly-value--block {

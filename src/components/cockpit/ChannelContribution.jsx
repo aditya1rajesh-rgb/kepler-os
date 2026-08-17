@@ -1,4 +1,6 @@
+import { Send, BadgeDollarSign, Hash, Target, Search, FileText } from 'lucide-react';
 import Panel, { PanelHeader } from '../ui/Panel';
+import { DESIGN_FORM } from '../../lib/designForm';
 
 // Zone 5 — channel contribution, keyed `production—source`.
 //
@@ -18,6 +20,58 @@ import Panel, { PanelHeader } from '../ui/Panel';
 
 const pct = (share) => (share === null || share === undefined ? '—' : `${(share * 100).toFixed(1)}%`);
 const fmt = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
+
+// ── REFERENCE FORM ─────────────────────────────────────────────────────────
+// The Siphron reference's Leaderboard is the closest analogue to this table:
+// a rank, a two-line identity, and a value on the right. `production—source`
+// maps onto its name/email pair exactly, so this is a form change, not a data
+// change. Refusals 1–3 above are preserved: `Other` rows still sit in the same
+// list, and they still get no Drill.
+//
+// The reference puts a person's avatar in the rank slot. A channel has no
+// avatar, and the first initial is worse than nothing — Ken42's three `Other`
+// rows all rendered "O". So the chip carries the WING, and the unattributable
+// remainder gets a neutral dot rather than a letter it does not have.
+const WING_ICON = {
+    Outreach: Send,
+    Paid: BadgeDollarSign,
+    Social: Hash,
+    Campaign: Target,
+    SEO: Search,
+    Content: FileText,
+};
+
+const WingChip = ({ production }) => {
+    const Icon = WING_ICON[production];
+    return (
+        <span className="dform-lb__chip" role="cell" aria-hidden="true">
+            {Icon ? <Icon size={14} strokeWidth={1.9} /> : <span className="dform-lb__dot" />}
+        </span>
+    );
+};
+
+const LeaderboardRow = ({ row, rank, onDrill }) => (
+    <div className={`dform-lb__row ${row.production === 'Other' ? 'is-other' : ''}`} role="row">
+        <span className="dform-lb__rank" role="cell">{rank}</span>
+        <WingChip production={row.production} />
+        <span className="dform-lb__id" role="cell">
+            <span className="dform-lb__name">{row.production}</span>
+            <span className="dform-lb__sub">{row.source}</span>
+        </span>
+        <span className="dform-lb__bar" role="cell">
+            <span className="dform-lb__fill" style={{ width: `${(row.share ?? 0) * 100}%` }} />
+        </span>
+        <span className="dform-lb__num" role="cell">{fmt(row.sessions)}</span>
+        <span className="dform-lb__share" role="cell">{pct(row.share)}</span>
+        {row.production === 'Other' ? (
+            <span className="dform-lb__spacer" role="cell" />
+        ) : (
+            <button type="button" className="dform-lb__drill" role="cell" onClick={() => onDrill?.(row)}>
+                Drill
+            </button>
+        )}
+    </div>
+);
 
 const ChannelContribution = ({ contribution, caveats = [], goalName = '', onDrill }) => {
     const rows = contribution?.contributions ?? [];
@@ -45,6 +99,13 @@ const ChannelContribution = ({ contribution, caveats = [], goalName = '', onDril
                         {' '}The rest is real traffic Kepler cannot claim, and it is in the table.
                     </p>
 
+                    {(import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true') && DESIGN_FORM ? (
+                        <div className="dform-lb" role="table">
+                            {rows.map((row, i) => (
+                                <LeaderboardRow key={row.key} row={row} rank={i + 1} onDrill={onDrill} />
+                            ))}
+                        </div>
+                    ) : (
                     <div className="cockpit-contrib" role="table">
                         {rows.map((row) => (
                             <div
@@ -76,6 +137,7 @@ const ChannelContribution = ({ contribution, caveats = [], goalName = '', onDril
                             </div>
                         ))}
                     </div>
+                    )}
                 </>
             )}
 

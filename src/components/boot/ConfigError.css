@@ -4,8 +4,8 @@
     align-items: center;
     justify-content: center;
     padding: 32px 24px;
-    background-color: var(--kepler-base, #0a0b0d);
-    color: var(--kepler-text, #f0f0f6);
+    background-color: var(--kepler-base, var(--layer-canvas));
+    color: var(--kepler-text, var(--text));
 }
 
 .config-error__panel {
@@ -13,7 +13,7 @@
     width: 100%;
     padding: 28px;
     border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background: rgba(18, 19, 23, 0.85);
 }
 
@@ -21,7 +21,7 @@
     font-size: 11px;
     letter-spacing: 0.04em;
     text-transform: none;
-    color: #8e90a3;
+    color: var(--text-muted);
 }
 
 .config-error__title {
@@ -33,15 +33,15 @@
     margin-top: 12px;
     font-size: 14px;
     line-height: 1.5;
-    color: #b6b7c6;
+    color: var(--text-secondary);
 }
 
 .config-error__section {
     margin-top: 16px;
     padding: 12px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--wash-2);
+    border: 1px solid var(--border);
 }
 
 .config-error__section--danger {
@@ -53,7 +53,7 @@
     font-weight: 600;
     text-transform: none;
     letter-spacing: 0.035em;
-    color: #8e90a3;
+    color: var(--text-muted);
 }
 
 .config-error__section ul {
@@ -65,7 +65,7 @@
 .config-error__hint {
     margin-top: 8px;
     font-size: 12px;
-    color: #9698ac;
+    color: var(--text-muted);
 }
 
 .config-error__code {
@@ -75,6 +75,6 @@
     font-size: 12px;
     line-height: 1.5;
     background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     overflow-x: auto;
 }

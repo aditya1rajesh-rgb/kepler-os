@@ -137,7 +137,7 @@ const Measurement = ({ workspaceId }) => {
                 notes.push(`Outreach: ${outreach.attributed} campaign${outreach.attributed === 1 ? '' : 's'} from ${outreach.sequences} sequence${outreach.sequences === 1 ? '' : 's'}`);
             }
             setSnapshots(await measurementService.getSnapshots(workspaceId));
-            setNotice(notes.length ? `Pulled — ${notes.join(' · ')}.` : 'Nothing to pull yet — connect GA4/Zoho or run a sequence.');
+            setNotice(notes.length ? `Pulled: ${notes.join(' · ')}.` : 'Nothing to pull yet. Connect GA4/Zoho or run a sequence.');
         } catch (e) {
             setError(e?.message || 'Could not pull outcomes.');
         } finally {
@@ -176,7 +176,7 @@ const Measurement = ({ workspaceId }) => {
        the other setup in the rail — not above the numbers they qualify. */
     const setupHints = [
         !gaReady && { key: 'ga4', text: <>Connect Google Analytics 4 and pick a property in <strong>Integrations</strong> for the traffic/conversion rail.</> },
-        !zohoConnected && { key: 'zoho', text: <>Connect Zoho for the CRM lead rail — push a campaign-linked sequence from <strong>Outreach</strong> and it attributes back here.</> },
+        !zohoConnected && { key: 'zoho', text: <>Connect Zoho for the CRM lead rail. Push a campaign-linked sequence from <strong>Outreach</strong> and it attributes back here.</> },
         !baseUrl && { key: 'url', text: <>Add your site URL in <strong>Brand Intelligence</strong> so tracked links can be generated.</> },
     ].filter(Boolean);
 
@@ -195,7 +195,7 @@ const Measurement = ({ workspaceId }) => {
                 </div>
                 <div className="cockpit__intel-fact">
                     <span className="cockpit__intel-value">{fmt(totals.crmRecords)}</span>
-                    <span className="cockpit__intel-label">CRM leads</span>
+                    <span className="cockpit__intel-label">CRM records</span>
                 </div>
                 <div className="cockpit__intel-fact">
                     <span className="cockpit__intel-value">{fmt(totals.meetings)}</span>
@@ -231,12 +231,12 @@ const Measurement = ({ workspaceId }) => {
                                         </div>
                                         <div className="measurement-row__metrics">
                                             <span><strong>{m ? dash(m.sessions) : '—'}</strong> sessions</span>
-                                            <span><strong>{m ? dash(m.conversions) : '—'}</strong> conv.</span>
+                                            <span><strong>{m ? dash(m.conversions) : '—'}</strong> conversions</span>
                                             <span><strong>{m ? dash(m.sent) : '—'}</strong> sent</span>
                                             <span><strong>{m ? dash(m.replied) : '—'}</strong> replied</span>
-                                            <span><strong>{m ? dash(m.meetings) : '—'}</strong> mtgs</span>
-                                            <span><strong>{m ? dash(m.crmRecords) : '—'}</strong> CRM</span>
-                                            <span><strong>{m && m.revenue ? money(m.revenue) : '—'}</strong> rev.</span>
+                                            <span><strong>{m ? dash(m.meetings) : '—'}</strong> meetings</span>
+                                            <span><strong>{m ? dash(m.crmRecords) : '—'}</strong> CRM records</span>
+                                            <span><strong>{m && m.revenue ? money(m.revenue) : '—'}</strong> revenue</span>
                                         </div>
                                         <button type="button" className="btn btn-ghost" onClick={() => setOpenLinks(open ? null : c.id)} disabled={!baseUrl}>
                                             {open ? 'Hide links' : 'Tracked links'}
@@ -308,7 +308,7 @@ const Measurement = ({ workspaceId }) => {
                     {setupHints.length > 0 && (
                         <ToolGroup label="To measure more">
                             {setupHints.map((h) => (
-                                <ToolCard key={h.key} title={h.key === 'ga4' ? 'Traffic & conversions' : h.key === 'zoho' ? 'CRM leads' : 'Tracked links'} defaultOpen>
+                                <ToolCard key={h.key} title={h.key === 'ga4' ? 'Traffic & conversions' : h.key === 'zoho' ? 'CRM records' : 'Tracked links'} defaultOpen>
                                     <p className="cockpit__intel-hint">{h.text}</p>
                                 </ToolCard>
                             ))}

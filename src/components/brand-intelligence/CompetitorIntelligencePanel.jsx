@@ -1,23 +1,16 @@
 import React, { useState } from 'react';
 import CompetitorSuggestionCard from './CompetitorSuggestionCard';
 import BrandFieldSkeleton from './BrandFieldSkeleton';
+import { retryLabelForKind, blocksRetry, ADD_SOURCES_LABEL } from '../../lib/sectionGenerate';
 
-const retryLabelForKind = (errorKind) => {
-    if (errorKind === 'insufficient_context') return 'Add more sources';
-    if (errorKind === 'malformed_json' || errorKind === 'missing_keys' || errorKind === 'empty_content') {
-        return 'Retry with stricter prompt';
-    }
-    return 'Retry';
-};
-
-const SectionGenerateControl = ({ status = {}, onGenerate, idleLabel = 'Generate', disabled }) => {
+const SectionGenerateControl = ({ status = {}, onGenerate, idleLabel = 'Generate', disabled, onAddSources }) => {
     if (!onGenerate) return null;
     const state = status.status ?? 'idle';
     const isRunning = state === 'running';
-    const blockRetry = state === 'error' && status.errorKind === 'insufficient_context';
+    const blockRetry = blocksRetry(state, status.errorKind);
     return (
         <span className="brand-section-control">
-            {isRunning && <span className="brand-section-control__status">Generating…</span>}
+            {/* The button already says "Generating…" while running. */}
             {state === 'done' && (
                 <span className="brand-section-control__status brand-section-control__status--done">Updated</span>
             )}
@@ -26,7 +19,13 @@ const SectionGenerateControl = ({ status = {}, onGenerate, idleLabel = 'Generate
                     {status.error || 'Generation failed'}
                 </span>
             )}
-            {!blockRetry && (
+            {blockRetry ? (
+                onAddSources && (
+                    <button type="button" className="btn btn-ghost" onClick={onAddSources}>
+                        {ADD_SOURCES_LABEL}
+                    </button>
+                )
+            ) : (
                 <button
                     type="button"
                     className="btn btn-secondary"

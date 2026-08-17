@@ -20,7 +20,7 @@ import { capabilityService } from '../../services/capabilityService';
 import { pageTeardownService } from '../../services/pageTeardownService';
 import { mentionFinderService } from '../../services/mentionFinderService';
 import { OPPORTUNITY_LABELS } from '../../lib/seoOperator';
-import { routeAsset, MONEY_TYPE_LABELS } from '../../lib/buyIntent';
+import { routeAsset, MONEY_TYPE_LABELS, contentIntentLabel, contentTierLabel } from '../../lib/buyIntent';
 import { feedbackService } from '../../services/feedbackService';
 import RatingControl from '../../components/ui/RatingControl';
 import FeedbackInsight from '../../components/ui/FeedbackInsight';
@@ -38,6 +38,28 @@ const COLUMN_STATUSES = [
     { key: 'generating', title: 'Generating' },
     { key: 'completed', title: 'Completed' },
 ];
+
+// Every numeric surface in the product groups its digits. This screen is the one
+// built entirely from real Search Console data, and it was printing bare
+// `Math.round` output — so "11240 impressions" sat on the same card as a grouped
+// "Vol 1,900".
+const nf = (n) => new Intl.NumberFormat().format(Math.round(Number(n) || 0));
+
+// A connection status is a stored enum, not prose. `StatusPill` owns the label
+// map for the shared case; this rail card renders its own state string, so it
+// needs the same courtesy rather than printing `expired`.
+const GSC_STATUS_LABELS = {
+    connected: 'Connected',
+    expired: 'Access expired',
+    invalid: 'Rejected',
+    disconnected: 'Disconnected',
+    pending: 'Pending',
+};
+const gscStatusLabel = (status) => {
+    const s = String(status || '').trim();
+    if (!s) return 'Not connected';
+    return GSC_STATUS_LABELS[s] ?? (s.charAt(0).toUpperCase() + s.slice(1).replace(/[_-]+/g, ' '));
+};
 
 // Turn keyword research output into queue-ready content ideas. Each keyword
 // becomes a content idea; the full keyword object is preserved in payload so the
@@ -352,7 +374,7 @@ const SeoAeo = ({ workspaceId }) => {
                 status: 'draft',
             });
             if (res?.ok) {
-                setNotice('Published to WordPress as a draft — review and publish it there.');
+                setNotice('Published to WordPress as a draft. Review and publish it there.');
             } else {
                 setError('WordPress publish failed.');
             }
@@ -373,7 +395,7 @@ const SeoAeo = ({ workspaceId }) => {
             const threads = await mentionFinderService.findThreads(mentionTopic);
             setMentionThreads(threads);
             setMentionRan(true);
-            if (!threads.length) setNotice('No threads found — try a more specific topic or question.');
+            if (!threads.length) setNotice('No threads found. Try a more specific topic or question.');
         } catch (e) {
             setError(toUserMessage(e, 'Could not search for threads.'));
         } finally {
@@ -457,7 +479,7 @@ const SeoAeo = ({ workspaceId }) => {
             setCopied(label);
             setTimeout(() => setCopied(''), 2000);
         } catch {
-            setError('Copy failed - your browser blocked clipboard access.');
+            setError('Copy failed: your browser blocked clipboard access.');
         }
     };
 
@@ -529,7 +551,9 @@ const SeoAeo = ({ workspaceId }) => {
                                 key={item.id}
                                 variant="kepler"
                                 title={item.title || item.targetKeyword || 'Untitled'}
-                                type={item.intent ? `${item.intent} · ${item.payload?.tier ?? ''}`.trim() : 'Content idea'}
+                                type={item.intent
+                                    ? [contentIntentLabel(item.intent), contentTierLabel(item.payload?.tier)].filter(Boolean).join(' · ')
+                                    : 'Content idea'}
                                 status={isGenerating ? 'Generating…' : (item.payload?.geo?.isCandidate ? 'GEO' : '')}
                                 actions={actions}
                             >
@@ -561,7 +585,7 @@ const SeoAeo = ({ workspaceId }) => {
                                     )}
                                     {item.payload?.gscMetrics && (
                                         <span className="label-text">
-                                            {Math.round(item.payload.gscMetrics.impressions)} impressions · {Math.round(item.payload.gscMetrics.clicks)} clicks · pos {Number(item.payload.gscMetrics.position).toFixed(1)}
+                                            {nf(item.payload.gscMetrics.impressions)} impressions · {nf(item.payload.gscMetrics.clicks)} clicks · pos {Number(item.payload.gscMetrics.position).toFixed(1)}
                                         </span>
                                     )}
                                     <span className="label-text">Source: {item.source}</span>
@@ -634,7 +658,11 @@ const SeoAeo = ({ workspaceId }) => {
     /* Opportunities finds the work that feeds the board, so it belongs on the
        canvas next to it — not behind a toggle. It briefly sat in the rail,
        which made the screen's main source of new work invisible on arrival. */
-    const opportunitiesSection = (gscConfigured || gscStatus) ? (
+    /* Never null. With no GSC credentials on the deployment AND no connection,
+       this used to render nothing at all, so the Opportunities route was a blank
+       canvas rather than a screen saying why it is empty. To a user both cases
+       are the same sentence and the same next step, so they are one state. */
+    const opportunitiesSection = (
         <Panel variant="quiet" className="seo-opportunities">
             <PanelHeader
                 title="Opportunities"
@@ -661,7 +689,7 @@ const SeoAeo = ({ workspaceId }) => {
                                     <div className="op-item__head">
                                         <span className="op-badge">{OPPORTUNITY_LABELS[op.type] ?? op.type}</span>
                                         <span className="op-item__title">{op.title}</span>
-                                        <span className="op-item__impact">≈{Math.round(op.impact)} clicks/mo (est.)</span>
+                                        <span className="op-item__impact">≈{nf(op.impact)} clicks/mo (est.)</span>
                                     </div>
                                     <p className="op-item__detail">{op.detail}</p>
                                     <p className="op-item__action">{op.action}</p>
@@ -671,8 +699,14 @@ const SeoAeo = ({ workspaceId }) => {
                                 </li>
                             ))}
                         </ul>
+                    ) : opRan ? (
+                        <p className="brand-intel-module__source-label">No opportunities surfaced yet. Your site needs more Search Console history.</p>
                     ) : (
-                        opRan && <p className="brand-intel-module__source-label">No opportunities surfaced yet — your site needs more Search Console history.</p>
+                        /* Not the same as "found nothing": nothing has looked yet. */
+                        <p className="brand-intel-module__source-label">
+                            Not analyzed yet. Find opportunities reads your Search Console history for
+                            queries you nearly rank for.
+                        </p>
                     )}
                 </>
             ) : (
@@ -681,7 +715,7 @@ const SeoAeo = ({ workspaceId }) => {
                 </p>
             )}
         </Panel>
-    ) : null;
+    );
 
     const gscSyncedLabel = gscStatus?.lastSyncAt
         ? `synced ${new Date(gscStatus.lastSyncAt).toLocaleDateString()}`
@@ -696,7 +730,7 @@ const SeoAeo = ({ workspaceId }) => {
                 <ToolGroup label="Data source">
                     <ToolCard
                         title="Search Console"
-                        state={gscStatus ? (gscStatus.status === 'connected' ? 'Connected' : gscStatus.status) : 'Not connected'}
+                        state={gscStatusLabel(gscStatus?.status)}
                         tone={gscStatus?.status === 'connected' ? 'ok' : 'warn'}
                         defaultOpen={!gscStatus}
                     >
@@ -716,7 +750,7 @@ const SeoAeo = ({ workspaceId }) => {
                                                 <span className="tool-card__row-text" title={r.query}>
                                                     {r.query}
                                                     <br />
-                                                    {Math.round(r.impressions)} impr · {Math.round(r.clicks)} clicks · pos {Number(r.position).toFixed(1)}
+                                                    {nf(r.impressions)} impressions · {nf(r.clicks)} clicks · pos {Number(r.position).toFixed(1)}
                                                 </span>
                                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => addGscToPipeline(r)}>
                                                     Add
@@ -828,11 +862,11 @@ const SeoAeo = ({ workspaceId }) => {
                                     })}
                                 </ul>
                             ) : (
-                                mentionRan && <p>No threads found — try a more specific topic or question.</p>
+                                mentionRan && <p>No threads found. Try a more specific topic or question.</p>
                             )}
                             <p>
                                 This never posts for you. Disclose your affiliation, add real value, and reply
-                                manually only where you genuinely help — at most one brand mention in four.
+                                manually only where you genuinely help: at most one brand mention in four.
                             </p>
                         </>
                     ) : (
@@ -1054,7 +1088,7 @@ const SeoAeo = ({ workspaceId }) => {
                             {viewItem.payload.blog.aeo?.overall != null && (
                                 <>AEO {viewItem.payload.blog.aeo.overall}/100 ({viewItem.payload.blog.aeo.grade}) · </>
                             )}
-                            burstiness {viewItem.payload.blog.metrics?.burstiness ?? '-'} ·
+                            burstiness {viewItem.payload.blog.metrics?.burstiness ?? '—'} ·
                             {' '}{viewItem.payload.blog.metrics?.wordCount ?? 0} words
                         </p>
                         {viewItem.payload.blog.aeo?.recommendations?.length > 0 && (

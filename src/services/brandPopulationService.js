@@ -639,7 +639,9 @@ export const brandPopulationService = {
                 brand,
                 fieldsUpdated: 0,
                 errorKind: 'insufficient_context',
-                error: 'Not enough source material. Add a website URL or upload project files, then try again.',
+                // No "then try again": this kind blocks the retry button, so the
+                // sentence would name an action the screen has just withdrawn.
+                error: 'Not enough source material. Add a website URL or upload project files.',
             };
         }
 

@@ -177,9 +177,11 @@ const Dashboard = ({ workspaceId, workspace }) => {
             className="cockpit module-kepler"
             status={
                 <span className="cockpit__greeting">
+                    {/* Two sentences rather than a dash — the greeting leads the
+                        screen, so it reads as a statement, not an aside. */}
                     {hero
-                        ? `Hello, ${firstName} — here’s where ${workspace?.name || 'your workspace'} stands.`
-                        : `Hello, ${firstName} — ${workspace?.name || 'your workspace'} has no goal yet.`}
+                        ? `Hello, ${firstName}. Here’s where ${workspace?.name || 'your workspace'} stands.`
+                        : `Hello, ${firstName}. ${workspace?.name || 'your workspace'} has no goal yet.`}
                 </span>
             }
             actions={

@@ -108,3 +108,34 @@ export const MONEY_TYPE_LABELS = {
     comparison: 'Comparison', alternatives: 'Alternatives', pricing: 'Pricing',
     reviews: 'Reviews', trial: 'Free trial', discount: 'Discount', best_for: 'Best-for', none: 'Informational',
 };
+
+// Stored enums, and the pipeline card was printing them verbatim - so a keyword
+// tiered `quick_win` reached the screen with its underscore intact.
+export const CONTENT_TIER_LABELS = {
+    quick_win: 'Quick win',
+    growth: 'Growth',
+    moonshot: 'Moonshot',
+};
+
+export const CONTENT_INTENT_LABELS = {
+    informational: 'Informational',
+    commercial: 'Commercial',
+    transactional: 'Transactional',
+    navigational: 'Navigational',
+};
+
+/**
+ * `{intent} · {tier}` as prose. Anything unmapped is de-underscored and
+ * sentence-cased rather than dropped: an unknown value is still information.
+ */
+const humanise = (v) => {
+    const s = String(v ?? '').trim();
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1).replace(/[_-]+/g, ' ');
+};
+
+export const contentIntentLabel = (intent) =>
+    CONTENT_INTENT_LABELS[intent] ?? humanise(intent);
+
+export const contentTierLabel = (tier) =>
+    CONTENT_TIER_LABELS[tier] ?? humanise(tier);

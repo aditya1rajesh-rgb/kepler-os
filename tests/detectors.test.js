@@ -228,7 +228,9 @@ describe('detectGoalDrift', () => {
         const [e] = detectGoalDrift(goal('off-pace'), 'on-track');
         expect(e.kind).toBe('goal');
         expect(e.direction).toBe('down');
-        expect(e.evidence).toMatchObject({ goalId: 'g1', from: 'on-track', to: 'off-pace', toLabel: 'behind' });
+        // One verdict, one name: 'off-pace' reads "off pace" everywhere now. It
+        // used to render as "Behind" here and "Off pace" elsewhere.
+        expect(e.evidence).toMatchObject({ goalId: 'g1', from: 'on-track', to: 'off-pace', toLabel: 'off pace' });
     });
 
     it('reports recovery as up', () => {

@@ -20,7 +20,13 @@ const Integrations = ({ workspaceId }) => {
         setConnected(Object.values(map ?? {}).filter((s) => s?.status === 'connected').length);
     }, []);
 
-    const available = CONNECTORS.filter((c) => c.status !== 'planned').length;
+    // The denominator has to be reachable. `connected` counts per-workspace rows,
+    // and a platform-managed connector never has one — counting those four in
+    // `available` made "16 of 16" impossible and capped a fully connected
+    // workspace at "12 of 16".
+    const available = CONNECTORS.filter(
+        (c) => c.status !== 'planned' && c.status !== 'platform_managed'
+    ).length;
 
     return (
         <ModuleScreen

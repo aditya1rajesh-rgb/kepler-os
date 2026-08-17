@@ -77,7 +77,10 @@ const stepCounts = (campaign) => {
 const Campaigns = ({ workspaceId }) => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { readiness } = useWorkspaceConfig(workspaceId);
+    // `configLoading` matters: readiness flags are false until they resolve, so
+    // rendering the gate on `!canCreate` alone told a fully configured workspace
+    // it had no brand profile for as long as the fetch took.
+    const { readiness, loading: configLoading } = useWorkspaceConfig(workspaceId);
     const activeId = searchParams.get('campaign');
     // E2 · a campaign created from a goal screen arrives pre-parented. The id is
     // carried on the URL rather than in state so a refresh keeps the ladder.
@@ -388,7 +391,7 @@ const Campaigns = ({ workspaceId }) => {
             <ToolGroup label="Output">
                 <ToolCard title="Linked assets" state={`${assets.length}`} tone={assets.length ? 'ok' : 'idle'}>
                     {assets.length === 0 ? (
-                        <p>No assets generated yet — generate a step from the plan.</p>
+                        <p>No assets generated yet. Generate a step from the plan.</p>
                     ) : (
                         <ul className="campaigns__assets">
                             {assets.map((a) => (
@@ -766,7 +769,7 @@ const Campaigns = ({ workspaceId }) => {
                     <div className="campaigns__intake-head">
                         <div>
                             <h2 className="campaigns__heading">New campaign</h2>
-                            <p className="campaigns__subheading">Chat with the strategist — it designs a plan grounded in your brand.</p>
+                            <p className="campaigns__subheading">Chat with the strategist. It designs a plan grounded in your brand.</p>
                         </div>
                         <button type="button" className="campaigns__quicklink" onClick={() => setModalOpen(true)}>
                             Prefer a quick form?
@@ -799,8 +802,8 @@ const Campaigns = ({ workspaceId }) => {
                     type="button"
                     className="btn btn-secondary"
                     onClick={() => setEventModalOpen(true)}
-                    disabled={!canCreate}
-                    title={canCreate ? '' : 'Complete your brand profile and an ICP first'}
+                    disabled={configLoading || !canCreate}
+                    title={configLoading || canCreate ? '' : 'Complete your brand profile and an ICP first'}
                 >
                     <CalendarClock size={16} strokeWidth={1.8} /> Plan around an event
                 </button>
@@ -810,13 +813,13 @@ const Campaigns = ({ workspaceId }) => {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => setShowIntake(true)}
-                    disabled={!canCreate}
-                    title={canCreate ? '' : 'Complete your brand profile and an ICP first'}
+                    disabled={configLoading || !canCreate}
+                    title={configLoading || canCreate ? '' : 'Complete your brand profile and an ICP first'}
                 >
                     <Plus size={16} strokeWidth={2} /> Plan with the strategist
                 </button>
             }
-            banner={!canCreate ? (
+            banner={!configLoading && !canCreate ? (
                 <SetupRequired
                     title="Set up your brand before planning a campaign"
                     summary="The strategist grounds every plan in your brand and audience. Add these to start building campaigns."
@@ -834,7 +837,7 @@ const Campaigns = ({ workspaceId }) => {
                 <EmptyState
                     message={
                         campaigns.length === 0
-                            ? 'No campaigns yet — turn a goal into a coordinated, multi-channel plan.'
+                            ? 'No campaigns yet. Turn a goal into a coordinated, multi-channel plan.'
                             : `No ${listTab === 'completed' ? 'past' : listTab} campaigns.`
                     }
                     /* v3 labelled this "New campaign" — identical to the toolbar

@@ -20,7 +20,7 @@ button.workspace-card {
 
 .workspace-card:hover {
     background-color: var(--color-card-hover);
-    border-color: #2a2b3d;
+    border-color: var(--layer-raised-hover);
     /* slightly lighter than --color-border (#1e1f2e) */
 }
 
@@ -108,12 +108,12 @@ button.workspace-card {
 }
 
 .workspace-card--kepler:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--wash-2);
     border: none;
 }
 
 .workspace-card--kepler .card-divider {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: var(--wash-4);
 }
 
 .workspace-card--kepler .workspace-name {

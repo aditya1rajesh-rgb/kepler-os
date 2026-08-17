@@ -149,7 +149,7 @@
     display: block;
     height: 100%;
     border-radius: 999px;
-    background: var(--accent, #4a6cf7);
+    background: var(--accent, var(--accent));
     min-width: 2px;
     transition: width 0.4s ease;
 }

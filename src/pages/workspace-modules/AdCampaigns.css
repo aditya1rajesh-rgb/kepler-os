@@ -8,7 +8,7 @@
 .targeting-preview {
     margin-top: 20px;
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--border);
 }
 
 .targeting-head {
@@ -49,7 +49,7 @@
 
 .targeting-title-name {
     font-size: 13px;
-    color: var(--kepler-text, #f0f0f6);
+    color: var(--kepler-text, var(--text));
 }
 
 .targeting-seniority {
@@ -60,7 +60,7 @@
     text-transform: none;
     padding: 2px 7px;
     border-radius: 999px;
-    color: #d3c6fa;
+    color: var(--accent-text);
     background: rgba(var(--accent-rgb), 0.18);
     border: 1px solid rgba(var(--accent-rgb), 0.3);
 }
@@ -222,7 +222,7 @@
 .tree-line {
     width: 1px;
     height: 24px;
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: var(--wash-4);
 }
 
 .variants-preview {
@@ -246,7 +246,7 @@
 .ad-cta-preview {
     margin-top: 12px;
     padding: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 12px;
     text-align: center;
@@ -259,14 +259,14 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border: 1px dashed var(--border-strong);
 }
 
 .premium-range {
     -webkit-appearance: none;
     width: 100%;
     height: 2px;
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--wash-4);
     outline: none;
     margin-top: 8px;
 }

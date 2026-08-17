@@ -44,6 +44,8 @@ const LEGACY_LABELS = {
     valueProposition: 'Value proposition',
     companySize: 'Company size',
     geographicFocus: 'Geographic focus',
+    // Without this the key renders raw, as "keyMessages", in the label position.
+    keyMessages: 'Key messages',
 };
 
 const highConfidenceProofPoints = (proofPoints = []) =>

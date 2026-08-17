@@ -51,10 +51,19 @@
     justify-content: center;
 }
 
+/* `kepler-logo.png` is a monochrome PURE-WHITE mark on transparency, drawn for a
+   dark canvas. As an <img> it disappeared entirely on the light theme.
+   So the alpha channel is used as a mask and the shape is painted with the ink
+   token instead — one asset, correct in both themes, and the mark always matches
+   the wordmark next to it (which is also var(--text)).
+   aspect-ratio is the asset's own 2176:2901, so height alone sizes it. */
 .sidebar__brand-badge-mark {
-    width: auto;
-    height: 30px;
     display: block;
+    height: 30px;
+    aspect-ratio: 2176 / 2901;
+    background-color: var(--text);
+    -webkit-mask: url('/kepler-logo.png') no-repeat center / contain;
+    mask: url('/kepler-logo.png') no-repeat center / contain;
 }
 
 .sidebar__wordmark {
@@ -78,7 +87,7 @@
 }
 
 .sidebar__collapse-btn:hover {
-    background-color: rgba(255, 255, 255, 0.06);
+    background-color: var(--wash-4);
     color: var(--text);
 }
 
@@ -103,7 +112,7 @@
     padding: 0 10px;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--wash-2);
     color: var(--text-muted);
     font-size: 13px;
     transition: border-color var(--t-fast), background-color var(--t-fast);
@@ -111,7 +120,7 @@
 
 .sidebar__search:hover {
     border-color: var(--border-light);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--wash-3);
     color: var(--text-secondary);
 }
 
@@ -140,7 +149,7 @@
     border-radius: 5px;
     border: 1px solid var(--border-light);
     color: var(--text-dim);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--wash-2);
 }
 
 /* Nav */
@@ -214,7 +223,7 @@
 }
 
 .sidebar__item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
     color: var(--text);
 }
 
@@ -344,7 +353,7 @@
 }
 
 .sidebar__child:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
     color: var(--text);
 }
 
@@ -383,7 +392,7 @@
 }
 
 .ws-switcher__trigger:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
 }
 
 .ws-switcher__trigger--collapsed {
@@ -483,7 +492,7 @@
 }
 
 .ws-switcher__item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
     color: var(--text);
 }
 
@@ -537,6 +546,6 @@
 }
 
 .ws-switcher__action:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
     color: var(--text);
 }

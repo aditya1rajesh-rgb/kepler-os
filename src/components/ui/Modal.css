@@ -1,7 +1,21 @@
+/* The dialog, in both themes.
+ *
+ * This file used to be premium-dark only: a translucent navy gradient, white
+ * hairlines at 8%, and ink-at-72% behind it. Under the light theme that made a
+ * dialog's own title near-illegible - dark text on a dark panel - so every value
+ * here is now a token that both themes define.
+ *
+ * Geometry matches `Modal · …` in Figma (file XlstnvwPQpcOq2tNY7sjxN): 560 wide,
+ * radius from --r-xl, header 20/24, body 24, footer 16/24 on the chrome tone,
+ * with a hairline above and below.
+ */
+
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background-color: rgba(9, 9, 16, 0.72);
+    /* Ink, not black: the scrim has to recede the canvas in both directions.
+       Dark mode wants it heavier than light, where 72% buried the screen. */
+    background-color: var(--modal-scrim);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     display: flex;
@@ -14,9 +28,11 @@
 .modal-content,
 .modal-container {
     width: 100%;
-    max-width: 500px;
+    /* 560, per the Figma dialogs: the needs-attention modal's capability rows do
+       not fit in 500. */
+    max-width: 560px;
     overflow: hidden;
-    border-radius: 1rem;
+    border-radius: var(--r-xl);
 }
 
 .modal-content {
@@ -27,53 +43,54 @@
        than the screen and its header (close button) + footer overflow off-screen,
        leaving the body unreadable and the modal impossible to close. */
     max-height: calc(100vh - 48px);
-    background:
-        linear-gradient(
-            160deg,
-            rgba(30, 31, 52, 0.55) 0%,
-            rgba(18, 19, 23, 0.72) 46%,
-            rgba(14, 15, 26, 0.78) 100%
-        );
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px) saturate(135%);
-    -webkit-backdrop-filter: blur(20px) saturate(135%);
-    box-shadow:
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
-        0 18px 40px -24px rgba(0, 0, 0, 0.7);
+    background: var(--layer-overlay);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
 }
 
 .modal-header {
     padding: 20px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0; /* stays pinned at the top while the body scrolls */
+    gap: 12px;
 }
 
 .modal-header h3 {
     font-size: 15px;
     font-weight: 600;
     font-family: var(--font-heading);
-    color: var(--kepler-text);
+    color: var(--text);
 }
 
 .modal-body {
     padding: 24px;
-    color: var(--kepler-text);
+    color: var(--text);
     overflow-y: auto; /* long content scrolls here, not off the screen */
     flex: 1 1 auto;
     min-height: 0; /* let this flex child shrink below its content so it can scroll */
     overscroll-behavior: contain;
 }
 
+.modal-body > p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+.modal-body > p + p {
+    margin-top: 12px;
+}
+
 .modal-footer {
     padding: 16px 24px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--border);
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    background-color: rgba(18, 19, 23, 0.4);
+    background-color: var(--layer-chrome);
     flex-shrink: 0; /* stays pinned at the bottom while the body scrolls */
     flex-wrap: wrap; /* footer actions wrap instead of overflowing on narrow widths */
 }
@@ -89,11 +106,11 @@
 }
 
 .close-btn {
-    color: var(--kepler-muted);
+    color: var(--text-muted);
     font-size: 16px;
     line-height: 1;
 }
 
 .close-btn:hover {
-    color: var(--kepler-text);
+    color: var(--text);
 }

@@ -10,6 +10,27 @@ const STAGE_LABELS = {
     saving: 'Saving progress…',
 };
 
+/**
+ * Source keys are machine values - `website:ken42.com`,
+ * `file:Ken42-Institutional-Deck-2026.pdf`. Joining them with ' + ' put type
+ * prefixes, a domain and file extensions into a sentence. Count them by kind
+ * instead: which sources were read is the information, not their internal ids.
+ */
+const describeSources = (sourcesUsed = []) => {
+    let website = 0;
+    let files = 0;
+    for (const s of sourcesUsed) {
+        const kind = String(s).split(':')[0];
+        if (kind === 'website') website += 1;
+        else if (kind === 'file') files += 1;
+    }
+    const parts = [];
+    if (website > 0) parts.push('your website');
+    if (files > 0) parts.push(`${files} project file${files === 1 ? '' : 's'}`);
+    if (parts.length === 0) return 'your sources';
+    return parts.join(' and ');
+};
+
 const BrandPopulationBanner = ({
     status,
     stage = 'idle',
@@ -35,7 +56,7 @@ const BrandPopulationBanner = ({
                 )}
                 {status === 'success' && !isRunning && (
                     <p className="population-banner__message">
-                        Brand populated from {sourcesUsed.join(' + ') || 'sources'}.
+                        Brand populated from {describeSources(sourcesUsed)}.
                         {fieldsUpdated > 0 ? ` ${fieldsUpdated} field${fieldsUpdated === 1 ? '' : 's'} updated.` : ''}
                         {' '}Review and edit values below.
                     </p>

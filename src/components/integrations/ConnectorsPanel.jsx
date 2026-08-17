@@ -6,27 +6,54 @@ import { integrationService } from '../../services/integrationService';
 import { capabilityService } from '../../services/capabilityService';
 import { eventService } from '../../services/eventService';
 import { CONNECTORS } from '../../lib/connectors';
-import { capabilityReport, compareByState, connectorState } from '../../lib/connectorState';
+import EmptyState from '../ui/EmptyState';
+// capabilityReport is no longer read here: requested-vs-granted moved off the
+// card and into the connect / manage / needs-attention modals.
+import { compareByState, connectorState } from '../../lib/connectorState';
 import gscLogo from '../../assets/connectors/gsc.png';
-import hubspotLogo from '../../assets/connectors/hubspot.png';
-import metaLogo from '../../assets/connectors/meta.png';
-import ga4Logo from '../../assets/connectors/ga4.webp';
+import ga4Logo from '../../assets/connectors/ga4.png';
 import googleAdsLogo from '../../assets/connectors/google-ads.png';
+import googleAioLogo from '../../assets/connectors/google-aio.png';
+import hubspotLogo from '../../assets/connectors/hubspot.png';
 import zohoLogo from '../../assets/connectors/zoho.png';
+import salesforceLogo from '../../assets/connectors/salesforce.png';
+import metaAdLibraryLogo from '../../assets/connectors/meta-ad-library.png';
+import metaAdsLogo from '../../assets/connectors/meta-ads.png';
+import metaPagesLogo from '../../assets/connectors/meta-pages.png';
 import apolloLogo from '../../assets/connectors/apollo.png';
+import linkedinLogo from '../../assets/connectors/linkedin.png';
+import wordpressLogo from '../../assets/connectors/wordpress.png';
+import perplexityLogo from '../../assets/connectors/perplexity.png';
+import openaiLogo from '../../assets/connectors/openai.png';
+import anthropicLogo from '../../assets/connectors/anthropic.png';
 // Shared connector + form-primitive styles (also used by the account Settings page).
 import '../../pages/ProfilePage.css';
 
-// Brand logos per connector. Both Meta connectors share the Meta mark.
+// Brand logos per connector, one per id, all 144×144 square icons pulled from
+// Brandfetch. The previous set covered 7 of 16 at aspect ratios from 1:1 to 16:9
+// (hubspot was a 3840×2160 image, gsc an Open Graph share card), which is why the
+// card renders them in a fixed square slot.
+//
+// Brandfetch has no product-specific marks for Google's or Meta's sub-products,
+// so the four Google connectors share the Google mark and the two Facebook-domain
+// connectors share the Facebook mark. That is the brand, not a mapping error.
 const CONNECTOR_LOGOS = {
     gsc: gscLogo,
-    'meta-ad-library': metaLogo,
     ga4: ga4Logo,
     'google-ads': googleAdsLogo,
-    'meta-ads': metaLogo,
+    'google-aio': googleAioLogo,
     hubspot: hubspotLogo,
     zoho: zohoLogo,
+    salesforce: salesforceLogo,
+    'meta-ad-library': metaAdLibraryLogo,
+    'meta-ads': metaAdsLogo,
+    'meta-pages': metaPagesLogo,
     apollo: apolloLogo,
+    linkedin: linkedinLogo,
+    wordpress: wordpressLogo,
+    perplexity: perplexityLogo,
+    openai: openaiLogo,
+    anthropic: anthropicLogo,
 };
 
 /**
@@ -53,6 +80,9 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
     const [fieldValues, setFieldValues] = useState({});
     const [connecting, setConnecting] = useState(false);
     const [modalError, setModalError] = useState('');
+    const [confirmDisconnect, setConfirmDisconnect] = useState(null);
+    const [disconnecting, setDisconnecting] = useState(false);
+    const [search, setSearch] = useState('');
 
     useEffect(() => {
         if (!workspaceId) return undefined;
@@ -105,18 +135,28 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
             setModalConnector(null);
             reload();
         } catch (e) {
-            setModalError(e.message || 'Could not connect - check the credential and try again.');
+            setModalError(e.message || 'Could not connect. Check the credential and try again.');
         } finally {
             setConnecting(false);
         }
     };
 
-    const disconnect = async (provider) => {
+    // Disconnecting revokes the credential, and for an API-key connector
+    // reconnecting means going back to the provider for a new token. That is not
+    // a single-click action, so it is confirmed.
+    const disconnect = async () => {
+        const connector = confirmDisconnect;
+        if (!connector) return;
+        setDisconnecting(true);
         try {
-            await integrationService.disconnect(workspaceId, provider);
+            await integrationService.disconnect(workspaceId, connector.id);
+            setConfirmDisconnect(null);
             reload();
         } catch (e) {
             setError(e.message || 'Could not disconnect.');
+            setConfirmDisconnect(null);
+        } finally {
+            setDisconnecting(false);
         }
     };
 
@@ -152,7 +192,7 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
                     {view.state === 'degraded' && c.authType === 'apiKey' && (
                         <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => openApiKeyModal(c)}>Reconnect</button>
                     )}
-                    <button type="button" className="btn btn-ghost connector-card__btn" onClick={() => disconnect(c.id)}>Disconnect</button>
+                    <button type="button" className="btn btn-ghost connector-card__btn" onClick={() => setConfirmDisconnect(c)}>Disconnect</button>
                 </div>
             );
         }
@@ -162,75 +202,88 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
         return <button type="button" className="btn btn-secondary connector-card__btn" onClick={() => connectOauth(c.id)}>Connect</button>;
     };
 
-    // Resolve every connector once, then group. Category order follows the
-    // registry so the eighth (AI visibility) lands last rather than alphabetically
-    // in the middle of the things you can actually connect.
-    const categories = [];
-    for (const c of CONNECTORS) {
-        const { st, view } = stateOf(c);
-        let group = categories.find((g) => g.category === c.category);
-        if (!group) { group = { category: c.category, items: [] }; categories.push(group); }
-        group.items.push({ c, view, st });
-    }
-    for (const g of categories) g.items.sort((a, b) => compareByState(a.view, b.view));
+    /* One flat grid, not eight category sections. Sixteen connectors across eight
+       categories meant five headers over a single card each, and a header plus a
+       two-thirds-empty row costs more than it explains. Search finds a connector
+       faster past a handful of items, and it matches what a connector ENHANCES as
+       well as its name - which a category label cannot.
+
+       Grouping is not lost: the registry order still clusters related connectors,
+       and every card names the module it feeds. */
+    const q = search.trim().toLowerCase();
+    const visible = CONNECTORS
+        .map((c) => ({ c, ...stateOf(c) }))
+        .filter(({ c }) => {
+            if (!q) return true;
+            return `${c.label} ${c.enhances} ${c.category}`.toLowerCase().includes(q);
+        })
+        // Attention first, then working, then everything you cannot act on.
+        .sort((a, b) => compareByState(a.view, b.view));
 
     const grid = (
         <>
             {error && <p className="profile__error profile__error--block">{error}</p>}
-            {/* Grouped by category and sorted attention-first within each: a
-                connection that has stopped working needs you more than one that
-                is fine, and both outrank things you cannot act on. */}
-            {categories.map(({ category, items }) => (
-                <section key={category} className="connector-cat">
-                    <h3 className="connector-cat__title">{category}</h3>
-                    <div className="connector-grid">
-                        {items.map(({ c, view, st }) => {
-                            const logo = CONNECTOR_LOGOS[c.id];
-                            const caps = capabilityReport(c, st);
-                            return (
-                                <article
-                                    key={c.id}
-                                    className={`connector-card connector-card--${view.state}`}
-                                >
-                                    <div className="connector-card__head">
-                                        <span className="connector-card__icon">
-                                            {logo
-                                                ? <img className="connector-card__logo" src={logo} alt={`${c.label} logo`} loading="lazy" />
-                                                : <Plug size={18} strokeWidth={1.7} />}
-                                        </span>
-                                        <span className={`connector-state connector-state--${view.tone}`}>
-                                            {view.state === 'connected' && <Check size={12} strokeWidth={2.4} />}
-                                            {view.label}
-                                        </span>
-                                    </div>
-                                    <h3 className="connector-card__name">{c.label}</h3>
-                                    <p className="connector-card__desc">{c.description}</p>
+            <div className="connector-search-row">
+                <input
+                    type="search"
+                    className="connector-search"
+                    placeholder="Search connectors, or what they enhance…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    aria-label="Search connectors"
+                />
+            </div>
 
-                                    {/* Scope visibility: what this connection can actually
-                                        do, so read-only never masquerades as full access. */}
-                                    {caps.length > 0 && (
-                                        <ul className="connector-caps">
-                                            {caps.map((cap) => (
-                                                <li
-                                                    key={cap.id}
-                                                    className={`connector-cap connector-cap--${cap.granted === true ? 'on' : cap.granted === false ? 'off' : 'unknown'}`}
-                                                    title={cap.missing?.length ? `Needs ${cap.missing.join(', ')}` : ''}
-                                                >
-                                                    {cap.label}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
+            {visible.length === 0 ? (
+                <EmptyState
+                    message={`No connectors match “${search.trim()}”.`}
+                    action={
+                        <button type="button" className="btn btn-secondary" onClick={() => setSearch('')}>
+                            Clear search
+                        </button>
+                    }
+                />
+            ) : (
+                <div className="connector-grid">
+                    {visible.map(({ c, view, st }) => {
+                        const logo = CONNECTOR_LOGOS[c.id];
+                        return (
+                            <article
+                                key={c.id}
+                                className={`connector-card connector-card--${view.state}`}
+                            >
+                                <div className="connector-card__head">
+                                    <span className="connector-card__icon">
+                                        {logo
+                                            ? <img className="connector-card__logo" src={logo} alt={`${c.label} logo`} loading="lazy" />
+                                            : <Plug size={18} strokeWidth={1.7} />}
+                                    </span>
+                                    <span className={`connector-state connector-state--${view.tone}`}>
+                                        {view.state === 'connected' && <Check size={12} strokeWidth={2.4} />}
+                                        {view.label}
+                                    </span>
+                                </div>
+                                <h3 className="connector-card__name">{c.label}</h3>
+                                <p className="connector-card__enhances">Enhances {c.enhances}</p>
+                                <p className="connector-card__desc">{c.description}</p>
 
-                                    {view.detail && <p className="connector-card__detail">{view.detail}</p>}
-                                    <p className="connector-card__enhances">Enhances {c.enhances}</p>
-                                    <div className="connector-card__foot">{renderAction(c, view, st)}</div>
-                                </article>
-                            );
-                        })}
-                    </div>
-                </section>
-            ))}
+                                {/* Capability chips used to sit here, and they were
+                                    asserting something a card cannot know. A provider
+                                    may grant a SUBSET at consent time, and `granted:
+                                    null` means unknowable rather than refused - three
+                                    flat chips reading Read/Write/Targeting implied all
+                                    three were live even on a card in Needs attention.
+                                    Requested-versus-granted now lives in the modal,
+                                    where there is room for both halves and for the
+                                    third state. */}
+
+                                {view.detail && <p className="connector-card__detail">{view.detail}</p>}
+                                <div className="connector-card__foot">{renderAction(c, view, st)}</div>
+                            </article>
+                        );
+                    })}
+                </div>
+            )}
 
             <Modal
                 isOpen={Boolean(modalConnector)}
@@ -275,6 +328,38 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
                 )}
                 <p className="connector-modal__note">Your key is stored securely server-side and never exposed to the browser.</p>
                 {modalError && <p className="profile__error">{modalError}</p>}
+            </Modal>
+
+            {/* Says what stops working, and what does not. `enhances` already
+                names the module this connection feeds, so the consequence is
+                specific without inventing a per-connector string. */}
+            <Modal
+                isOpen={Boolean(confirmDisconnect)}
+                onClose={() => { if (!disconnecting) setConfirmDisconnect(null); }}
+                title={confirmDisconnect ? `Disconnect ${confirmDisconnect.label}?` : 'Disconnect'}
+                footer={
+                    <>
+                        <button type="button" className="btn btn-secondary" onClick={() => setConfirmDisconnect(null)} disabled={disconnecting}>Cancel</button>
+                        <button type="button" className="btn-destructive" onClick={disconnect} disabled={disconnecting}>
+                            {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                        </button>
+                    </>
+                }
+            >
+                {confirmDisconnect && (
+                    <>
+                        <p>
+                            {confirmDisconnect.enhances} stops using this connection, and its output
+                            falls back to what Kepler can produce without it.
+                        </p>
+                        <p className="connector-modal__note">
+                            Nothing already generated is deleted.
+                            {confirmDisconnect.authType === 'apiKey'
+                                ? ' Your credential is removed, so reconnecting means pasting it again or creating a new one.'
+                                : ' Reconnecting means approving access with the provider again.'}
+                        </p>
+                    </>
+                )}
             </Modal>
         </>
     );

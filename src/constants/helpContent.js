@@ -5,7 +5,7 @@ export const GETTING_STARTED = [
     {
         id: 'brand',
         title: 'Build your brand intelligence',
-        body: 'Give Kepler your website or a file and it auto-builds your brand profile — so every module writes on-brand.',
+        body: 'Give Kepler your website or a file and it auto-builds your brand profile, so every module writes on-brand.',
         module: 'brand-intelligence',
         child: 'overview',
         cta: 'Open Brand Intelligence',

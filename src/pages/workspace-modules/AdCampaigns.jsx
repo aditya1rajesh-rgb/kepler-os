@@ -36,6 +36,22 @@ const PLATFORMS = [
     { id: 'multi', label: 'Multi-platform' },
 ];
 
+// The per-field character count is built from `fieldStatus`'s keys, which are
+// payload field names. `headline` passes as a word by luck; `primaryText` does
+// not, and a machine value must never reach the screen.
+const FIELD_LABELS = {
+    headline: 'Headline',
+    primaryText: 'Primary text',
+    description: 'Description',
+    cta: 'CTA',
+    linkDescription: 'Link description',
+};
+const fieldLabel = (key) =>
+    FIELD_LABELS[key]
+    ?? String(key)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/^./, (c) => c.toUpperCase());
+
 const EMPTY_CONFIG = {
     name: '',
     type: '',
@@ -87,7 +103,10 @@ const AdCampaigns = ({ workspaceId }) => {
     }, [workspaceId]);
 
     const openSaved = (item) => {
-        setConfig({ ...EMPTY_CONFIG, ...(item.payload.config ?? {}) });
+        // A saved item always has a title, so the brief must never read "Unnamed
+        // campaign" for one: fall back to it when the payload carries no name.
+        const stored = item.payload.config ?? {};
+        setConfig({ ...EMPTY_CONFIG, ...stored, name: stored.name || item.title || '' });
         setVariants((item.payload.variants ?? []).map((v, i) => ({ ...v, id: v.id ?? `${item.id}-${i}` })));
         setTargeting(item.payload.targeting ?? null);
         setGroundedIn(item.payload.groundedIn ?? []);
@@ -173,7 +192,7 @@ const AdCampaigns = ({ workspaceId }) => {
             setCopiedId(variant.id);
             setTimeout(() => setCopiedId(null), 2000);
         } catch {
-            setError('Copy failed - your browser blocked clipboard access.');
+            setError('Copy failed: your browser blocked clipboard access.');
         }
     };
 
@@ -184,7 +203,7 @@ const AdCampaigns = ({ workspaceId }) => {
             setCopiedTargeting(true);
             setTimeout(() => setCopiedTargeting(false), 2000);
         } catch {
-            setError('Copy failed - your browser blocked clipboard access.');
+            setError('Copy failed: your browser blocked clipboard access.');
         }
     };
 
@@ -199,8 +218,10 @@ const AdCampaigns = ({ workspaceId }) => {
     if (!readiness.adsReady) {
         return (
             <div className="ad-campaigns-module module-kepler">
+                {/* The nav calls this destination Ad Creative. Check
+                    moduleRegistry.js before writing a module name here. */}
                 <SetupRequired
-                    title="Ad Campaigns"
+                    title="Ad Creative"
                     summary="Campaign briefs are built from your brand context and a target ICP. Complete the prerequisites below to start configuring a campaign."
                     requirements={[
                         { label: 'Saved brand profile (overview, values, or tone)', done: readiness.hasBrandContext, prereq: 'brand' },
@@ -398,12 +419,12 @@ const AdCampaigns = ({ workspaceId }) => {
                             {variants.length === 0 && (
                                 <EmptyState
                                     loading={generating}
-                                    message={generating ? 'Generating ad variants…' : 'No generated assets yet. Click “Generate Campaign Assets”.'}
+                                    message={generating ? 'Generating ad variants…' : 'No generated assets yet. Use “Generate campaign assets” above.'}
                                 />
                             )}
                             {variants.map(variant => {
                                 const charLine = Object.entries(variant.fieldStatus ?? {})
-                                    .map(([f, s]) => `${f} ${s.chars}/${s.limit}${s.withinLimit ? '' : ' ⚠'}`)
+                                    .map(([f, s]) => `${fieldLabel(f)} ${s.chars}/${s.limit}${s.withinLimit ? '' : ' ⚠'}`)
                                     .join(' · ');
                                 return (
                                     <ContentCard
@@ -443,7 +464,7 @@ const AdCampaigns = ({ workspaceId }) => {
                                 </button>
                             </div>
                             <p className="label-text targeting-sub">
-                                Adjacent roles that influence or fund this purchase - stack these in Campaign
+                                Adjacent roles that influence or fund this purchase. Stack these in Campaign
                                 Manager alongside your primary ICP.
                             </p>
                             <ul className="targeting-titles">

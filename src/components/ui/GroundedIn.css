@@ -36,7 +36,7 @@
 
 .grounded-in__icon {
     flex: none;
-    color: #9db1fb;
+    color: var(--accent-text);
 }
 
 /* An inferred goal gets a full sentence, not a chip: the caveat is the point. */

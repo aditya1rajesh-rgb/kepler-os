@@ -94,7 +94,9 @@ const LoginPage = () => {
             <div className="login-page">
                 <div className="login-page__brand">
                     <div className="login-page__brand-badge">
-                        <img src="/kepler-logo.png" alt="KEPLER" className="login-page__brand-mark" />
+                        {/* Masked, not an <img> — the artwork is pure white. See
+                            LoginPage.css. The wordmark beside it carries the name. */}
+                        <span className="login-page__brand-mark" aria-hidden="true" />
                     </div>
                     <div className="login-page__brand-text">
                         <span className="login-page__wordmark font-heading">KEPLER</span>

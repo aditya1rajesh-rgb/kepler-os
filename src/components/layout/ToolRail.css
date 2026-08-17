@@ -114,7 +114,7 @@
 
 .tool-card__state--idle {
     color: var(--text-dim);
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--wash-2);
 }
 
 .tool-card__body {
@@ -180,7 +180,7 @@
     gap: var(--sp-2);
     padding: var(--sp-2);
     border-radius: var(--r-sm);
-    background: rgba(255, 255, 255, 0.025);
+    background: var(--wash-1);
 }
 
 .tool-card__row-text {

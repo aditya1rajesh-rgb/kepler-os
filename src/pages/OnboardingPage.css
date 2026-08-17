@@ -13,7 +13,7 @@
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: none;
-    color: #7f819a;
+    color: var(--text-muted);
 }
 
 .onboarding-page__title {
@@ -22,14 +22,14 @@
     font-weight: 600;
     line-height: 1.05;
     letter-spacing: -0.015em;
-    color: #f4f4f9;
+    color: var(--text);
 }
 
 .onboarding-page__subtitle {
     margin-top: 8px;
     font-size: 14px;
     line-height: 1.5;
-    color: #9698ac;
+    color: var(--text-muted);
 }
 
 .onboarding-page__steps {
@@ -47,7 +47,7 @@
     letter-spacing: 0.03em;
     text-transform: none;
     color: var(--kepler-muted);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background-color: rgba(18, 19, 23, 0.4);
 }
 
@@ -84,7 +84,7 @@
     padding: 10px 12px;
     border-radius: 8px;
     font-size: 13px;
-    color: #7ee0a8;
+    color: var(--positive);
     background-color: rgba(126, 224, 168, 0.08);
     border: 1px solid rgba(126, 224, 168, 0.25);
 }
@@ -94,7 +94,7 @@
     font-weight: 500;
     letter-spacing: 0.035em;
     text-transform: none;
-    color: #8e90a3;
+    color: var(--text-muted);
 }
 
 .onboarding-page__input {
@@ -102,7 +102,7 @@
     height: 40px;
     padding: 0 14px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background-color: var(--kepler-panel);
     font-size: 14px;
     color: var(--kepler-text);

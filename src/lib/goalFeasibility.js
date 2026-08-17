@@ -258,7 +258,7 @@ export const goalWindowAdvice = ({ startDate, endDate } = {}) => {
 
 /** Plain-language basis line, so a forecast can be argued with rather than trusted. */
 export const describeBasis = (runRate) => {
-    if (!runRate || runRate.confidence === 'none') return 'No history yet — connect a source or set a target manually.';
+    if (!runRate || runRate.confidence === 'none') return 'No history yet. Connect a source or set a target manually.';
     const n = runRate.snapshots;
     const span = runRate.spanDays;
     const spanText = span >= 1 ? ` over ${span} day${span === 1 ? '' : 's'}` : '';

@@ -37,7 +37,7 @@ export const MAX_AEO_GAPS = 5;
 const VERDICT_LABEL = {
     'on-track': 'On track',
     'at-risk': 'At risk',
-    'off-pace': 'Behind',
+    'off-pace': 'Off pace',
 };
 
 const STOPWORDS = new Set([

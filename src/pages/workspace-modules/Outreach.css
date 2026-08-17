@@ -52,7 +52,7 @@
 
 .message-box {
     background-color: rgba(18, 19, 23, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle);
     padding: 12px;
     border-radius: 8px;
     font-size: 13px;
@@ -68,7 +68,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border: 1px dashed var(--border-strong);
     border-radius: 12px;
 }
 
@@ -120,7 +120,7 @@
     align-items: center;
     gap: 16px;
     padding: 12px 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .engine-row:last-child {
@@ -197,7 +197,7 @@
 }
 
 .engine-prospect-item:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--wash-2);
 }
 
 @media (max-width: 720px) {

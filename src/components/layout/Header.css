@@ -25,7 +25,9 @@
     bottom: -16px;
     height: 16px;
     pointer-events: none;
-    background: linear-gradient(to bottom, rgba(10, 11, 15, 0.55), rgba(10, 11, 15, 0));
+    /* Fades to the canvas hue at zero alpha, not to `transparent` (= black at
+       zero alpha), which smears grey on a light canvas. */
+    background: linear-gradient(to bottom, var(--header-fade-from), var(--canvas-fade));
 }
 
 /* Hamburger — mobile only (the sidebar becomes an overlay ≤1024px) */
@@ -41,7 +43,7 @@
 }
 
 .header__mobile-nav:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--wash-4);
     color: var(--text);
 }
 
@@ -92,14 +94,14 @@
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background-color: var(--kepler-panel);
     color: var(--kepler-muted);
     transition: border-color var(--t-fast), color var(--t-fast);
 }
 
 .header__chip-btn:hover {
-    border-color: rgba(255, 255, 255, 0.14);
+    border-color: var(--border-strong);
     color: var(--kepler-text);
 }
 
@@ -118,7 +120,7 @@
     width: 1px;
     height: 24px;
     margin: 0 4px;
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: var(--wash-4);
 }
 
 .header__user-chip {
@@ -132,7 +134,7 @@
 }
 
 .header__user-chip:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
 }
 
 .header__user-avatar {
@@ -176,7 +178,7 @@
     overflow-y: auto;
     padding: 10px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
     background: rgba(18, 19, 23, 0.98);
     backdrop-filter: blur(20px) saturate(135%);
     -webkit-backdrop-filter: blur(20px) saturate(135%);
@@ -190,7 +192,7 @@
 .header__panel-group + .header__panel-group {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-subtle);
 }
 
 .header__panel-label {
@@ -223,7 +225,7 @@
 }
 
 .header__result:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
 }
 
 .header__result-title {
@@ -251,7 +253,7 @@
     flex-direction: column;
     gap: 2px;
     padding: 8px 8px 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .header__user-info-name {
@@ -286,5 +288,5 @@
 }
 
 .header__menu-item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
 }

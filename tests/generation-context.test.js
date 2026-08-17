@@ -70,9 +70,10 @@ describe('renderGoalBlock — a goal is never invented', () => {
         expect(block).toMatch(/Never state it/i);
     });
 
-    it('leans on quick-compounding angles when the goal is behind', () => {
+    it('leans on quick-compounding angles when the goal is off pace', () => {
         const behind = renderGoalBlock(measuredGoal, { ...onTrack, verdict: 'off-pace', progress: 0.2, achieved: 1800 });
-        expect(behind).toContain('Behind');
+        // "Off pace", not "Behind": the verdict has one name across the product.
+        expect(behind).toContain('Off pace');
         expect(behind).toMatch(/compound quickly/);
         expect(renderGoalBlock(measuredGoal, onTrack)).not.toMatch(/compound quickly/);
     });

@@ -12,7 +12,7 @@
     margin: 0;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--kepler-muted, #b6b7c6);
+    color: var(--kepler-muted, var(--text-secondary));
     max-width: 46ch;
 }
 
@@ -20,8 +20,8 @@
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.14);
-    border-top-color: var(--kepler-accent-2, #9db1fb);
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--kepler-accent-2, var(--accent-text));
     animation: kepler-spin 0.7s linear infinite;
 }
 

@@ -1,0 +1,329 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN-REFERENCE FORMS
+
+   The theme files re-point tokens. This file supplies the ANATOMY that the
+   references actually contribute — the part a colour swap cannot express:
+
+     .dform-tile   siphron's pastel icon-chip stat tile   → Kepler funnel stage
+     .dform-plate  finnulate's KPI plate                  → Kepler funnel stage
+     .dform-lb     siphron's Leaderboard                  → ChannelContribution
+     .sparkline--area  siphron's gradient area chart      → Kepler Sparkline
+
+   Every one is driven by Kepler's real data and keeps Kepler's real rules (the
+   unlock affordance on a stage with no source, the `Other` remainder row, the
+   break across un-measured periods). Dev-only; nothing here ships.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Dashboard.css styles `.sparkline polyline`; the area form draws `path`. */
+.sparkline--area path[fill='none'] { stroke: currentColor; }
+.sparkline--area { overflow: visible; }
+
+.dform-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dform-delta.is-up { color: var(--positive); }
+.dform-delta.is-down { color: var(--negative); }
+.dform-delta.is-flat { color: var(--text-muted); }
+
+/* ═══ siphron — pastel icon-chip tiles ═════════════════════════════════════
+   The reference's four stat tiles each carry their own soft tint and an icon
+   chip. Kepler has five funnel stages, so there are five tints. */
+.dform-funnel--siphron {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 12px;
+}
+
+.dform-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  border: 1px solid transparent;
+  min-width: 0;
+}
+.dform-tile--t0 { background: #f3f6ef; }  /* cream    */
+.dform-tile--t1 { background: #eef9fc; }  /* ice blue */
+.dform-tile--t2 { background: #f3f3fb; }  /* lavender */
+.dform-tile--t3 { background: #fbf7ee; }  /* peach    */
+.dform-tile--t4 { background: #eff9f4; }  /* mint     */
+
+.dform-tile__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dform-tile__chip {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--wash-4);
+  color: #4b5563;
+  box-shadow: 0 1px 2px rgba(38, 50, 110, 0.06);
+}
+.dform-tile__label {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dform-tile__value {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.1;
+  color: var(--text);
+}
+.dform-tile__value--muted { color: var(--text-dim); }
+.dform-tile__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.dform-tile__unlock {
+  align-self: flex-start;
+  border: 0;
+  background: var(--wash-4);
+  border-radius: var(--r-sm);
+  padding: 4px 9px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.dform-tile__unlock:hover { background: #fff; }
+.dform-tile.is-empty { background: var(--layer-inset); }
+
+/* ═══ fin — the KPI plate ══════════════════════════════════════════════════
+   White card inset on a recessed plate, so the delta footer reads as an
+   under-layer rather than a bordered region. Labels and figures go mono,
+   which is the reference's machine-data rule. */
+.dform-funnel--fin {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 10px;
+}
+
+.dform-plate {
+  background: var(--layer-inset);
+  border-radius: var(--r-lg);
+  padding: 1px 1px 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dform-plate__card {
+  background: var(--layer-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 10px 12px 11px;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.dform-plate__text { min-width: 0; }
+.dform-plate__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dform-plate__value {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--text);
+}
+.dform-plate__foot {
+  height: 25px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px;
+}
+.dform-plate__foot .dform-delta { font-family: var(--font-mono); font-weight: 500; }
+.dform-plate__unlock {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 10.5px;
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* ═══ siphron — Leaderboard ════════════════════════════════════════════════
+   rank · identity chip · name over sub · share bar · value · share · Drill.
+   `production—source` slots straight into the reference's name/email pair. */
+.dform-lb { display: flex; flex-direction: column; }
+
+.dform-lb__row {
+  display: grid;
+  grid-template-columns: 20px 30px minmax(120px, 1.4fr) minmax(60px, 1fr) auto 52px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dform-lb__row:last-child { border-bottom: 0; }
+
+.dform-lb__rank {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+}
+.dform-lb__chip {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dform-lb__id { min-width: 0; display: flex; flex-direction: column; }
+.dform-lb__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dform-lb__sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dform-lb__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--layer-inset);
+  overflow: hidden;
+}
+.dform-lb__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--highlight-grad);
+}
+.dform-lb__num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dform-lb__share {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dform-lb__drill {
+  border: 1px solid var(--border);
+  background: var(--layer-raised);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.dform-lb__drill:hover { background: var(--accent-soft); color: var(--accent-text); border-color: var(--border-strong); }
+
+/* The remainder Kepler cannot claim stays in the list, visibly quieter. */
+.dform-lb__row.is-other { opacity: 0.68; }
+.dform-lb__row.is-other .dform-lb__chip { background: var(--layer-inset); color: var(--text-muted); }
+.dform-lb__row.is-other .dform-lb__fill { background: var(--text-dim); }
+
+/* A channel has no avatar. `Other` is the unattributable remainder, so it gets a
+   neutral dot rather than an initial it does not have. */
+.dform-lb__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+/* The `Show all {n}` / `Show fewer` handoff in the panel header. */
+.dform-lb__more {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.dform-lb__more:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Queue variant (Needs you) ─────────────────────────────────────────────
+   Same row anatomy as the leaderboard, but there is no share bar or value —
+   the count chip leads and the action closes. */
+.dform-lb--queue .dform-lb__row {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
+  padding: 11px 2px;
+}
+.dform-lb__count {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dform-lb--queue .dform-lb__sub { white-space: normal; overflow: visible; line-height: 1.45; }
+.dform-lb--queue .dform-lb__drill { align-self: center; }
+
+/* Kepler distinguishes queue rows by kind; carry that through as chip tone. */
+.dform-lb__row.is-blocked .dform-lb__count,
+.dform-lb__row.is-overdue .dform-lb__count { background: var(--negative-soft); color: var(--negative); }
+.dform-lb__row.is-waiting .dform-lb__count { background: var(--warning-soft); color: var(--warning); }
+
+/* fin has no chromatic accent and no avatars — square chips, mono figures. */
+:root[data-theme='fin'] .dform-lb__chip { border-radius: 8px; background: var(--layer-inset); color: var(--text-secondary); }
+:root[data-theme='fin'] .dform-lb__num,
+:root[data-theme='fin'] .dform-lb__share,
+:root[data-theme='fin'] .dform-lb__rank { font-family: var(--font-mono); }
+:root[data-theme='fin'] .dform-lb__fill { background: var(--accent); }

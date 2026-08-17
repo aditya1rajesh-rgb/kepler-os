@@ -23,7 +23,9 @@ import Sparkline from './Sparkline';
 const VERDICT = {
     'on-track': { label: 'On track', tone: 'ok' },
     'at-risk': { label: 'At risk', tone: 'warn' },
-    'off-pace': { label: 'Behind', tone: 'bad' },
+    // "Off pace", matching the goal detail. The verdict is about the run rate, not
+    // the current position: a goal can be behind today and still forecast to land.
+    'off-pace': { label: 'Off pace', tone: 'bad' },
     unknown: { label: 'Not enough data', tone: 'muted' },
 };
 
@@ -119,7 +121,7 @@ const GoalHero = ({
 
             {directional ? (
                 <p className="cockpit-hero__directional">
-                    A directional goal has no forecast — progress is the checkpoints you set against it.
+                    A directional goal has no forecast. Progress is the checkpoints you set against it.
                     {campaignCount === 0 && ' Nothing is laddered to it yet.'}
                 </p>
             ) : (
@@ -189,7 +191,7 @@ const GoalHero = ({
                 ) : (
                     <div className="cockpit-hero__moved-text">
                         <span>
-                            Nothing has moved enough to report since the last check — small wobbles are
+                            Nothing has moved enough to report since the last check. Small wobbles are
                             deliberately not raised.
                         </span>
                         {onDetect && (

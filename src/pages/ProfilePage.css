@@ -124,12 +124,53 @@
     animation: kepler-spin 0.8s linear infinite;
 }
 
-/* ── Connector grid ── */
+/* ── Connector grid ──────────────────────────────────────────────────────────
+   Four up at full width, which is what dropping the eight category headers
+   bought: the screen went from 2,471px to 871px in the design because five of
+   those categories held a single card each. */
+.connector-search-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+}
+
+.connector-search {
+    width: 100%;
+    max-width: 320px;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--layer-inset);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    transition: border-color var(--t-fast);
+}
+
+.connector-search::placeholder {
+    color: var(--text-dim);
+}
+
+.connector-search:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
 .connector-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 14px;
     margin-top: 4px;
+    /* Cards at one level are the same size, so content length never sets height.
+       `align-items: stretch` alone only equalises WITHIN a row - grid rows size
+       independently, which left four different card heights down the grid.
+       `grid-auto-rows: 1fr` makes every row match the tallest. */
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+}
+
+.connector-card {
+    height: 100%;
 }
 
 .connector-card {
@@ -138,8 +179,8 @@
     gap: 8px;
     padding: 16px 18px;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    background: var(--wash-1);
 }
 
 .connector-card--planned {
@@ -307,7 +348,7 @@
 .connector-card__foot {
     margin-top: 6px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
     min-height: 40px;
@@ -318,8 +359,8 @@
     font-weight: 600;
     letter-spacing: 0.03em;
     color: var(--text-dim);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--wash-2);
+    border: 1px solid var(--border);
     padding: 4px 10px;
     border-radius: 999px;
 }
@@ -369,4 +410,80 @@
 
 @media (prefers-reduced-motion: reduce) {
     .profile__spin { animation: none; }
+}
+
+/* ── Appearance: the theme picker ──────────────────────────────────────────────
+   Every value is a token, so this row renders correctly in whichever theme is
+   currently active - which for this control in particular is the whole point. */
+.profile__themes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.profile__theme {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    text-align: left;
+    background: var(--layer-inset);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.profile__theme:hover {
+    border-color: var(--border-strong);
+}
+
+.profile__theme.is-active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+/* The swatch previews the theme it selects, so its colours are deliberately
+   literal rather than tokens - a token would resolve to the ACTIVE theme and
+   both swatches would look identical. */
+.profile__theme-swatch {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+}
+
+.profile__theme-swatch--siphron {
+    background: linear-gradient(150deg, #ffffff 0%, #eef2f5 58%, #eff0fa 100%);
+}
+
+.profile__theme-swatch--kepler {
+    background: linear-gradient(150deg, #1b1d27 0%, #0e0f14 58%, #0a0b0f 100%);
+}
+
+.profile__theme-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.profile__theme-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.profile__theme.is-active .profile__theme-label {
+    color: var(--accent-text);
+}
+
+.profile__theme-hint {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
 }

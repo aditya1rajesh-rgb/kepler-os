@@ -3,6 +3,7 @@ import ProvenanceLabel from './ProvenanceLabel';
 import BrandColorsPanel from './BrandColorsPanel';
 import BrandFieldSkeleton from './BrandFieldSkeleton';
 import { EMPTY_COLOR_IDENTITY } from '../../lib/brandContracts';
+import { retryLabelForKind, blocksRetry, ADD_SOURCES_LABEL } from '../../lib/sectionGenerate';
 import './BrandOverviewPanel.css';
 
 const ChipAdder = ({ placeholder, onAdd }) => {
@@ -27,27 +28,19 @@ const ChipAdder = ({ placeholder, onAdd }) => {
     );
 };
 
-const retryLabelForKind = (errorKind) => {
-    if (errorKind === 'insufficient_context') return 'Add more sources';
-    if (errorKind === 'malformed_json' || errorKind === 'missing_keys' || errorKind === 'empty_content') {
-        return 'Retry with stricter prompt';
-    }
-    return 'Retry';
-};
-
-const SectionAction = ({ section, status = {}, onGenerate, disabled }) => {
+const SectionAction = ({ section, status = {}, onGenerate, disabled, onAddSources }) => {
     if (!onGenerate) return null;
     const state = status.status ?? 'idle';
     const isRunning = state === 'running';
     // Insufficient context cannot be fixed by re-spending a credit on the same
-    // request, so we don't offer a retry button for it.
-    const blockRetry = state === 'error' && status.errorKind === 'insufficient_context';
+    // request, so there is no retry for it - there is a route to the sources.
+    const blockRetry = blocksRetry(state, status.errorKind);
     return (
         // `intel-section-action` anchors this to its field's label row (see
         // BrandIntelligence.css); `is-running` keeps it visible mid-generation
         // even after the pointer leaves the field.
         <div className={`brand-section-action intel-section-action ${state !== 'idle' ? 'is-running' : ''}`.trim()}>
-            {isRunning && <span className="brand-section-action__status">Generating…</span>}
+            {/* Nothing while running: the button itself reads "Generating…". */}
             {state === 'done' && (
                 <span className="brand-section-action__status brand-section-action__status--done">Updated</span>
             )}
@@ -56,7 +49,17 @@ const SectionAction = ({ section, status = {}, onGenerate, disabled }) => {
                     {status.error || 'Generation failed'}
                 </span>
             )}
-            {!blockRetry && (
+            {blockRetry ? (
+                onAddSources && (
+                    <button
+                        type="button"
+                        className="btn btn-ghost brand-section-action__btn"
+                        onClick={onAddSources}
+                    >
+                        {ADD_SOURCES_LABEL}
+                    </button>
+                )
+            ) : (
                 <button
                     type="button"
                     className="btn btn-secondary brand-section-action__btn"
@@ -78,6 +81,7 @@ const BrandOverviewPanel = ({
     lowConfidence = false,
     sectionStatus = {},
     onGenerateSection,
+    onAddSources,
     onTaglineChange,
     onOverviewChange,
     onColorIdentityChange,
@@ -136,7 +140,7 @@ const BrandOverviewPanel = ({
                         />
                         <ProvenanceLabel entry={provenance.tagline} />
                         {showSectionActions && (
-                            <SectionAction section="tagline" status={sectionStatus.tagline} onGenerate={onGenerateSection} />
+                            <SectionAction section="tagline" status={sectionStatus.tagline} onGenerate={onGenerateSection} onAddSources={onAddSources} />
                         )}
                     </div>
                     <div className="data-section">
@@ -150,7 +154,7 @@ const BrandOverviewPanel = ({
                         />
                         <ProvenanceLabel entry={provenance.overview} />
                         {showSectionActions && (
-                            <SectionAction section="overview" status={sectionStatus.overview} onGenerate={onGenerateSection} />
+                            <SectionAction section="overview" status={sectionStatus.overview} onGenerate={onGenerateSection} onAddSources={onAddSources} />
                         )}
                     </div>
                 </div>
@@ -168,7 +172,7 @@ const BrandOverviewPanel = ({
                             <ChipAdder placeholder="Add value" onAdd={(v) => onAddListItem('values', v)} />
                         )}
                         {showSectionActions && (
-                            <SectionAction section="style" status={sectionStatus.style} onGenerate={onGenerateSection} />
+                            <SectionAction section="style" status={sectionStatus.style} onGenerate={onGenerateSection} onAddSources={onAddSources} />
                         )}
                     </div>
                     <div className="data-section">
@@ -195,7 +199,7 @@ const BrandOverviewPanel = ({
                             <ChipAdder placeholder="Add tone" onAdd={(v) => onAddListItem('tone', v)} />
                         )}
                         {showSectionActions && (
-                            <SectionAction section="tone" status={sectionStatus.tone} onGenerate={onGenerateSection} />
+                            <SectionAction section="tone" status={sectionStatus.tone} onGenerate={onGenerateSection} onAddSources={onAddSources} />
                         )}
                     </div>
                 </div>
@@ -203,7 +207,7 @@ const BrandOverviewPanel = ({
 
             {showSectionActions && (
                 <div className="brand-section-action brand-section-action--colors">
-                    <SectionAction section="colors" status={sectionStatus.colors} onGenerate={onGenerateSection} />
+                    <SectionAction section="colors" status={sectionStatus.colors} onGenerate={onGenerateSection} onAddSources={onAddSources} />
                 </div>
             )}
 

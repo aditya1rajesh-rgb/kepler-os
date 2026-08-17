@@ -29,7 +29,7 @@ export const campaigns = [
     {
         id: id('campaign-intake'),
         workspace_id: WS,
-        title: 'Intake 2027 — registrar cycle-time push',
+        title: 'Intake 2027 (registrar cycle-time push)',
         goal: 'Book 25 KenRoll walkthroughs with registrars and admissions heads before the November renewal window',
         campaign_type: 'lead-gen',
         status: 'active',
@@ -82,7 +82,7 @@ export const campaigns = [
     {
         id: id('campaign-accreditation'),
         workspace_id: WS,
-        title: 'Accreditation season — KenCompliance',
+        title: 'Accreditation season (KenCompliance)',
         goal: 'Generate 40 qualified IQAC and registrar conversations off accreditation-cycle intent',
         campaign_type: 'lead-gen',
         status: 'active',
@@ -126,7 +126,7 @@ export const campaigns = [
     {
         id: id('campaign-consolidation'),
         workspace_id: WS,
-        title: 'Group consolidation — CIO track',
+        title: 'Group consolidation (CIO track)',
         goal: 'Open 12 platform-level conversations with CIOs at multi-campus education groups',
         campaign_type: 'awareness',
         status: 'active',
@@ -166,7 +166,7 @@ export const campaigns = [
     {
         id: id('campaign-kenfin'),
         workspace_id: WS,
-        title: 'KenFin expansion — existing institutions',
+        title: 'KenFin expansion (existing institutions)',
         goal: 'Expand 15 existing KenRoll institutions into KenFin before the fee cycle',
         campaign_type: 'retention',
         status: 'draft',

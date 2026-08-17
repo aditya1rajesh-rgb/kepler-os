@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WorkspaceProvider } from './context/WorkspaceContext';
@@ -19,6 +20,13 @@ import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
 import DataDeletion from './pages/legal/DataDeletion';
 import ErrorBoundary from './components/common/ErrorBoundary';
+
+// Design fidelity test. The ternary (not just the route) is what keeps it out
+// of prod: import.meta.env.DEV folds to `false` at build time, so the dynamic
+// import sits in a dead branch and no chunk is emitted at all.
+const FinnulateLab = import.meta.env.DEV
+  ? lazy(() => import('./pages/design-lab/FinnulateLab'))
+  : null;
 
 const needsOnboarding = (profile, workspaces) => {
   const hasNoWorkspaces = workspaces.length === 0;
@@ -80,6 +88,15 @@ function App() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/data-deletion" element={<DataDeletion />} />
+
+            {/* Local-only design experiment — outside every auth guard so it can
+                be opened without a session, and stripped from prod builds. */}
+            {import.meta.env.DEV ? (
+              <Route
+                path="/design-lab/finnulate"
+                element={<Suspense fallback={null}><FinnulateLab /></Suspense>}
+              />
+            ) : null}
 
             <Route element={<GuestRoute />}>
               <Route path="/login" element={<LoginPage />} />

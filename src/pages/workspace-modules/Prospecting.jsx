@@ -115,7 +115,7 @@ const Prospecting = ({ workspaceId }) => {
             setResults(people);
             setSearchInfo(people.length
                 ? `${people.length} shown${total ? ` of ${total} matches` : ''} · emails need Apollo enrichment (not returned by search).`
-                : `No matches (${total} found) - try a broader title or fewer filters.`);
+                : `No matches (${total} found). Try a broader title or fewer filters.`);
         } catch (err) {
             // Connector edge errors are already curated + safe - show them directly.
             setError(err?.message || 'Apollo search failed.');
@@ -225,7 +225,7 @@ const Prospecting = ({ workspaceId }) => {
             <div className="prospecting__search-body">
                     {personas.length > 0 && (
                         <div className="input-group">
-                            <label className="label-text">Target ICPs (optional - fills job titles from your saved personas)</label>
+                            <label className="label-text">Target ICPs (optional, fills job titles from your saved personas)</label>
                             <div className="platform-pills">
                                 {personas.map((p) => (
                                     <button
@@ -297,7 +297,7 @@ const Prospecting = ({ workspaceId }) => {
                                     <li key={p.externalId || `${p.firstName}-${p.lastName}-${p.company}`} className="prospect-row">
                                         <div className="prospect-row__main">
                                             <span className="prospect-row__name">{fullName(p)}</span>
-                                            <span className="prospect-row__sub">{[p.title, p.company].filter(Boolean).join(' · ')}{p.location ? ` - ${p.location}` : ''}</span>
+                                            <span className="prospect-row__sub">{[p.title, p.company].filter(Boolean).join(' · ')}{p.location ? ` · ${p.location}` : ''}</span>
                                         </div>
                                         <div className="prospect-row__actions">
                                             {p.linkedinUrl && (
@@ -328,7 +328,7 @@ const Prospecting = ({ workspaceId }) => {
                     {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
                     {!apolloConnected && (
                         <p className="cockpit__intel-hint">
-                            Connect Apollo in <strong>Profile &amp; settings → Connectors</strong> to search for prospects.
+                            Connect Apollo in <strong>Integrations</strong> to search for prospects.
                         </p>
                     )}
                 </>
@@ -372,7 +372,7 @@ const Prospecting = ({ workspaceId }) => {
                                             <input type="checkbox" disabled={pushed} checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} />
                                             <span className="prospect-row__name">{fullName(p)}</span>
                                         </label>
-                                        <span className="prospect-row__sub">{[p.title, p.company].filter(Boolean).join(' · ')}{p.location ? ` - ${p.location}` : ''}</span>
+                                        <span className="prospect-row__sub">{[p.title, p.company].filter(Boolean).join(' · ')}{p.location ? ` · ${p.location}` : ''}</span>
                                     </div>
                                     <div className="prospect-row__actions">
                                         {pushed ? (

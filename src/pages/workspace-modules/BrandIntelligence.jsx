@@ -35,6 +35,7 @@ import IcpSuggestionCard from '../../components/brand-intelligence/IcpSuggestion
 import { EMPTY_ICP_DRAFT, icpDraftToPayload, icpPayloadToPersona } from '../../lib/icpContracts';
 import IcpTargetingFields from '../../components/brand-intelligence/IcpTargetingFields';
 import { describeTargeting, hasTargeting } from '../../lib/icpTargeting';
+import { retryLabelForKind, blocksRetry, ADD_SOURCES_LABEL } from '../../lib/sectionGenerate';
 import '../../styles/module-kepler.css';
 import './BrandIntelligence.css';
 
@@ -56,21 +57,14 @@ const EMPTY_BRAND = {
 
 // Compact generate/retry control with inline per-section status. Reused across
 // the section-scoped Brand Intelligence tabs.
-const retryLabelForKind = (errorKind) => {
-    if (errorKind === 'insufficient_context') return 'Add more sources';
-    if (errorKind === 'malformed_json' || errorKind === 'missing_keys' || errorKind === 'empty_content') {
-        return 'Retry with stricter prompt';
-    }
-    return 'Retry';
-};
-
-const SectionGenerateControl = ({ status = {}, onGenerate, idleLabel = 'Generate' }) => {
+const SectionGenerateControl = ({ status = {}, onGenerate, idleLabel = 'Generate', onAddSources }) => {
     const state = status.status ?? 'idle';
     const isRunning = state === 'running';
-    const blockRetry = state === 'error' && status.errorKind === 'insufficient_context';
+    const blockRetry = blocksRetry(state, status.errorKind);
     return (
         <span className="brand-section-control">
-            {isRunning && <span className="brand-section-control__status">Generating…</span>}
+            {/* No status text while running: the button already says "Generating…",
+                and printing it twice in one control says it once too often. */}
             {state === 'done' && (
                 <span className="brand-section-control__status brand-section-control__status--done">Updated</span>
             )}
@@ -79,7 +73,13 @@ const SectionGenerateControl = ({ status = {}, onGenerate, idleLabel = 'Generate
                     {status.error || 'Generation failed'}
                 </span>
             )}
-            {!blockRetry && (
+            {blockRetry ? (
+                onAddSources && (
+                    <button type="button" className="btn btn-ghost" onClick={onAddSources}>
+                        {ADD_SOURCES_LABEL}
+                    </button>
+                )
+            ) : (
                 <button
                     type="button"
                     className="btn btn-secondary"
@@ -97,10 +97,52 @@ const splitList = (value) =>
     value.split(',').map((item) => sanitizeText(item, 80)).filter(Boolean);
 
 const formatRelativeDate = (iso) => {
-    if (!iso) return '-';
+    if (!iso) return '—';
     const dt = new Date(iso);
-    if (Number.isNaN(dt.getTime())) return '-';
-    return dt.toLocaleString();
+    if (Number.isNaN(dt.getTime())) return '—';
+    // A date, not a timestamp: the seconds a file was uploaded at are noise in a
+    // column you scan.
+    return dt.toLocaleDateString();
+};
+
+// The MIME subtype is a machine value, and for Office formats it is 50 characters
+// long ("vnd.openxmlformats-officedocument.spreadsheetml.sheet"), which is what the
+// Type column was printing. Show the format the user recognises, falling back to
+// the file's own extension before giving up.
+const MIME_LABELS = {
+    'application/pdf': 'PDF',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
+    'application/vnd.ms-excel': 'XLS',
+    'application/msword': 'DOC',
+    'application/vnd.ms-powerpoint': 'PPT',
+    'application/json': 'JSON',
+    'text/csv': 'CSV',
+    'text/plain': 'TXT',
+    'text/markdown': 'MD',
+    'text/html': 'HTML',
+    'image/png': 'PNG',
+    'image/jpeg': 'JPG',
+    'image/webp': 'WEBP',
+    'image/gif': 'GIF',
+    'image/svg+xml': 'SVG',
+};
+
+// Status is a stored enum; the State column is prose. Unknown values are still
+// shown, capitalised, rather than swallowed.
+const fileStateLabel = (status) => {
+    const s = String(status || '').trim();
+    if (!s) return '—';
+    return s.charAt(0).toUpperCase() + s.slice(1).replace(/[_-]+/g, ' ');
+};
+
+const fileTypeLabel = (file) => {
+    const mapped = MIME_LABELS[String(file?.mimeType || '').toLowerCase()];
+    if (mapped) return mapped;
+    const ext = String(file?.name || '').split('.').pop();
+    if (ext && ext !== file?.name && ext.length <= 5) return ext.toUpperCase();
+    return '—';
 };
 
 const resolveBrand = (brand, workspace) =>
@@ -610,6 +652,10 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
     const source = editing ? draft : brandData;
     const provenance = source.fieldProvenance ?? {};
 
+    // The route out of an insufficient-context error: the sources tab is a real
+    // destination, so this is a navigation, not a second generation attempt.
+    const goToSources = () => navigate(workspacePath(workspaceId, 'brand-intelligence', 'files'));
+
     const overviewLoading = refreshing || popStatus === 'running';
     const colorsLowConfidence =
         !workspace?.url?.trim() ||
@@ -624,7 +670,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
         <>
             {isLiveEmptyBrand && !editing && !overviewLoading && (
                 <p className="brand-intel-module__empty">
-                    No brand profile yet — add your website or a file to auto-build it, or edit manually.
+                    No brand profile yet. Add your website or a file to auto-build it, or edit manually.
                 </p>
             )}
 
@@ -638,6 +684,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                 lowConfidence={colorsLowConfidence}
                 sectionStatus={sectionStatus}
                 onGenerateSection={handleGenerateSection}
+                onAddSources={goToSources}
                 onTaglineChange={(value) => {
                     setDraft({ ...draft, tagline: value });
                     markDraftField('tagline');
@@ -701,6 +748,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                                 status={sectionStatus.businessDetails}
                                 onGenerate={() => handleGenerateSection('businessDetails')}
                                 idleLabel="Generate from sources"
+                                onAddSources={goToSources}
                             />
                             <button type="button" className="btn btn-primary" onClick={handleStartEdit}>Edit</button>
                         </div>
@@ -824,6 +872,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                         status={sectionStatus.icps}
                         onGenerate={runIcpDiscovery}
                         idleLabel="Generate ICPs"
+                        onAddSources={goToSources}
                     />
                 </div>
 
@@ -959,7 +1008,9 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                             )}
                             <div className="data-section">
                                 <label className="data-label">Job Titles</label>
-                                {icp.titles.length === 0 ? <p className="brand-intel-module__empty">None</p> : (
+                                {/* One null rendering across the product: an empty list
+                                    is an absence, so it reads the same as any other. */}
+                                {icp.titles.length === 0 ? <p className="brand-intel-module__empty">—</p> : (
                                     <ul className="icp-list">{icp.titles.map((t, i) => <li key={i}>{t}</li>)}</ul>
                                 )}
                             </div>
@@ -973,7 +1024,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                             )}
                             <div className="data-section">
                                 <label className="data-label">Primary Pains</label>
-                                <p className="icp-pain-text">{icp.painPoints || 'Not set'}</p>
+                                <p className="icp-pain-text">{icp.painPoints || '—'}</p>
                             </div>
                             {icp.triggers && (
                                 <div className="data-section">
@@ -1004,7 +1055,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                             <div className="data-section">
                                 <label className="data-label">Preferred Channels</label>
                                 <div className="chip-container">
-                                    {icp.channels.length === 0 ? <p className="brand-intel-module__empty">None</p> :
+                                    {icp.channels.length === 0 ? <p className="brand-intel-module__empty">—</p> :
                                         icp.channels.map((c, i) => <span key={i} className="intel-chip">{c}</span>)}
                                 </div>
                             </div>
@@ -1017,7 +1068,7 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                                     <p className="icp-pain-text">{describeTargeting(icp.targeting)}</p>
                                 ) : (
                                     <p className="brand-intel-module__empty">
-                                        Not set — ad targeting falls back to keywords and audiences.
+                                        Not set. Ad targeting falls back to keywords and audiences.
                                     </p>
                                 )}
                             </div>
@@ -1089,9 +1140,9 @@ const BrandIntelligence = ({ workspaceId, workspace }) => {
                         {files.map((f) => (
                             <tr key={f.id}>
                                 <td>{f.name}</td>
-                                <td>{f.mimeType ? f.mimeType.split('/').pop().toUpperCase() : '-'}</td>
+                                <td>{fileTypeLabel(f)}</td>
                                 <td>{formatRelativeDate(f.uploadedAt)}</td>
-                                <td><span className={`status-pill-minimal ${f.status}`}>{f.status}</span></td>
+                                <td><span className={`status-pill-minimal ${f.status}`}>{fileStateLabel(f.status)}</span></td>
                                 <td>{f.includedInAnalysis !== false ? 'Yes' : 'No'}</td>
                                 <td>
                                     <span

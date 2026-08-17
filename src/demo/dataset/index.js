@@ -14,6 +14,7 @@ import * as outreach from './outreach';
 import * as abm from './abm';
 import * as visibility from './visibility';
 import * as ops from './ops';
+import * as goalData from './goals';
 
 /** Every table (and view) the demo serves. Anything else reads as empty + warns. */
 export const DEMO_TABLES = [
@@ -91,7 +92,12 @@ export const buildDataset = () => {
         workspace_files: [...brand.workspace_files],
 
         content_items: [...content.content_items],
-        campaigns: [...campaignData.campaigns],
+        // The ladder is applied here rather than hardcoded in the campaigns
+        // fixture, so the goals spine stays declared in one place.
+        campaigns: campaignData.campaigns.map((c) => ({
+            ...c,
+            goal_id: goalData.CAMPAIGN_GOAL[c.id] ?? c.goal_id ?? null,
+        })),
         campaign_metrics: [...campaignData.campaign_metrics],
 
         prospects: [...outreach.prospects],
@@ -112,6 +118,14 @@ export const buildDataset = () => {
         generation_feedback: [...ops.generation_feedback],
         channel_posts: [...ops.channel_posts],
         workspace_events: [...ops.workspace_events],
+
+        // E2 · the goals spine. `change_events` stays empty by design — see
+        // DEMO_TABLES — so the hero opens on its null-movement branch and
+        // "Check for changes" detects against real metric history.
+        goals: [...goalData.goals],
+        goal_checkpoints: [...goalData.goal_checkpoints],
+        goal_links: [...goalData.goal_links],
+        goal_target_history: [...goalData.goal_target_history],
     };
 
     // Views are computed once at build time. They are read-only in the app, and the

@@ -243,12 +243,12 @@ const AbmResearch = ({ workspaceId }) => {
             </summary>
             <div className="abm-bulk__body">
                 <p className="brand-intel-module__source-label">
-                    One company per line — name, or name,website. Up to {MAX_COMPANIES} per run.
+                    One company per line: name, or name,website. Up to {MAX_COMPANIES} per run.
                 </p>
                 <input ref={fileInputRef} type="file" accept=".csv,.txt" hidden onChange={onFile} />
                 <UploadZone
                     title="Upload a company list (.csv / .txt)"
-                    subtitle="or paste below — a header row and duplicates are handled for you"
+                    subtitle="or paste below: a header row and duplicates are handled for you"
                     onBrowse={() => fileInputRef.current?.click()}
                 />
                 <textarea
@@ -325,8 +325,8 @@ const AbmResearch = ({ workspaceId }) => {
                                 <Sparkles size={13} strokeWidth={1.8} /> ABM analyst
                             </span>
                             <p className="abm-bubble__content">
-                                Name a company below — or open <strong>Bulk research</strong> to upload a list — and I'll
-                                research it live, grade the ICP fit against your saved brand &amp; ICP, and pull the
+                                Name a company below, or open <strong>Bulk research</strong> to upload a list, and I'll
+                                research it live, grade the ICP fit against your saved brand and ICP, and pull the
                                 leaders worth pitching.
                             </p>
                         </div>
@@ -348,7 +348,7 @@ const AbmResearch = ({ workspaceId }) => {
                                     </div>
                                 </div>
                             )}
-                            {e.status === 'cancelled' && <p className="abm-note">Cancelled — not researched.</p>}
+                            {e.status === 'cancelled' && <p className="abm-note">Cancelled. Not researched.</p>}
                             {e.status === 'error' && <p className="brand-intel-module__error" role="alert">{e.error}</p>}
                             {e.status === 'done' && (
                                 <AbmResultCard

@@ -27,11 +27,11 @@
 }
 
 .brand-section-action__status--done {
-    color: var(--success, #7ee0a8);
+    color: var(--success, var(--positive));
 }
 
 .brand-section-action__status--error {
-    color: var(--error, #f87171);
+    color: var(--error, var(--negative));
 }
 
 .chip-adder {

@@ -22,6 +22,15 @@
       "autoPort": true
     },
     {
+      "name": "demo-alt",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "VITE_DEMO_MODE=true npx vite --port 5178 --strictPort"
+      ],
+      "port": 5178
+    },
+    {
       "name": "demo-build",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

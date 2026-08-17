@@ -20,7 +20,17 @@ import { toUserMessage } from '../../lib/errors';
 // print-ready page. crmIndex de-dupes contacts already in Zoho.
 
 const TIER_LABEL = { enterprise: 'Enterprise', 'mid-market': 'Mid-market', smb: 'SMB' };
-const fullName = (c) => [c.firstName, c.lastName].filter(Boolean).join(' ') || '(name pending)';
+// seniority_tier arrives as a machine value and was reaching the Seniority column raw
+// ("decision_maker"). Unknown tiers fall back to the value with its underscores dropped.
+const SENIORITY_LABEL = {
+    decision_maker: 'Decision maker',
+    economic_buyer: 'Economic buyer',
+    gatekeeper: 'Gatekeeper',
+    champion: 'Champion',
+    influencer: 'Influencer',
+};
+const seniorityLabel = (t) => (t ? (SENIORITY_LABEL[t] ?? String(t).replace(/_/g, ' ')) : '—');
+const fullName = (c) => [c.firstName, c.lastName].filter(Boolean).join(' ') || '—';
 
 const AbmResultCard = ({
     workspaceId, result, onFeedback, readOnly = false, crmIndex = null,
@@ -105,7 +115,7 @@ const AbmResultCard = ({
             setSavedKeys((prev) => new Set([...prev, ...chosen.map(matchKey)]));
             if (onDeselect) onDeselect(chosen.map(selKey)); else setLocalSel(new Set());
             setNotice(created.length
-                ? `Saved ${created.length} contact${created.length === 1 ? '' : 's'} to your prospect list - find them under Prospecting.`
+                ? `Saved ${created.length} contact${created.length === 1 ? '' : 's'} to your prospect list. Find them under Audiences.`
                 : 'Those contacts are already in your prospect list.');
         } catch (err) {
             setError(toUserMessage(err, 'Could not save to the prospect list.'));
@@ -232,7 +242,7 @@ const AbmResultCard = ({
                                         <span className="abm-contact__sub">{[c.title, c.company].filter(Boolean).join(' · ')}</span>
                                         {c.fitReasoning && <span className="abm-contact__why">{c.fitReasoning}</span>}
                                     </span>
-                                    <span className="abm-cell abm-cell--sen" role="cell">{c.seniorityTier}</span>
+                                    <span className="abm-cell abm-cell--sen" role="cell">{seniorityLabel(c.seniorityTier)}</span>
                                     <span className="abm-cell abm-cell--fit" role="cell">
                                         <span className="abm-fit-score" style={{ '--fit': c.fitScore }}>{c.fitScore}</span>
                                     </span>

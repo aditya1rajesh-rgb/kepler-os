@@ -163,7 +163,7 @@
     gap: 12px;
     margin-top: auto;
     padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-subtle);
 }
 
 .campaigns__progress {
@@ -260,7 +260,7 @@
     gap: 16px;
     margin-top: 18px;
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--border);
 }
 
 /* ---- Steps ---- */
@@ -278,8 +278,8 @@
     gap: 14px;
     padding: 14px 16px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    background: var(--wash-1);
 }
 
 .campaigns__step--done {
@@ -298,7 +298,7 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid var(--border-strong);
     font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
@@ -312,8 +312,8 @@
     width: 34px;
     height: 34px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--wash-3);
+    border: 1px solid var(--border);
     color: var(--accent-text);
 }
 
@@ -376,12 +376,12 @@
     height: 30px;
     border-radius: 8px;
     color: var(--text-dim);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
 }
 
 .campaigns__step-skip:hover {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--wash-3);
 }
 
 .campaigns__step-link {
@@ -404,12 +404,12 @@
     color: var(--text-muted);
     padding: 6px 10px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
 }
 
 .campaigns__step-undo:hover {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--wash-3);
 }
 
 /* ---- Plan tools (auto-schedule + view toggle) ---- */
@@ -428,20 +428,20 @@
     border-radius: 9px;
     font-size: 12.5px;
     color: var(--text);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: var(--wash-3);
+    border: 1px solid var(--border);
     transition: background var(--t-fast), border-color var(--t-fast);
 }
 
 .campaigns__autoschedule:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.16);
+    background: var(--wash-4);
+    border-color: var(--border-strong);
 }
 
 .campaigns__viewtoggle {
     display: inline-flex;
     border-radius: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    border: 1px solid var(--border);
     overflow: hidden;
 }
 
@@ -462,7 +462,7 @@
 
 .campaigns__viewtoggle button:hover:not(.is-active) {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--wash-3);
 }
 
 /* ---- Per-step date ---- */
@@ -480,7 +480,7 @@
     padding: 4px 8px;
     font-size: 12px;
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
     border-radius: 7px;
     color-scheme: dark;
 }
@@ -515,10 +515,10 @@
     border-radius: 7px;
     color: var(--text-muted);
     font-size: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    border: 1px solid var(--border);
 }
 
-.campaigns__cal-nav button:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+.campaigns__cal-nav button:hover { color: var(--text); background: var(--wash-3); }
 
 .campaigns__cal-grid {
     display: grid;
@@ -537,8 +537,8 @@
 .campaigns__cal-cell {
     min-height: 74px;
     border-radius: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border-subtle);
+    background: var(--wash-1);
     padding: 5px;
     display: flex;
     flex-direction: column;
@@ -587,8 +587,8 @@
 
 .campaigns__cal-chip--skipped {
     color: var(--text-dim);
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: var(--wash-2);
+    border-color: var(--border);
     text-decoration: line-through;
 }
 
@@ -611,8 +611,8 @@
     gap: 12px;
     padding: 11px 12px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    background: var(--wash-1);
 }
 
 .campaigns__asset-title {
@@ -664,14 +664,14 @@
     gap: 3px;
     padding: 11px 13px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    background: var(--wash-1);
     text-align: left;
     transition: border-color var(--t-fast), background var(--t-fast);
 }
 
 .campaigns__type-tile:hover {
-    border-color: rgba(255, 255, 255, 0.16);
+    border-color: var(--border-strong);
 }
 
 .campaigns__type-tile.is-active {
@@ -735,7 +735,7 @@
     display: block;
     margin-top: 4px;
     font-size: 0.8rem;
-    color: var(--error, #ff8f6b);
+    color: var(--error, var(--negative));
 }
 
 .campaigns__step-approve {

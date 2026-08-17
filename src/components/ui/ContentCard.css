@@ -111,21 +111,21 @@
 
 .content-card--kepler .type-tag {
     background-color: var(--kepler-panel);
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--border);
     color: var(--kepler-muted);
 }
 
 .content-card--kepler .card-actions {
-    border-top-color: rgba(255, 255, 255, 0.08);
+    border-top-color: var(--border);
 }
 
 .content-card--kepler .action-btn {
     background-color: var(--kepler-panel);
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--border);
     color: var(--kepler-text);
 }
 
 .content-card--kepler .action-btn:hover {
-    border-color: rgba(255, 255, 255, 0.14);
-    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-strong);
+    background-color: var(--wash-3);
 }

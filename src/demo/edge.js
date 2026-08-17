@@ -162,19 +162,28 @@ const connectorProxy = async (body) => {
 
         case 'enrich': {
             const contacts = payload?.contacts ?? payload?.people ?? [];
+            // A stable per-contact mobile: one repeated number across a whole list
+            // reads as a stub in a live demo, and enrichment's whole point is that
+            // each row gains something of its own.
+            const demoPhone = (c, i) => {
+                const seed = `${c.firstName ?? ''}${c.lastName ?? ''}${i}`
+                    .split('').reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 100000, 7);
+                return `+91 9${String(80000 + (seed % 19999)).slice(0, 4)} ${String(seed).padStart(5, '0')}`;
+            };
+            const rows = contacts.map((c, i) => ({
+                ...c,
+                email: c.email || `${String(c.firstName ?? 'first').toLowerCase()}.${String(c.lastName ?? 'last').toLowerCase()}@${(c.domain ?? 'example.edu.in')}`,
+                phone: c.phone || demoPhone(c, i),
+                emailStatus: 'ok',
+                confidence: 'high',
+                verification: { status: 'valid', provider: 'free-verifier' },
+            }));
             return {
                 ok: true,
                 provider,
-                result: {
-                    enriched: contacts.map((c) => ({
-                        ...c,
-                        email: c.email || `${String(c.firstName ?? 'first').toLowerCase()}.${String(c.lastName ?? 'last').toLowerCase()}@${(c.domain ?? 'example.edu.in')}`,
-                        phone: c.phone || '+91 80 4000 0000',
-                        confidence: 'high',
-                        verification: { status: 'valid', provider: 'free-verifier' },
-                    })),
-                    creditsUsed: contacts.length,
-                },
+                // `matches` is what the caller reads (index-aligned with the request);
+                // `enriched` stays for anything reading the older key.
+                result: { matches: rows, enriched: rows, creditsUsed: contacts.length },
             };
         }
 

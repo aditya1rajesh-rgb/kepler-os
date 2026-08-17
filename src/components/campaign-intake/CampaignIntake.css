@@ -35,7 +35,7 @@
 
 .intake-bubble--assistant {
     background: var(--card);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     color: var(--text);
     border-bottom-left-radius: 5px;
     display: flex;
@@ -218,8 +218,8 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--wash-3);
+    border: 1px solid var(--border);
     color: var(--accent-text);
     margin-top: 1px;
 }
@@ -259,7 +259,7 @@
     flex-direction: column;
     gap: 4px;
     padding-top: 4px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--border);
 }
 
 .intake-plan__criteria li {

@@ -134,7 +134,7 @@ export const buildNeedsYou = ({
             kind: 'step-overdue',
             count: overdue.length,
             title: `${plural(overdue.length, 'campaign step')} overdue`,
-            detail: `The oldest is ${plural(worst.days, 'day')} past its date — “${worst.step.title ?? 'Untitled step'}” in ${worst.campaign.title}.`,
+            detail: `The oldest is ${plural(worst.days, 'day')} past its date: “${worst.step.title ?? 'Untitled step'}” in ${worst.campaign.title}.`,
             module: 'campaigns',
             child: 'all',
             urgency: URGENCY['step-overdue'],
@@ -167,7 +167,7 @@ export const buildNeedsYou = ({
             kind: 'draft-idle',
             count: idleDrafts.length,
             title: `${plural(idleDrafts.length, 'finished draft')} not laddered to a campaign`,
-            detail: 'Generated and complete, but not attached to any campaign — so nothing it produces reaches a goal.',
+            detail: 'Generated and complete, but not attached to any campaign, so nothing it produces reaches a goal.',
             module: 'library',
             urgency: URGENCY['draft-idle'],
         });

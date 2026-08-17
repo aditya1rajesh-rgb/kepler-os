@@ -23,6 +23,9 @@ export const expectedCtr = (position) => {
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const round = (v) => Math.round(num(v));
+// Figures shown to the user are grouped like every other number in the product;
+// `round` stays for arithmetic.
+const fmt = (v) => new Intl.NumberFormat().format(round(v));
 
 /** Strip protocol + origin to a readable path for display (best-effort). */
 export const pagePath = (url) => {
@@ -69,7 +72,7 @@ export const strikingDistance = (queryRows = [], { minImpressions = 20 } = {}) =
                 type: 'striking_distance',
                 key: `sd:${r.query}`,
                 title: String(r.query ?? ''),
-                detail: `Ranks position ${num(r.position).toFixed(1)} with ${round(r.impressions)} impressions/mo — one push from page 1.`,
+                detail: `Ranks position ${num(r.position).toFixed(1)} with ${fmt(r.impressions)} impressions/mo: one push from page 1.`,
                 action: 'Refresh the ranking page and add 2-3 internal links from strong pages to move it onto page 1.',
                 metrics: { position: num(r.position), impressions: num(r.impressions), clicks: num(r.clicks), ctr: num(r.ctr) },
                 impact,
@@ -90,7 +93,7 @@ export const lowCtr = (queryRows = [], { minImpressions = 30, ratio = 0.6 } = {}
                 type: 'low_ctr',
                 key: `ctr:${r.query}`,
                 title: String(r.query ?? ''),
-                detail: `Position ${num(r.position).toFixed(1)} but only ${(num(r.ctr) * 100).toFixed(1)}% CTR (≈${(expectedCtr(num(r.position)) * 100).toFixed(0)}% expected) across ${round(r.impressions)} impressions.`,
+                detail: `Position ${num(r.position).toFixed(1)} but only ${(num(r.ctr) * 100).toFixed(1)}% CTR (≈${(expectedCtr(num(r.position)) * 100).toFixed(0)}% expected) across ${fmt(r.impressions)} impressions.`,
                 action: 'Rewrite the meta title + description to match this exact query and add a compelling reason to click.',
                 metrics: { position: num(r.position), impressions: num(r.impressions), ctr: num(r.ctr), expectedCtr: expectedCtr(num(r.position)) },
                 impact: missed,
@@ -140,7 +143,7 @@ export const deadPages = (pageRows = [], { minImpressions = 50, maxCtr = 0.003 }
                 type: 'dead_page',
                 key: `dead:${p.page}`,
                 title: pagePath(p.page),
-                detail: `${round(p.impressions)} impressions/mo but ${round(p.clicks)} clicks (${(num(p.ctr) * 100).toFixed(2)}% CTR) across ${num(p.queries) || '—'} queries.`,
+                detail: `${fmt(p.impressions)} impressions/mo but ${fmt(p.clicks)} clicks (${(num(p.ctr) * 100).toFixed(2)}% CTR) across ${num(p.queries) || '—'} queries.`,
                 action: 'Rewrite the title/intro to earn the click, or prune/redirect if the page has no purpose.',
                 metrics: { impressions: num(p.impressions), clicks: num(p.clicks), ctr: num(p.ctr), position: num(p.position) },
                 impact,
@@ -165,8 +168,8 @@ export const decay = (currentQueryRows = [], priorQueryRows = [], { minPriorClic
             type: 'decay',
             key: `decay:${q}`,
             title: q,
-            detail: `Clicks fell ${Math.round(drop * 100)}% (${round(priorClicks)} → ${round(curClicks)}) vs the prior 28 days.`,
-            action: 'Refresh outdated stats/examples, update the publish date, and re-promote — the page is slipping.',
+            detail: `Clicks fell ${Math.round(drop * 100)}% (${fmt(priorClicks)} → ${fmt(curClicks)}) vs the prior 28 days.`,
+            action: 'Refresh outdated stats/examples, update the publish date, and re-promote: the page is slipping.',
             metrics: { priorClicks, currentClicks: curClicks, dropPct: drop, position: num(r.position) },
             impact: Math.max(0, priorClicks - curClicks),
         });

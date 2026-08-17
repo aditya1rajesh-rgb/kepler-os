@@ -65,7 +65,7 @@ const OutreachLists = ({ workspaceId }) => {
                 {loading ? (
                     <EmptyState loading message="Loading lists…" />
                 ) : lists.length === 0 ? (
-                    <EmptyState message="No lists yet. Save prospects in ABM Research or Prospecting, then “Add to list”." />
+                    <EmptyState message="No lists yet. Save prospects in Research or Find prospects, then “Add to list”." />
                 ) : (
                     <ul className="prospect-list">
                         {lists.map((l) => (

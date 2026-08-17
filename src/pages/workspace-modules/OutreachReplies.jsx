@@ -135,10 +135,12 @@ const OutreachReplies = ({ workspaceId }) => {
                                             {prospectName(r.prospect)}
                                             {r.prospect?.company ? ` · ${r.prospect.company}` : ''}
                                         </span>
-                                        {/* The subject, labelled honestly — inbox-monitor stores the
-                                            subject line, not the body, so this is not the reply text. */}
+                                        {/* An EXCERPT of the reply, not the whole of it, and not a
+                                            subject line: `raw_snippet` holds body text from
+                                            inbox-monitor, or an operator's note (up to 500 chars) when
+                                            the reply was logged manually. */}
                                         <span className="label-text">
-                                            {r.snippet ? `“${r.snippet}”` : '(no subject)'} · {formatRelativeTime(r.receivedAt)}
+                                            {r.snippet ? `“${r.snippet}”` : '(no excerpt)'} · {formatRelativeTime(r.receivedAt)}
                                             {r.source === 'manual' ? ' · logged manually' : ''}
                                         </span>
                                         {/* The context the old panel never showed: what they replied TO. */}

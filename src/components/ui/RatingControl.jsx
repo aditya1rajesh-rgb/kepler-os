@@ -35,7 +35,7 @@ const RatingControl = ({ onSubmit, label = 'Rate this output' }) => {
         if (r >= 3) submit(r, ''); // 3+ submits immediately; <3 waits for the note
     };
 
-    if (submitted) return <span className="label-text">Thanks - feedback saved ✓</span>;
+    if (submitted) return <span className="label-text">Thanks, feedback saved ✓</span>;
 
     return (
         <div className="rating-control" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

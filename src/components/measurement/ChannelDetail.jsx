@@ -41,7 +41,7 @@ const ChannelDetail = ({ detail, goalName = '', onBack, onOpenCampaign }) => {
         <>
             <Panel className="module-panel">
                 <PanelHeader
-                    title={`${row.production} — ${row.source}`}
+                    title={`${row.production} · ${row.source}`}
                     /* The goal travels with the drill; without it this would
                        quietly become a workspace-wide view one click in. */
                     meta={goalName ? `Contribution to “${goalName}”` : 'Contribution across the workspace'}
@@ -92,7 +92,7 @@ const ChannelDetail = ({ detail, goalName = '', onBack, onOpenCampaign }) => {
             <Panel className="module-panel">
                 <PanelHeader title="Campaigns" meta="The work behind this channel" />
                 {campaigns.length === 0 ? (
-                    <EmptyState message="No Kepler campaign produced this traffic — it arrived untagged." />
+                    <EmptyState message="No Kepler campaign produced this traffic. It arrived untagged." />
                 ) : (
                     <div className="engine-table" role="table">
                         {campaigns.map((c) => (

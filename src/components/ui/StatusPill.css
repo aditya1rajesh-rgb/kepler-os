@@ -8,7 +8,7 @@
     font-weight: 600;
     text-transform: none;
     letter-spacing: 0.03em;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
     background-color: var(--kepler-panel);
     color: var(--kepler-muted);
 }
@@ -23,7 +23,7 @@
 .status-pill.pending,
 .status-pill.warning {
     border-color: rgba(252, 211, 77, 0.35);
-    color: #fcd34d;
+    color: var(--warning);
 }
 
 .status-pill.error {

@@ -46,7 +46,7 @@
 
 .tabs-bar--kepler .tab-item:hover {
     color: var(--kepler-text);
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--wash-3);
 }
 
 .tabs-bar--kepler .tab-item.active {
@@ -82,6 +82,6 @@
     margin-left: 6px;
     border-radius: 50%;
     vertical-align: middle;
-    background: var(--kepler-accent, #4a6cf7);
+    background: var(--kepler-accent, var(--accent));
     box-shadow: 0 0 6px 0 rgba(var(--accent-rgb), 0.7);
 }
