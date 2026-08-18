@@ -1,21 +1,25 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- KEPLER · migration 032 — the goals tables. THIS IS WHAT THE GOALS SCREEN NEEDS.
+-- KEPLER · migration 032 — the goals tables. THIS IS THE GOALS FIX.
 --
--- WHY THIS EXISTS: the `staging-backend` Action has failed every run since
--- 2026-08-04 on an expired SUPABASE_ACCESS_TOKEN, so migrations 029-035 never
--- reached the database. (027 DID apply, on the last good run - verified: the
--- REST API answers 200 for public.workspace_events and 404 for public.goals.)
+--   ►►► RUN THIS AGAINST PROJECT  dtqmgpznbomafrzptfca  ◄◄◄
 --
--- EACH MIGRATION IS ITS OWN TRANSACTION. The previous version of this script
--- wrapped all nine in one BEGIN/COMMIT, so a single error rolled back the entire
--- batch and nothing landed. Per-migration atomicity is also how `supabase db
--- push` behaves: if one fails, the ones before it stay applied and you get told
--- exactly which one broke.
+--   Check your address bar: supabase.com/dashboard/project/dtqmgpznbomafrzptfca/sql
 --
--- Everything is idempotent - CREATE ... IF NOT EXISTS, ADD COLUMN IF NOT EXISTS,
--- DROP POLICY IF EXISTS then CREATE POLICY - so re-running is safe and an
--- already-applied migration is a no-op. Nothing drops a table, drops a column,
--- truncates, or deletes a row.
+--   This matters more than anything else in this file. There are TWO Kepler
+--   projects and they have diverged:
+--     dtqmgpznbomafrzptfca  ← the DEPLOYED app queries this one. Missing 029-035.
+--     risoupsjfwnpawjltywh  ← your .env.local. Already fully migrated.
+--   The earlier attempts applied cleanly to the second one, which is why the
+--   SQL kept "working" while the live screen kept failing.
+--
+-- Each migration is its own transaction, so one failure cannot discard the rest
+-- and Postgres names the statement that broke. Everything is idempotent
+-- (CREATE ... IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, DROP POLICY IF EXISTS then
+-- CREATE POLICY): re-running is safe, and an already-applied migration is a
+-- no-op. Nothing drops a table, drops a column, truncates, or deletes a row.
+--
+-- The LAST statement prints a pass/fail table. Read it - that is the confirmation
+-- that was missing from the earlier attempts.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -222,8 +226,35 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 
--- PostgREST caches the schema. Without this the tables exist but the API still
--- answers PGRST205 - which is the exact error on screen. Not inside a
--- transaction: NOTIFY only fires on commit.
+-- PostgREST caches the schema. Without this the tables exist but the API keeps
+-- answering PGRST205, which is the error on screen. Outside any transaction:
+-- NOTIFY only fires on commit.
 NOTIFY pgrst, 'reload schema';
+
+-- ── DID IT WORK? Every row must say OK. ──────────────────────────────────
+    SELECT 'goals' AS object,
+           CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables
+                             WHERE table_schema='public' AND table_name='goals')
+                THEN 'OK' ELSE 'MISSING' END AS status
+UNION ALL
+    SELECT 'goal_checkpoints' AS object,
+           CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables
+                             WHERE table_schema='public' AND table_name='goal_checkpoints')
+                THEN 'OK' ELSE 'MISSING' END AS status
+UNION ALL
+    SELECT 'goal_target_history' AS object,
+           CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables
+                             WHERE table_schema='public' AND table_name='goal_target_history')
+                THEN 'OK' ELSE 'MISSING' END AS status
+UNION ALL
+    SELECT 'goal_links' AS object,
+           CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables
+                             WHERE table_schema='public' AND table_name='goal_links')
+                THEN 'OK' ELSE 'MISSING' END AS status
+UNION ALL
+    SELECT 'campaigns.goal_id' AS object,
+           CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+                             WHERE table_schema='public' AND table_name='campaigns' AND column_name='goal_id')
+                THEN 'OK' ELSE 'MISSING' END AS status
+ORDER BY 1;
 
