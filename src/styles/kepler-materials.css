@@ -51,7 +51,7 @@
    change to the primary button is a one-line change. */
 .kepler-btn-primary {
   background: var(--highlight-grad);
-  color: #ffffff;
+  color: var(--on-accent);
   border: 1px solid var(--border-accent);
   box-shadow: inset 0 1px 0 0 var(--edge-highlight-accent), var(--shadow-accent);
   transition: var(--t-tint), transform var(--dur-instant) var(--ease-out),

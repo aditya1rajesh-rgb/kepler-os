@@ -237,12 +237,13 @@
 /* Active leaf / child → solid accent pill, white content */
 .sidebar__item--active,
 .sidebar__item--active:hover {
-    background: var(--accent);
-    color: #ffffff;
+    /* --accent-fill, not --accent: white on --accent is 4.39:1, under AA. */
+    background: var(--accent-fill);
+    color: var(--on-accent);
 }
 
 .sidebar__item--active .sidebar__item-icon {
-    color: #ffffff;
+    color: var(--on-accent);
 }
 
 .sidebar__item-icon {
@@ -359,8 +360,8 @@
 
 .sidebar__child--active,
 .sidebar__child--active:hover {
-    background: var(--accent);
-    color: #ffffff;
+    background: var(--accent-fill);
+    color: var(--on-accent);
 }
 
 .sidebar__child-label {

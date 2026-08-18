@@ -152,7 +152,7 @@ button.kpi-card__foot:hover {
 .kpi-card--hero .kpi-card__icon {
     background: var(--wash-4);
     border-color: var(--border-strong);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .kpi-card--hero .kpi-card__label {
@@ -160,7 +160,7 @@ button.kpi-card__foot:hover {
 }
 
 .kpi-card--hero .kpi-card__value {
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .kpi-card--hero .kpi-card__sub {
@@ -174,7 +174,7 @@ button.kpi-card__foot:hover {
 
 button.kpi-card--hero .kpi-card__foot:hover,
 .kpi-card--hero button.kpi-card__foot:hover {
-    color: #fff;
+    color: var(--on-accent);
 }
 
 /* ============================================================
@@ -272,7 +272,7 @@ button.kpi-card--hero .kpi-card__foot:hover,
     font-family: var(--font-heading);
     font-size: 14px;
     font-weight: 600;
-    color: #fff;
+    color: var(--on-accent);
     /* The tile takes a saturated colour inline (Home.jsx: ws.logoColor), so its
        bevel reads in both themes. */
     box-shadow: inset 0 1px 0 0 var(--edge-highlight-accent);

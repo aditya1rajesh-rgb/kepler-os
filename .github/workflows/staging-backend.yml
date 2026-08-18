@@ -37,5 +37,8 @@ jobs:
       # NB: explicit list — a new function must be added here or it won't deploy.
       # metrics-snapshot and search-console were missing from this list, which is
       # why metrics-snapshot has been "code-complete but undeployed" since 028.
-      - run: supabase functions deploy ai-proxy connector-proxy oauth-proxy meta-callbacks send-scheduler inbox-monitor visibility-scanner metrics-snapshot search-console
+      # detector-run was missing here while migration 034 schedules a daily
+      # pg_cron POST to it — the Action stayed green and the cron would have 404'd
+      # every morning at 06:00 with nothing surfacing the failure.
+      - run: supabase functions deploy ai-proxy connector-proxy oauth-proxy meta-callbacks send-scheduler inbox-monitor visibility-scanner metrics-snapshot search-console detector-run
       - run: supabase db push

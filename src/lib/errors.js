@@ -82,7 +82,7 @@ export const toUserMessage = (error, fallback = 'Something went wrong. Please tr
     if (isSchemaError(error)) {
         const relation = namedRelation(message);
         return relation
-            ? `This feature needs the “${relation}” table, which this database does not have yet — a pending migration has not been applied.`
+            ? `This feature needs the “${relation}” table, which this database does not have yet. A pending migration has not been applied.`
             : 'This feature needs a database change that has not been applied to this environment yet.';
     }
 

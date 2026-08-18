@@ -68,16 +68,25 @@
   --edge-highlight: transparent;
 
   /* ── Ink: cool near-black ──────────────────────────────────────────────── */
+  /* Ink ramp. Every step clears WCAG AA 4.5:1 against the WORST light surface it
+     can land on, which is the inset tone #eff0fa - not white, so white-only maths
+     would have passed a value that still fails in a card. Measured:
+     --text-dim was #a3a9b8 = 2.07:1 on inset and --text-muted #767c8a = 3.69:1;
+     both failed. Now 4.65 and 6.50, with secondary pulled down to keep four
+     distinct steps. */
   --text: #12141a;
-  --text-secondary: #41464c;
-  --text-muted: #767c8a;
-  --text-dim: #a3a9b8;
+  --text-secondary: #363b45;
+  --text-muted: #4f5664;
+  --text-dim: #656c7a;
 
   /* ── Accent: indigo rotated to violet — same family, more saturation ───── */
   --accent: #8a59f3;
   --accent-rgb: 138, 89, 243;
   --accent-hover: #9a6ff5;
   --accent-deep: #5f37c0;
+  /* Background for a FILLED accent surface carrying --on-accent text (the command
+     palette's active row). Plain --accent gives white 4.37:1, just under AA. */
+  --accent-fill: #5f37c0;
   --accent-text: #6d40d8;
   --accent-soft: rgba(138, 89, 243, 0.10);
   --accent-soft-hover: rgba(138, 89, 243, 0.16);
@@ -86,14 +95,20 @@
   --card-grad: linear-gradient(168deg, #ffffff 0%, #ffffff 62%, #f7f8fd 100%);
 
   /* ── Semantic: soft tinted fills, not saturated bars ───────────────────── */
-  --positive: #2f7d5f;
-  --positive-rgb: 47, 125, 95;
+  /* The semantic inks are darker than the reference swatches because they are
+     used as TEXT on their own -soft tint, not just as accents. Measured on the
+     composited tint over a white card: warning was 3.17:1, negative 4.14,
+     positive 4.25 - all below AA, and all of them label a state the user is
+     meant to act on. Now 5.61 / 5.14 / 5.49. Each -rgb pair moves with its hex
+     or the borders built from it drift off the text. */
+  --positive: #276a50;
+  --positive-rgb: 39, 106, 80;
   --positive-soft: rgba(47, 125, 95, 0.12);
-  --negative: #c8443c;
-  --negative-rgb: 200, 68, 60;
+  --negative: #b03a33;
+  --negative-rgb: 176, 58, 51;
   --negative-soft: rgba(200, 68, 60, 0.11);
-  --warning: #b07d1f;
-  --warning-rgb: 176, 125, 31;
+  --warning: #7d5813;
+  --warning-rgb: 125, 88, 19;
   --warning-soft: rgba(217, 168, 62, 0.18);
 
   /* ── Elevation: soft, diffuse, blue-tinted — this is what groups ───────── */

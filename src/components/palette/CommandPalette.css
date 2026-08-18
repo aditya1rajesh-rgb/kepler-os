@@ -100,8 +100,9 @@
 }
 
 .cmdk__item--active {
-    background: var(--accent);
-    color: #ffffff;
+    /* --accent-fill, not --accent: white on --accent fails AA in both themes. */
+    background: var(--accent-fill);
+    color: var(--on-accent);
 }
 
 .cmdk__item-icon {

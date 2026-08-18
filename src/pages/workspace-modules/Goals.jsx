@@ -221,7 +221,14 @@ const Goals = ({ workspaceId }) => {
                     <>
                         <button type="button" className="campaigns__back" onClick={() => openGoal(null)}>← All goals</button>
                         {loadError && <p className="brand-intel-module__error" role="alert">{loadError}</p>}
-                        {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                        {/* Not `error &&`: toUserMessage maps the underlying CAUSE and
+                            discards the per-operation fallback, so a missing table makes
+                            "could not load goals" and "could not create the goal" the
+                            same sentence. Two identical alerts read as a rendering bug,
+                            not as two events. */}
+                        {error && error !== loadError && (
+                            <p className="brand-intel-module__error" role="alert">{error}</p>
+                        )}
                         {failureDetail && (error || loadError) && (
                             <p className="brand-intel-module__source-label goals-error-detail">{failureDetail}</p>
                         )}
@@ -330,7 +337,14 @@ const Goals = ({ workspaceId }) => {
             banner={
                 <>
                     {loadError && <p className="brand-intel-module__error" role="alert">{loadError}</p>}
-                    {error && <p className="brand-intel-module__error" role="alert">{error}</p>}
+                    {/* Not `error &&`: toUserMessage maps the underlying CAUSE and
+                        discards the per-operation fallback, so a missing table makes
+                        "could not load goals" and "could not create the goal" the
+                        same sentence. Two identical alerts read as a rendering bug,
+                        not as two events. */}
+                    {error && error !== loadError && (
+                        <p className="brand-intel-module__error" role="alert">{error}</p>
+                    )}
                     {failureDetail && (error || loadError) && (
                         <p className="brand-intel-module__source-label goals-error-detail">{failureDetail}</p>
                     )}

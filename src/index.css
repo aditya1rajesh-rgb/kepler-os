@@ -73,6 +73,13 @@
      casts its blue-tinted ink, faintly. */
   --header-fade-from: rgba(10, 11, 15, 0.55);
 
+  /* Ink for a SATURATED ACCENT surface (the violet button gradient, the solid
+     accent nav pill, a brand-coloured avatar tile). White in both themes, because
+     the accent is saturated in both - so these are not theme bugs, and naming the
+     token stops them reading as leftover hardcoded whites and stops anyone
+     "fixing" them into an unreadable grey. */
+  --on-accent: #ffffff;
+
   /* The same bevel, but for a surface that is SATURATED ACCENT in both themes
      (the hero KPI card's violet gradient). White reads on violet whichever theme
      is active, so unlike --edge-highlight this one does not vanish in light. */
@@ -92,10 +99,15 @@
   /* ── Text ────────────────────────────────────────────────────────────────
      Four rungs, used strictly: primary content, supporting content, metadata,
      and disabled/placeholder. If a fifth is wanted, the hierarchy is wrong.  */
+  /* Ink ramp. Every step clears WCAG AA 4.5:1 against the LIGHTEST surface it can
+     land on (--layer-raised #16181f), measured, not estimated. --text-dim was
+     #63697a = 3.19:1, which fails for the 11px micro-labels it is used on; muted
+     moved with it to keep four visibly distinct steps rather than two that nearly
+     touch. Deltas on raised: 16.1 / 10.8 / 7.4 / 5.3. */
   --text: #f3f4f7;
   --text-secondary: #c8cbd4;
-  --text-muted: #8d93a1;
-  --text-dim: #63697a;
+  --text-muted: #a1a7b5;
+  --text-dim: #868d9c;
 
   /* ── Accent ──────────────────────────────────────────────────────────────
      Indigo stays — it is the Kepler identity. --accent-soft/-border give
@@ -104,6 +116,11 @@
   --accent-rgb: 74, 108, 247;
   --accent-hover: #5f7df8;
   --accent-deep: #2436a8;
+  /* Background for a FILLED accent surface carrying --on-accent text (the active
+     nav pill, the command palette's active row). Plain --accent puts white at
+     4.39:1 - marginally under AA - and --accent-deep is heavier than the pill
+     wants, so this sits between them at 6.12:1. */
+  --accent-fill: #3a55d4;
   --accent-text: #a3b6fc;
   --accent-soft: rgba(var(--accent-rgb), 0.12);
   --accent-soft-hover: rgba(var(--accent-rgb), 0.18);
@@ -512,9 +529,11 @@ button:disabled {
 
 .btn-primary {
   background: var(--highlight-grad);
-  color: #ffffff;
+  color: var(--on-accent);
   border-color: var(--border-accent);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2), var(--shadow-accent);
+  /* Accent surface: the bevel is white in both themes, so it uses the accent
+     variant rather than --edge-highlight, which resolves to nothing on light. */
+  box-shadow: inset 0 1px 0 0 var(--edge-highlight-accent), var(--shadow-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
