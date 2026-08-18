@@ -340,6 +340,44 @@ user is a guess about intent.
   A degraded card now leads with **Why?** rather than Reconnect: the shortfall is
   the thing to understand, and reconnecting blind is what produced it.
 
+### The backend pipeline is dead, and that is why Goals fails
+
+Goals renders `PGRST205 · Could not find the table 'public.goals'`. The screen is
+correct — the table genuinely is not there.
+
+**`staging-backend` has failed on every run since 2026-08-04**, seven in a row. It
+dies on the first real step, `supabase link`:
+
+```
+Unexpected error retrieving remote project status: {"message":"Unauthorized"}
+```
+
+The repo secret `SUPABASE_ACCESS_TOKEN` is expired or revoked. So **no backend
+change has reached staging since 2026-08-04** — migrations 027 to 035 are all
+unapplied. The notes that kept recording 027/028/029 as "code-complete but
+undeployed" were describing a symptom: nothing was being forgotten, the pipeline
+was rejecting everything and going red where nobody was looking. The frontend
+pipeline is unaffected and has shipped normally throughout, which is exactly why
+this stayed invisible — the app kept moving while its database stood still.
+
+**The Supabase project is fine.** Probed unauthenticated:
+`https://dtqmgpznbomafrzptfca.supabase.co/rest/v1/` returns 401 `No API key found
+in request`, the correct live response. Not paused, not deleted.
+
+**The fix is owner-only, because it is a credential.** Generate a token at
+Supabase → Account → Access Tokens, set the repo secret `SUPABASE_ACCESS_TOKEN`,
+then:
+
+```
+gh workflow run staging-backend.yml --ref staging
+```
+
+Applying the backlog is safe: migrations 001–035 contain no `DROP TABLE`,
+`DROP COLUMN`, `TRUNCATE` or `DELETE FROM`; everything is
+`CREATE ... IF NOT EXISTS` and the cron migrations state they are re-runnable.
+`detector-run` was also missing from the function deploy list while migration 034
+schedules a daily POST to it — added, so it will not 404 once the token works.
+
 ### What is left
 
 - **The remaining `#fff` / `#ffffff` `color:` declarations** (~13). Each needs its
