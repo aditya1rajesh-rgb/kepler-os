@@ -161,6 +161,25 @@ export const goalsService = {
         if (error) throw error;
     },
 
+    /**
+     * Hard delete. Unlike `archive`, this is not recoverable.
+     *
+     * The schema decides what goes with it (migration 032):
+     *   goal_checkpoints, goal_target_history, goal_links → ON DELETE CASCADE,
+     *     so the goal's progress record and its every target change go too.
+     *   campaigns.goal_id → ON DELETE SET NULL, so campaigns SURVIVE and simply
+     *     stop laddering to a goal. Deleting a goal never deletes work.
+     * The confirmation says both, because "delete" alone does not distinguish
+     * them and the difference is the whole risk.
+     */
+    remove: async (workspaceId, goalId) => {
+        assertWorkspaceId(workspaceId);
+        const { error } = await supabase
+            .from('goals').delete()
+            .eq('workspace_id', workspaceId).eq('id', goalId);
+        if (error) throw error;
+    },
+
     // ── The ladder ───────────────────────────────────────────────────────────
 
     /** Campaigns whose ONE parent is this goal. */

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Trash2 } from '../../lib/icons';
 import ModuleScreen from '../../components/layout/ModuleScreen';
+import Modal from '../../components/ui/Modal';
 import Panel, { PanelHeader } from '../../components/ui/Panel';
 import EmptyState from '../../components/ui/EmptyState';
 import StatusPill from '../../components/ui/StatusPill';
@@ -47,6 +49,11 @@ const Goals = ({ workspaceId }) => {
     // project all read as the same generic sentence.
     const [failureDetail, setFailureDetail] = useState('');
     const [notice, setNotice] = useState('');
+
+    // { goal, campaignCount } — campaignCount stays null until counted, and
+    // becomes 'unknown' if the count could not be read.
+    const [confirmRemove, setConfirmRemove] = useState(null);
+    const [removing, setRemoving] = useState(false);
 
     const [detail, setDetail] = useState(null);
     const [campaigns, setCampaigns] = useState([]);
@@ -209,6 +216,98 @@ const Goals = ({ workspaceId }) => {
         }
     };
 
+    /* Removing a goal is confirmed, and the confirmation counts the campaigns
+       under it first. "Delete" does not distinguish between losing the goal and
+       losing the work beneath it, and that difference is the whole risk - so the
+       modal states which one actually happens instead of asking the user to
+       assume. */
+    const askRemove = async (goal) => {
+        setConfirmRemove({ goal, campaignCount: null });
+        try {
+            const camps = await goalsService.campaignsFor(workspaceId, goal.id);
+            setConfirmRemove((c) => (c && c.goal.id === goal.id
+                ? { ...c, campaignCount: camps.length } : c));
+        } catch {
+            // A count we could not read must not be rendered as zero: leaving it
+            // null makes the modal say so rather than understate the blast radius.
+            setConfirmRemove((c) => (c && c.goal.id === goal.id
+                ? { ...c, campaignCount: 'unknown' } : c));
+        }
+    };
+
+    const doRemove = async (mode) => {
+        if (!confirmRemove) return;
+        const { goal } = confirmRemove;
+        setRemoving(true);
+        setError('');
+        try {
+            if (mode === 'archive') await goalsService.archive(workspaceId, goal.id);
+            else await goalsService.remove(workspaceId, goal.id);
+            setConfirmRemove(null);
+            setNotice(mode === 'archive'
+                ? `“${goal.name}” archived. It is out of your list but not deleted.`
+                : `“${goal.name}” deleted.`);
+            // Leaving the detail open on a row that no longer exists would refetch
+            // into an error, so return to the list first.
+            if (openId === goal.id) { setDetail(null); openGoal(null); }
+            await load();
+        } catch (err) {
+            setError(toUserMessage(err, mode === 'archive'
+                ? 'Could not archive that goal.'
+                : 'Could not delete that goal.'));
+            setFailureDetail(errorDetail(err));
+        } finally {
+            setRemoving(false);
+        }
+    };
+
+    /* One modal, rendered from both the list and the detail. Archive is offered
+       beside Delete because it is what most people actually want - the goal out of
+       the way, the record kept - and it is the only one of the two that can be
+       undone. Delete stays available and stays labelled destructive. */
+    const removeModal = (
+        <Modal
+            isOpen={Boolean(confirmRemove)}
+            onClose={() => { if (!removing) setConfirmRemove(null); }}
+            title={confirmRemove ? `Delete “${confirmRemove.goal.name}”?` : 'Delete goal'}
+            footer={
+                <>
+                    <button type="button" className="btn btn-secondary" onClick={() => setConfirmRemove(null)} disabled={removing}>
+                        Cancel
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => doRemove('archive')} disabled={removing}>
+                        {removing ? 'Working…' : 'Archive instead'}
+                    </button>
+                    <button type="button" className="btn btn-destructive--strong" onClick={() => doRemove('delete')} disabled={removing}>
+                        {removing ? 'Deleting…' : 'Delete permanently'}
+                    </button>
+                </>
+            }
+        >
+            {confirmRemove && (
+                <>
+                    <p>
+                        Its progress record goes with it: every checkpoint, and the history of
+                        every time the target changed. That cannot be recovered.
+                    </p>
+                    <p>
+                        {confirmRemove.campaignCount === null
+                            ? 'Counting the campaigns under it…'
+                            : confirmRemove.campaignCount === 'unknown'
+                                ? 'Any campaigns under it are kept, and stop laddering to a goal. The count could not be read just now.'
+                                : confirmRemove.campaignCount === 0
+                                    ? 'No campaigns ladder to it, so nothing else is affected.'
+                                    : `${confirmRemove.campaignCount} campaign${confirmRemove.campaignCount === 1 ? '' : 's'} ladder${confirmRemove.campaignCount === 1 ? 's' : ''} to it. ${confirmRemove.campaignCount === 1 ? 'It is' : 'They are'} kept, and stop${confirmRemove.campaignCount === 1 ? 's' : ''} laddering to a goal.`}
+                    </p>
+                    <p className="brand-intel-module__source-label">
+                        Archiving keeps all of it and takes the goal out of your list, which is
+                        reversible. Deleting is not.
+                    </p>
+                </>
+            )}
+        </Modal>
+    );
+
     if (loading) return <div className="goals module-kepler"><EmptyState loading message="Loading goals…" /></div>;
 
     // ── Detail ───────────────────────────────────────────────────────────────
@@ -235,6 +334,11 @@ const Goals = ({ workspaceId }) => {
                     </>
                 }
                 status={<StatusPill status={detail.status} variant={STATUS_VARIANT[detail.status]} />}
+                actions={
+                    <button type="button" className="btn btn-ghost" onClick={() => askRemove(detail)}>
+                        <Trash2 size={15} strokeWidth={1.8} /> Delete goal
+                    </button>
+                }
                 primary={
                     <button
                         type="button"
@@ -325,6 +429,7 @@ const Goals = ({ workspaceId }) => {
                         <GoalMath goal={detail} projection={projection} />
                     </aside>
                 </div>
+                {removeModal}
             </ModuleScreen>
         );
     }
@@ -488,12 +593,22 @@ const Goals = ({ workspaceId }) => {
                                 <StatusPill status={g.status} variant={STATUS_VARIANT[g.status]} />
                                 <div className="engine-row__actions">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => openGoal(g.id)}>Open</button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm goals__row-remove"
+                                        onClick={() => askRemove(g)}
+                                        title={`Delete ${g.name}`}
+                                        aria-label={`Delete ${g.name}`}
+                                    >
+                                        <Trash2 size={15} strokeWidth={1.8} />
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
             </Panel>
+            {removeModal}
         </ModuleScreen>
     );
 };

@@ -106,6 +106,8 @@
   --positive-soft: rgba(47, 125, 95, 0.12);
   --negative: #b03a33;
   --negative-rgb: 176, 58, 51;
+  /* Already dark enough to carry white (6.00:1), so the fill is the same ink. */
+  --negative-fill: #b03a33;
   --negative-soft: rgba(200, 68, 60, 0.11);
   --warning: #7d5813;
   --warning-rgb: 125, 88, 19;

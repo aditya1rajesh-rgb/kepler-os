@@ -364,7 +364,7 @@ const ConnectorsPanel = ({ workspaceId, title = 'Connectors', meta, chrome = tru
                 footer={
                     <>
                         <button type="button" className="btn btn-secondary" onClick={() => setConfirmDisconnect(null)} disabled={disconnecting}>Cancel</button>
-                        <button type="button" className="btn-destructive" onClick={disconnect} disabled={disconnecting}>
+                        <button type="button" className="btn btn-destructive--strong" onClick={disconnect} disabled={disconnecting}>
                             {disconnecting ? 'Disconnecting…' : 'Disconnect'}
                         </button>
                     </>

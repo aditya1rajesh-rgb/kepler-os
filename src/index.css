@@ -134,6 +134,10 @@
   --negative: #f65a5a;
   --negative-rgb: 246, 90, 90;
   --negative-soft: rgba(var(--negative-rgb), 0.13);
+  /* Background for a FILLED destructive button. --negative is a light red tuned
+     for TEXT on a dark surface, so --on-accent on it is only 3.22:1. This is the
+     same hue, dark enough to carry white at 4.93:1. */
+  --negative-fill: #cc3b3b;
   --warning: #fcd34d;
   --warning-rgb: 252, 211, 77;
   --warning-soft: rgba(var(--warning-rgb), 0.13);
@@ -538,7 +542,7 @@ button:disabled {
 
 .btn-primary:hover:not(:disabled) {
   background: linear-gradient(140deg, #7e99ff 0%, #5878f8 44%, #3346c4 100%);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.26),
+  box-shadow: inset 0 1px 0 0 var(--edge-highlight-accent),
               0 8px 24px -8px rgba(var(--accent-rgb), 0.78);
 }
 
@@ -561,17 +565,38 @@ button:disabled {
 
 .btn-ghost:hover:not(:disabled) {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.055);
+  background: var(--wash-3);
 }
 
+/* Destructive actions read as destructive AT REST, not only on hover. The
+   resting colour was --text-muted, so a Delete looked exactly like ordinary
+   secondary text until you hovered - and on touch there is no hover at all, so
+   the warning never appeared. Transparent background keeps it quiet enough to sit
+   in a row without turning a list into a wall of red. */
 .btn-destructive {
-  color: var(--text-muted);
+  color: var(--negative);
   border-color: transparent;
 }
 
 .btn-destructive:hover:not(:disabled) {
   color: var(--negative);
   background: var(--negative-soft);
+}
+
+/* The variant for a CONFIRMATION footer, where the button is the commitment
+   rather than one option among many. A bordered "Archive instead" next to a
+   borderless red link made the reversible choice look like the primary one and
+   the irreversible one look incidental. */
+.btn-destructive--strong {
+  color: var(--on-accent);
+  background: var(--negative-fill);
+  border-color: var(--negative-fill);
+}
+
+.btn-destructive--strong:hover:not(:disabled) {
+  color: var(--on-accent);
+  background: var(--negative);
+  filter: brightness(0.92);
 }
 
 .btn-sm {
@@ -670,7 +695,7 @@ select {
    which added a hard bright edge next to every scrolling region. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -683,14 +708,14 @@ select {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.12);
+  background-color: var(--border-strong);
   border-radius: var(--r-full);
   border: 3px solid transparent;
   background-clip: content-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.22);
+  background-color: var(--text-dim);
 }
 
 /* ── Utilities ───────────────────────────────────────────────────────────── */
