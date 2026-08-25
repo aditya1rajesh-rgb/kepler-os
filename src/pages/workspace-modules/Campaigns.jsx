@@ -92,6 +92,10 @@ const Campaigns = ({ workspaceId }) => {
 
     const [detail, setDetail] = useState(null);
     const [detailState, setDetailState] = useState('loading'); // loading | ready | missing
+    // { campaign, impact } — impact stays null until counted; its fields are
+    // null individually when a count could not be read.
+    const [confirmRemove, setConfirmRemove] = useState(null);
+    const [removing, setRemoving] = useState(false);
     const [assets, setAssets] = useState([]);
     const [execBusyId, setExecBusyId] = useState(null); // stepId currently auto-executing
     const [execErrors, setExecErrors] = useState({}); // stepId → error message
@@ -107,6 +111,7 @@ const Campaigns = ({ workspaceId }) => {
     const [type, setType] = useState('launch');
     const [generating, setGenerating] = useState(false);
     const [error, setError] = useState('');
+    const [notice, setNotice] = useState('');
     const [eventModalOpen, setEventModalOpen] = useState(false);
     const [eventName, setEventName] = useState('');
     const [eventDate, setEventDate] = useState('');
@@ -355,13 +360,95 @@ const Campaigns = ({ workspaceId }) => {
         setDetail(updated);
     };
 
-    const removeCampaign = async (e, id) => {
+    /* Deleting a campaign was unconfirmed and swallowed its errors, so one stray
+       click destroyed measurement history and a FAILED delete looked identical to
+       a successful one. It is confirmed now, and the confirmation counts the
+       damage first. */
+    const askRemoveCampaign = async (e, campaign) => {
         e.stopPropagation();
-        try {
-            await campaignService.deleteCampaign(workspaceId, id);
-            await loadList();
-        } catch { /* non-fatal */ }
+        setConfirmRemove({ campaign, impact: null });
+        const impact = await campaignService.deletionImpact(workspaceId, campaign.id);
+        setConfirmRemove((c) => (c && c.campaign.id === campaign.id ? { ...c, impact } : c));
     };
+
+    const doRemoveCampaign = async (mode) => {
+        if (!confirmRemove) return;
+        const { campaign } = confirmRemove;
+        setRemoving(true);
+        setError('');
+        try {
+            if (mode === 'archive') await campaignService.archiveCampaign(workspaceId, campaign.id);
+            else await campaignService.deleteCampaign(workspaceId, campaign.id);
+            setConfirmRemove(null);
+            setNotice(mode === 'archive'
+                ? `“${campaign.title || 'Campaign'}” archived. You will find it under Past.`
+                : `“${campaign.title || 'Campaign'}” deleted.`);
+            if (activeId === campaign.id) backToList();
+            await loadList();
+        } catch (err) {
+            // Not swallowed: a delete that failed must not look like one that worked.
+            setError(toUserMessage(err, mode === 'archive'
+                ? 'Could not archive that campaign.'
+                : 'Could not delete that campaign.'));
+        } finally {
+            setRemoving(false);
+        }
+    };
+
+    /* One confirmation for both views. Archive leads on weight because deleting a
+       campaign destroys its MEASUREMENT history, which is the one thing here that
+       cannot be regenerated - the assets and sequences survive either way. */
+    const removeModal = (
+        <Modal
+            isOpen={Boolean(confirmRemove)}
+            onClose={() => { if (!removing) setConfirmRemove(null); }}
+            title={confirmRemove ? `Delete “${confirmRemove.campaign.title || 'campaign'}”?` : 'Delete campaign'}
+            footer={
+                <>
+                    <button type="button" className="btn btn-secondary" onClick={() => setConfirmRemove(null)} disabled={removing}>
+                        Cancel
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => doRemoveCampaign('archive')} disabled={removing}>
+                        {removing ? 'Working…' : 'Archive instead'}
+                    </button>
+                    <button type="button" className="btn btn-destructive--strong" onClick={() => doRemoveCampaign('delete')} disabled={removing}>
+                        {removing ? 'Deleting…' : 'Delete permanently'}
+                    </button>
+                </>
+            }
+        >
+            {confirmRemove && (() => {
+                const i = confirmRemove.impact;
+                const n = (v, one, many) => (v === null || v === undefined
+                    ? null : `${v} ${v === 1 ? one : many}`);
+                const survives = i
+                    ? [n(i.assets, 'asset', 'assets'), n(i.sequences, 'sequence', 'sequences')].filter(Boolean)
+                    : [];
+                return (
+                    <>
+                        <p>
+                            {i === null
+                                ? 'Counting what this campaign holds…'
+                                : i.metricReadings === null
+                                    ? 'Its measured results are destroyed: every reading attributed to this campaign. That cannot be recovered, and the count could not be read just now.'
+                                    : i.metricReadings === 0
+                                        ? 'Nothing has been measured against it yet, so no results are lost.'
+                                        : `Its measured results are destroyed: ${i.metricReadings} reading${i.metricReadings === 1 ? '' : 's'} attributed to this campaign. Measurement stops counting it, and that cannot be recovered.`}
+                        </p>
+                        <p>
+                            {survives.length
+                                ? `${survives.join(' and ')} stay. They stop laddering to a campaign, and you will still find the assets in the Library.`
+                                : i === null ? '' : 'It produced no assets or sequences, so nothing else is affected.'}
+                        </p>
+                        <p className="brand-intel-module__source-label">
+                            Archiving keeps the results and moves the campaign into Past, which is
+                            reversible. Deleting is not.
+                        </p>
+                    </>
+                );
+            })()}
+        </Modal>
+    );
 
     // ---- Detail (manager desk) ----
     if (activeId) {
@@ -414,6 +501,14 @@ const Campaigns = ({ workspaceId }) => {
             <ModuleScreen
                 className="campaigns module-kepler"
                 moduleKey="campaign-detail"
+                /* The detail had no banner slot at all, so an archive or delete
+                   that failed here had nowhere to report it. */
+                banner={
+                    <>
+                        {error && <p className="campaigns__error" role="alert">{error}</p>}
+                        {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    </>
+                }
                 /* The campaign's identity and progress are screen STATE, so they
                    sit in the bar. v3 gave them a full Panel of their own above
                    the plan — the thing you actually came to work on. */
@@ -441,6 +536,11 @@ const Campaigns = ({ workspaceId }) => {
                                 : 'No goal'}
                         </span>
                     </>
+                }
+                actions={
+                    <button type="button" className="btn btn-ghost" onClick={(e) => askRemoveCampaign(e, detail)}>
+                        <Trash2 size={15} strokeWidth={1.8} /> Delete campaign
+                    </button>
                 }
                 primary={detail.status === 'draft' ? (
                     <button type="button" className="btn btn-primary" onClick={confirmPlan}>
@@ -660,6 +760,7 @@ const Campaigns = ({ workspaceId }) => {
                     </ol>
                     )}
                 </Panel>
+                {removeModal}
             </ModuleScreen>
         );
     }
@@ -781,6 +882,7 @@ const Campaigns = ({ workspaceId }) => {
                     />
                 </Panel>
                 {newCampaignModal}
+                {removeModal}
             </ModuleScreen>
         );
     }
@@ -819,7 +921,11 @@ const Campaigns = ({ workspaceId }) => {
                     <Plus size={16} strokeWidth={2} /> Plan with the strategist
                 </button>
             }
-            banner={!configLoading && !canCreate ? (
+            banner={
+                <>
+                    {error && <p className="campaigns__error" role="alert">{error}</p>}
+                    {notice && <p className="brand-intel-module__source-label" role="status">{notice}</p>}
+                    {!configLoading && !canCreate ? (
                 <SetupRequired
                     title="Set up your brand before planning a campaign"
                     summary="The strategist grounds every plan in your brand and audience. Add these to start building campaigns."
@@ -829,7 +935,9 @@ const Campaigns = ({ workspaceId }) => {
                         { label: 'At least one ICP', done: readiness.hasIcps, prereq: 'icp' },
                     ]}
                 />
-            ) : null}
+                    ) : null}
+                </>
+            }
         >
             {loading ? (
                 <EmptyState loading message="Loading campaigns…" />
@@ -878,8 +986,8 @@ const Campaigns = ({ workspaceId }) => {
                                             role="button"
                                             tabIndex={0}
                                             aria-label={`Delete ${c.title || 'campaign'}`}
-                                            onClick={(e) => removeCampaign(e, c.id)}
-                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') removeCampaign(e, c.id); }}
+                                            onClick={(e) => askRemoveCampaign(e, c)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') askRemoveCampaign(e, c); }}
                                         >
                                             <Trash2 size={14} strokeWidth={1.7} />
                                         </span>
@@ -893,6 +1001,7 @@ const Campaigns = ({ workspaceId }) => {
 
             {newCampaignModal}
             {eventModal}
+            {removeModal}
         </ModuleScreen>
     );
 };

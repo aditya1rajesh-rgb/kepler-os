@@ -143,6 +143,53 @@ export const campaignService = {
         return (data ?? []).map(mapContentItemRow);
     },
 
+    /**
+     * What deleting this campaign would actually cost, counted before asking.
+     *
+     * The schema does two different things and the difference is the whole risk:
+     *   campaign_metrics  → ON DELETE CASCADE (migration 017). Every measured
+     *     reading for this campaign is destroyed - the record of whether it
+     *     worked, and what Measurement attributes to it.
+     *   content_items, sequences, change_events → ON DELETE SET NULL (012, 022,
+     *     033). Those SURVIVE, unparented. Deleting a campaign never deletes the
+     *     work it produced.
+     *
+     * A count that cannot be read comes back as null, never 0: understating a
+     * blast radius is worse than admitting a number is missing.
+     */
+    deletionImpact: async (workspaceId, campaignId) => {
+        assertWorkspaceId(workspaceId);
+        const countOf = async (table) => {
+            try {
+                const { count, error } = await supabase
+                    .from(table)
+                    .select('id', { count: 'exact', head: true })
+                    .eq('workspace_id', workspaceId)
+                    .eq('campaign_id', campaignId);
+                if (error) throw error;
+                return count ?? 0;
+            } catch {
+                return null;
+            }
+        };
+        const [assets, sequences, metricReadings] = await Promise.all([
+            countOf('content_items'), countOf('sequences'), countOf('campaign_metrics'),
+        ]);
+        return { assets, sequences, metricReadings };
+    },
+
+    /** Archive: keeps everything, moves the campaign into the Past tab. */
+    archiveCampaign: async (workspaceId, campaignId) => {
+        assertWorkspaceId(workspaceId);
+        const { error } = await supabase
+            .from('campaigns')
+            .update({ status: 'archived' })
+            .eq('id', campaignId)
+            .eq('workspace_id', workspaceId);
+        if (error) throw error;
+        return true;
+    },
+
     /** Delete a campaign (assets orphan back to the Library via ON DELETE SET NULL). */
     deleteCampaign: async (workspaceId, campaignId) => {
         assertWorkspaceId(workspaceId);
